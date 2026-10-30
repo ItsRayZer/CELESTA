@@ -7,7 +7,7 @@
   var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   var sky = hx.querySelector(".hx-stars"), c = sky.getContext("2d");
   var cx = hx.querySelector(".hx-fx"), fw = hx.querySelector(".hx-fw"), ew = hx.querySelector(".hx-ew");
-  var W = 0, H = 0, st = [], vis = true, raf = 0;
+  var W = 0, H = 0, st = [], motes = [], vis = true, raf = 0;
   var TINT = ["#e8f0ff", "#b9d8ff", "#ffe2b0"];
 
   /* ---------- Stars (dense, lots of black between) ---------- */
@@ -26,6 +26,16 @@
       st.push({ x: Math.random() * W, y: Math.random() * H * .8, r: big ? 1.5 : mid ? 1 : .55, a: big ? 1 : mid ? .7 : .45,
         ph: Math.random() * 6.28, sp: .4 + Math.random() * 1.2, col: q < .18 ? 1 : q < .3 ? 2 : 0, z: Math.random() * .6 + .1, big: big });
     }
+    motes = [];
+    var mn = Math.round(Math.min(26, W * H / 26000));
+    for (var j = 0; j < mn; j++) {
+      motes.push({ x: Math.random() * W, y: Math.random() * H,
+        r: 1.6 + Math.random() * 3.2, a: .12 + Math.random() * .3,
+        vx: (.12 + Math.random() * .35) * (Math.random() < .5 ? -1 : 1),
+        vy: -(.08 + Math.random() * .25),
+        ph: Math.random() * 6.28, sp: .5 + Math.random() * 1.1,
+        col: Math.random() < .7 ? "#ffe2b0" : "#b9d8ff" });
+    }
     fxSize(); if (reduced) drawSky(0, 0);
   }
   function drawSky(t, y) {
@@ -35,6 +45,21 @@
       c.globalAlpha = a; c.fillStyle = TINT[q.col];
       c.beginPath(); c.arc(q.x, sy, q.r, 0, 6.283); c.fill();
       if (q.big) { c.globalAlpha = a * .5; c.fillRect(q.x - 6, sy - .4, 12, .8); c.fillRect(q.x - .4, sy - 6, .8, 12); }
+    }
+    /* living dots: drift + breathe */
+    for (var m = 0; m < motes.length; m++) {
+      var o = motes[m];
+      if (!reduced) {
+        o.x += o.vx; o.y += o.vy;
+        if (o.x < -12) o.x = W + 12; if (o.x > W + 12) o.x = -12;
+        if (o.y < -12) o.y = H + 12; if (o.y > H + 12) o.y = -12;
+      }
+      var pulse = reduced ? 1 : .6 + .4 * Math.sin(t * o.sp + o.ph);
+      var dx = reduced ? 0 : Math.sin(t * .6 + o.ph) * 14, dy = reduced ? 0 : Math.cos(t * .5 + o.ph) * 10;
+      c.globalAlpha = o.a * pulse; c.fillStyle = o.col;
+      c.beginPath(); c.arc(o.x + dx, o.y + dy - y * .12, o.r * pulse, 0, 6.283); c.fill();
+      c.globalAlpha = o.a * pulse * .25;
+      c.beginPath(); c.arc(o.x + dx, o.y + dy - y * .12, o.r * 2.6, 0, 6.283); c.fill();
     }
     c.globalAlpha = 1;
   }
