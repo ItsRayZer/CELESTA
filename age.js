@@ -51,13 +51,14 @@
     }
     tl.to({}, { duration:.3 });
 
-    /* Gallery cards drift in on scroll */
+    /* Gallery cards — one by one, alternating sides, exact file UI */
     gsap.utils.toArray(".ah-gcard").forEach(function(card, i){
       var d = i%2 ? 1 : -1;
       gsap.fromTo(card, { y:90, x:d*60, opacity:0 }, { y:0, x:0, opacity:1, ease:"power2.out",
         scrollTrigger:{ trigger:card, start:"top 95%", end:"top 55%", scrub:.8 } });
       var pass = { trigger:card, start:"top bottom", end:"bottom top", scrub:true };
       gsap.fromTo(card.querySelector("img"), { yPercent:-9 }, { yPercent:9, ease:"none", scrollTrigger:pass });
+      gsap.fromTo(card.querySelector(".ah-glabel"), { letterSpacing:"0.05em" }, { letterSpacing:"0.28em", ease:"none", scrollTrigger:pass });
     });
   });
 })();
