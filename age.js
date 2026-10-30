@@ -38,7 +38,7 @@
       .fromTo(".ah-b1", { x:0, y:0, scale:1 }, { x:u(42), y:u(-5), scale:1.15, duration:1.6 }, 0)
       .fromTo(".ah-b2", { x:u(-22), y:u(2), opacity:0 }, { x:u(27), y:u(-4), opacity:.65, duration:1.6 }, 0)
       /* Card rises into the middle */
-      .fromTo(".ah-card", { y:function(){ return -innerHeight*.5; }, opacity:0 }, { y:0, opacity:1, duration:.7 }, .9)
+      .fromTo(".ah-card", { y:function(){ return innerHeight*.45; }, opacity:0 }, { y:0, opacity:1, duration:.7 }, .9)
       .fromTo(".ah-card .ah-slide:first-child img", { scale:1.15 }, { scale:1, duration:.7 }, .9);
 
     /* 5 event slides — one per scroll segment, slow crossfade, no repetition */
