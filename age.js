@@ -29,7 +29,7 @@
     /* scrub:true = exact tracking, no smoothing lag, reverses cleanly */
     var tl = gsap.timeline({
       defaults:{ ease:"none" },
-      scrollTrigger:{ trigger:".ah-hero", start:"top top", end:"+=650%", scrub:true, pin:true, anticipatePin:1, invalidateOnRefresh:true }
+      scrollTrigger:{ trigger:".ah-hero", start:"top top", end:"+=650%", scrub:true, pin:true, pinSpacing:true, anticipatePin:1, fastScrollEnd:true, preventOverlaps:true, invalidateOnRefresh:true }
     });
 
     /* Hands come together, birds drift — synced to scroll */
