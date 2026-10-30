@@ -249,3 +249,31 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--gold)}
 @keyframes hxUp{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){.hx-wordmark,.hx-top .kicker,.hx-top .hero-tag,.hx-head span,.hx-meta,.hx-cta,.hx-fx{animation:none}.hx-earth,.hx-halo,.hx-head .ac{transition-duration:.01s}}
 .hx-cta .btn{padding:12px 24px;font-size:11px;white-space:nowrap}.hx-cta .btn-ghost{background:rgba(1,2,7,.6);border-color:rgba(255,255,255,.3)}
+/* ---------- Age of Heroes: scroll-synced ---------- */
+.ah-hero{position:relative;height:100vh;height:100svh;overflow:hidden;background:#000}
+#ah-stars{position:absolute;inset:0;width:100%;height:100%}
+.ah-stage{position:relative;height:100%;width:min(100%,64svh);margin:0 auto;container-type:inline-size;overflow:hidden}
+.ah-stage>*{position:absolute;margin:0}
+.ah-robot{left:-10cqw;top:24%;width:73cqw;z-index:2}
+.ah-human{left:48cqw;top:44%;width:94cqw;z-index:2}
+.ah-bird{z-index:2;will-change:transform}
+.ah-b1{left:3cqw;top:8%;width:19cqw}
+.ah-b2{left:6cqw;top:16%;width:20cqw;mix-blend-mode:screen}
+.ah-quote{right:4cqw;top:7%;width:46cqw;z-index:4;font-size:5.4cqw;line-height:.95;font-weight:500;text-transform:uppercase;color:#fff;text-shadow:0 0 18px rgba(255,255,255,.35);font-family:Georgia,serif}
+.ah-title{left:3cqw;top:53%;z-index:4;font-size:8.4cqw;line-height:.9;font-weight:500;text-transform:uppercase;letter-spacing:-.01em;color:#fff;font-family:Georgia,serif}
+.ah-title::before{content:"";position:absolute;inset:-40% -25%;z-index:-1;background:radial-gradient(ellipse at 40% 50%,rgba(255,255,255,.11),transparent 68%)}
+.ah-card{position:absolute;left:10cqw;top:36%;width:80cqw;height:13.5%;z-index:6;box-sizing:border-box;border:2px solid #e9e9e9;background:#000}
+.ah-slide{position:absolute;inset:0}
+.ah-slide+.ah-slide{opacity:0}
+.ah-frame{position:absolute;inset:12px;overflow:hidden}
+.ah-frame img{position:absolute;left:0;top:-20%;width:100%;height:140%;object-fit:cover;filter:grayscale(1) brightness(.85) contrast(1.05);will-change:transform}
+.ah-label{position:absolute;inset:0;display:grid;place-items:center;font-size:6.4cqw;font-weight:300;letter-spacing:.15em;text-transform:uppercase;color:#fff;text-shadow:0 0 14px rgba(0,0,0,.6);font-family:Georgia,serif}
+.ah-gallery{position:relative;z-index:2;max-width:1080px;margin:0 auto;padding:60px 20px 90px}
+.ah-gcard{border:1px solid var(--line);border-radius:20px;overflow:hidden;background:linear-gradient(165deg,rgba(255,255,255,.05),rgba(255,255,255,.01));margin-bottom:22px}
+.ah-gframe{position:relative;aspect-ratio:16/10;overflow:hidden}
+.ah-gframe img{width:100%;height:100%;object-fit:cover}
+.ah-gbody{padding:18px 18px 20px}
+.ah-gbody h3{font-family:var(--serif);font-weight:400;font-size:22px;margin-bottom:6px}
+.ah-gbody p{font-size:13px;color:var(--mut);margin-bottom:14px}
+.ah-gbody .btn{width:100%;text-align:center}
+@media(min-width:720px){.ah-gallery{display:grid;grid-template-columns:1fr 1fr;gap:18px}.ah-gcard{margin-bottom:0}.ah-gcard:last-child{grid-column:1/-1}}
