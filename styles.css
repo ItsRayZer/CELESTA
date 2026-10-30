@@ -305,3 +305,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--gold)}
 /* ---------- Venue map ---------- */
 .map-wrap{margin-top:22px;border:1px solid var(--line);border-radius:20px;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.45)}
 .map-wrap iframe{width:100%;height:340px;border:0;display:block;filter:grayscale(.35) contrast(1.05)}
+/* ---------- Minimal top menu (not fixed) ---------- */
+.topmenu{position:absolute;top:0;left:0;right:0;z-index:90;display:flex;justify-content:center;gap:26px;padding:20px 16px;pointer-events:none}
+.topmenu a{pointer-events:auto;font-size:11px;letter-spacing:.22em;text-transform:uppercase;text-decoration:none;color:rgba(255,255,255,.75);transition:color .25s}
+.topmenu a:hover{color:var(--gold)}
