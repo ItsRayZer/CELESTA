@@ -1,4 +1,6 @@
-/* Age of Heroes — scroll-synced hero + event cards. 5 event slides, no repetition. */
+/* Age of Heroes — scroll-synced hero + event cards.
+   Clean build: exact scrub (no lag), everything reverses perfectly on scroll-back.
+   5 event slides, one per scroll segment, no repetition. */
 (function(){
   if(!window.gsap || !window.ScrollTrigger) return;
   gsap.registerPlugin(ScrollTrigger);
@@ -24,42 +26,56 @@
   var t; addEventListener("resize", function(){ clearTimeout(t); t=setTimeout(draw, 200); });
 
   gsap.matchMedia().add("(prefers-reduced-motion: no-preference)", function(){
+    /* scrub:true = exact tracking, no smoothing lag, reverses cleanly */
     var tl = gsap.timeline({
       defaults:{ ease:"none" },
-      scrollTrigger:{ trigger:".ah-hero", start:"top top", end:"+=650%", scrub:1.2, pin:true, anticipatePin:1, invalidateOnRefresh:true }
+      scrollTrigger:{ trigger:".ah-hero", start:"top top", end:"+=650%", scrub:true, pin:true, anticipatePin:1, invalidateOnRefresh:true }
     });
+
     /* Hands come together, birds drift — synced to scroll */
     tl.to(".ah-robot", { x:u(7.5), duration:1 }, 0)
       .to(".ah-human", { x:u(-7.5), duration:1 }, 0)
-      /* spark bursts the instant the hands touch */
-      .fromTo(".ah-spark", { scale:0, opacity:0, rotate:0 },
-        { scale:1, opacity:1, rotate:40, duration:.22, ease:"power2.out" }, .96)
-      .to(".ah-spark", { scale:1.35, opacity:0, duration:.5, ease:"power2.in" }, 1.18)
+
+      /* Spark: single clean burst the instant hands touch, fades out fully */
+      .fromTo(".ah-spark",
+        { scale:0, opacity:0, rotate:0 },
+        { scale:1, opacity:1, rotate:25, duration:.18, ease:"power2.out" }, .98)
+      .to(".ah-spark",
+        { scale:1.2, opacity:0, duration:.45, ease:"power2.in" }, 1.16)
+
       .fromTo(".ah-b1", { x:0, y:0, scale:1 }, { x:u(42), y:u(-5), scale:1.15, duration:1.6 }, 0)
       .fromTo(".ah-b2", { x:u(-22), y:u(2), opacity:0 }, { x:u(27), y:u(-4), opacity:.65, duration:1.6 }, 0)
-      /* Card rises into the middle */
-      .fromTo(".ah-card", { y:function(){ return innerHeight*.45; }, opacity:0 }, { y:0, opacity:1, duration:.7 }, .9)
+
+      /* Card rises from below into place above the hands */
+      .fromTo(".ah-card",
+        { y:function(){ return innerHeight*.45; }, opacity:0 },
+        { y:0, opacity:1, duration:.7 }, .9)
       .fromTo(".ah-card .ah-slide:first-child img", { scale:1.15 }, { scale:1, duration:.7 }, .9);
 
-    /* 5 event slides — one per scroll segment, slow crossfade, no repetition */
+    /* 5 event slides — one per scroll segment, slow crossfade, no repetition.
+       Each segment is a clean fromTo pair so scroll-back reverses exactly. */
     var slides = gsap.utils.toArray(".ah-card .ah-slide");
     var seg = 1.0, startAt = 1.6;
     for(var i=1; i<slides.length; i++){
       var at = startAt + (i-1)*seg,
           a = slides[i-1], b = slides[i];
-      tl.to(a, { opacity:0, duration:.22 }, at)
-        .to(a.querySelector(".ah-label"), { y:-24, filter:"blur(6px)", duration:.22 }, at)
-        .fromTo(b, { opacity:0 }, { opacity:1, duration:.22 }, at)
-        .fromTo(b.querySelector(".ah-label"), { y:24, filter:"blur(6px)" }, { y:0, filter:"blur(0px)", duration:.22 }, at)
-        .fromTo(b.querySelector("img"), { scale:1.15 }, { scale:1, duration:.4 }, at);
+      tl.fromTo(a, { opacity:1 }, { opacity:0, duration:.25 }, at)
+        .fromTo(a.querySelector(".ah-label"),
+          { y:0, filter:"blur(0px)" },
+          { y:-20, filter:"blur(6px)", duration:.25 }, at)
+        .fromTo(b, { opacity:0 }, { opacity:1, duration:.25 }, at)
+        .fromTo(b.querySelector(".ah-label"),
+          { y:20, filter:"blur(6px)" },
+          { y:0, filter:"blur(0px)", duration:.25 }, at)
+        .fromTo(b.querySelector("img"), { scale:1.15 }, { scale:1, duration:.45 }, at);
     }
-    tl.to({}, { duration:.3 });
+    tl.to({}, { duration:.4 });
 
-    /* Gallery cards — one by one, alternating sides, exact file UI */
+    /* Gallery cards — one by one, alternating sides */
     gsap.utils.toArray(".ah-gcard").forEach(function(card, i){
       var d = i%2 ? 1 : -1;
       gsap.fromTo(card, { y:90, x:d*60, opacity:0 }, { y:0, x:0, opacity:1, ease:"power2.out",
-        scrollTrigger:{ trigger:card, start:"top 95%", end:"top 55%", scrub:.8 } });
+        scrollTrigger:{ trigger:card, start:"top 95%", end:"top 55%", scrub:true } });
       var pass = { trigger:card, start:"top bottom", end:"bottom top", scrub:true };
       gsap.fromTo(card.querySelector("img"), { yPercent:-9 }, { yPercent:9, ease:"none", scrollTrigger:pass });
       gsap.fromTo(card.querySelector(".ah-glabel"), { letterSpacing:"0.05em" }, { letterSpacing:"0.28em", ease:"none", scrollTrigger:pass });
