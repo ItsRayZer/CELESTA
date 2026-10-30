@@ -185,3 +185,31 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--gold)}
 .age.static .age-fallback{position:static;width:auto;height:auto;overflow:visible;clip:auto;white-space:normal}
 .age-list{list-style:none}
 .age-list li{padding:14px 0;border-bottom:1px solid var(--line)}
+/* ---------- Events page: app-style cards ---------- */
+.ww-card{border:1px solid var(--line);border-radius:20px;background:var(--glass);backdrop-filter:blur(14px);padding:20px 22px;margin:26px 0 30px}
+.ww-row{display:flex;gap:12px;padding:8px 0;font-size:14px;color:var(--ink)}
+.ww-row+.ww-row{border-top:1px solid var(--line)}
+.ww-k{font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink);font-weight:700;min-width:64px;padding-top:2px}
+.ww-row span:last-child{color:var(--mut)}
+.evx-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.evx-card{border:1px solid var(--line);border-radius:20px;overflow:hidden;background:linear-gradient(165deg,rgba(255,255,255,.05),rgba(255,255,255,.01))}
+.evx-img{position:relative;aspect-ratio:3/3.4;overflow:hidden}
+.evx-img img{width:100%;height:100%;object-fit:cover}
+.evx-badge{position:absolute;left:12px;bottom:12px;background:#b8e62e;color:#0a0f02;font-weight:800;font-size:14px;padding:8px 16px;border-radius:999px;letter-spacing:.02em}
+.evx-body{padding:16px 16px 18px}
+.evx-body h3{font-family:var(--serif);font-weight:400;font-size:21px;margin-bottom:6px}
+.evx-meta{font-size:12px;color:var(--mut);margin-bottom:4px}
+.evx-prize{font-size:12px;color:var(--mut);margin-bottom:14px}
+.evx-body .btn{width:100%;text-align:center}
+/* ---------- Prize board ---------- */
+.pboard{margin-top:34px;border:1px solid var(--line);border-radius:22px;padding:28px 22px;background:radial-gradient(ellipse at 50% 0%,rgba(217,169,79,.1),transparent 70%)}
+.pboard .sec-tag{margin-bottom:8px}
+.pboard-total{font-family:var(--serif);font-size:clamp(34px,9vw,54px);margin-bottom:20px}
+.pboard-total span{color:var(--ink)}
+.pboard-row{display:grid;grid-template-columns:1.2fr 1fr 1fr auto;gap:8px;align-items:center;padding:13px 0;border-top:1px solid var(--line);font-size:13px}
+.pboard-row b{font-weight:600;font-size:14px}
+.pboard-row span{color:var(--mut)}
+.pboard-row em{font-style:normal;font-weight:700;color:var(--ink)}
+.pboard-row.pboard-sum em{color:var(--gold);font-size:16px}
+.pboard-note{margin-top:18px;font-size:12px;color:var(--mut)}
+@media(min-width:720px){.evx-grid{grid-template-columns:repeat(3,1fr)}}
