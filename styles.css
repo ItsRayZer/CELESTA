@@ -227,9 +227,17 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--gold)}
 /* ---------- Hero v2: astronaut ⇄ astral guardian (WebGL morph) ---------- */
 .hx{position:relative;height:100vh;height:100svh;min-height:640px;overflow:hidden;background:#010207;text-align:center}
 .hx-stars{position:absolute;inset:0;width:100%;height:100%;z-index:0}
-.hx-dots{position:absolute;inset:0;z-index:0;pointer-events:none;background:radial-gradient(rgba(255,255,255,.1) 1px,transparent 1.3px) 0 0/6px 6px;
+.hx-dots{position:absolute;inset:0;z-index:0;pointer-events:none;background:radial-gradient(rgba(255,255,255,.12) 1px,transparent 1.4px) 0 0/7px 7px;
   -webkit-mask-image:radial-gradient(ellipse 58% 20% at 10% 16%,#000,transparent 72%),radial-gradient(ellipse 46% 22% at 94% 42%,#000,transparent 72%),radial-gradient(ellipse 60% 12% at 58% 3%,#000,transparent 72%);
-  mask-image:radial-gradient(ellipse 58% 20% at 10% 16%,#000,transparent 72%),radial-gradient(ellipse 46% 22% at 94% 42%,#000,transparent 72%),radial-gradient(ellipse 60% 12% at 58% 3%,#000,transparent 72%)}
+  mask-image:radial-gradient(ellipse 58% 20% at 10% 16%,#000,transparent 72%),radial-gradient(ellipse 46% 22% at 94% 42%,#000,transparent 72%),radial-gradient(ellipse 60% 12% at 58% 3%,#000,transparent 72%);
+  animation:hx-dots-alive 7s ease-in-out infinite}
+@keyframes hx-dots-alive{
+  0%,100%{background-position:0 0;opacity:.55;transform:scale(1)}
+  25%{background-position:7px 3px;opacity:.95;transform:scale(1.015)}
+  50%{background-position:3px 7px;opacity:.7;transform:scale(1.03)}
+  75%{background-position:-4px 5px;opacity:1;transform:scale(1.015)}
+}
+@media(prefers-reduced-motion:reduce){.hx-dots{animation:none}}
 .hx-halo{position:absolute;left:50%;top:58%;width:130vw;height:130vw;max-width:1100px;max-height:1100px;transform:translate(-50%,-50%);border-radius:50%;z-index:1;pointer-events:none;transition:opacity 1.6s ease}
 .hx-halo.a{background:radial-gradient(circle,rgba(110,190,255,.22),transparent 60%)}
 .hx-halo.b{background:radial-gradient(circle,rgba(255,170,80,.24),transparent 60%);opacity:0}
