@@ -77,7 +77,6 @@ a{color:inherit}
 /* ---------- Events ---------- */
 .ev-grid{display:grid;gap:16px;margin-top:32px}
 .ev-card{position:relative;border:1px solid var(--line);border-radius:18px;padding:26px 22px;background:linear-gradient(160deg,rgba(255,255,255,.05),rgba(255,255,255,.01));backdrop-filter:blur(10px);overflow:hidden}
-.ev-poster{width:100%;border-radius:12px;margin-bottom:18px;display:block}
 .ev-num{font-family:var(--serif);font-style:italic;color:var(--gold);font-size:14px;letter-spacing:.2em;margin-bottom:8px}
 .ev-card h3{font-family:var(--serif);font-size:24px;font-weight:400;margin-bottom:6px}
 .ev-card .mode{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--mut);margin-bottom:12px}
