@@ -45,28 +45,24 @@
   var pill = document.getElementById("pill");
   var hero = document.getElementById("top");
   if (pill && hero) {
-    pill.classList.add("countdown-mode");
-    var morphT = null;
+    function atTop() { return window.scrollY < window.innerHeight * .4; }
     function setMode(showCountdown) {
       var has = pill.classList.contains("countdown-mode");
       if (has === showCountdown) return;
+      if (reduced) { pill.classList.toggle("countdown-mode", showCountdown); return; }
       pill.classList.add("morphing");
-      clearTimeout(morphT);
-      morphT = setTimeout(function () {
+      setTimeout(function () {
         pill.classList.toggle("countdown-mode", showCountdown);
-        setTimeout(function () { pill.classList.remove("morphing"); }, 560);
-      }, reduced ? 0 : 260);
+        /* force reflow so the enter animation replays */
+        void pill.offsetWidth;
+        setTimeout(function () { pill.classList.remove("morphing"); }, 600);
+      }, 240);
     }
-    if ("IntersectionObserver" in window) {
-      var io = new IntersectionObserver(function (es) {
-        es.forEach(function (e) { setMode(e.isIntersecting); });
-      }, { threshold: 0.25 });
-      io.observe(hero);
-    }
-    /* hard fallback: if hero check fails, keep countdown visible at top */
-    setTimeout(function () {
-      if (window.scrollY < window.innerHeight * .5) pill.classList.add("countdown-mode");
-    }, 1200);
+    function onScroll() { setMode(atTop()); }
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+    /* safety: re-check after load in case hero metrics shifted */
+    window.addEventListener("load", function () { setTimeout(onScroll, 400); });
   }
 
   /* ---------- Scroll reveals ---------- */
