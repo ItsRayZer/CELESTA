@@ -26,7 +26,7 @@
   gsap.matchMedia().add("(prefers-reduced-motion: no-preference)", function(){
     var tl = gsap.timeline({
       defaults:{ ease:"none" },
-      scrollTrigger:{ trigger:".ah-hero", start:"top top", end:"+=380%", scrub:1, pin:true, anticipatePin:1, invalidateOnRefresh:true }
+      scrollTrigger:{ trigger:".ah-hero", start:"top top", end:"+=650%", scrub:1.2, pin:true, anticipatePin:1, invalidateOnRefresh:true }
     });
     /* Hands come together, birds drift — synced to scroll */
     tl.to(".ah-robot", { x:u(7.5), duration:1 }, 0)
@@ -38,12 +38,12 @@
       .fromTo(".ah-b1", { x:0, y:0, scale:1 }, { x:u(42), y:u(-5), scale:1.15, duration:1.6 }, 0)
       .fromTo(".ah-b2", { x:u(-22), y:u(2), opacity:0 }, { x:u(27), y:u(-4), opacity:.65, duration:1.6 }, 0)
       /* Card rises into the middle */
-      .fromTo(".ah-card", { y:function(){ return innerHeight*.7; }, opacity:0 }, { y:0, opacity:1, duration:.7 }, .9)
+      .fromTo(".ah-card", { y:function(){ return -innerHeight*.5; }, opacity:0 }, { y:0, opacity:1, duration:.7 }, .9)
       .fromTo(".ah-card .ah-slide:first-child img", { scale:1.15 }, { scale:1, duration:.7 }, .9);
 
     /* 5 event slides — one per scroll segment, slow crossfade, no repetition */
     var slides = gsap.utils.toArray(".ah-card .ah-slide");
-    var seg = .62, startAt = 1.6;
+    var seg = 1.0, startAt = 1.6;
     for(var i=1; i<slides.length; i++){
       var at = startAt + (i-1)*seg,
           a = slides[i-1], b = slides[i];
