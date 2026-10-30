@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Register — Prompting | Celesta 2K26</title>
+<meta name="description" content="Register for Prompting at Celesta 2K26, the inter-college tech fest presented by NEXUS, Mar Augusthinose College, Ramapuram.">
+<link rel="icon" type="image/png" href="assets/logo.webp">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div id="loader" aria-hidden="true">
+  <img src="assets/wordmark-white.webp" alt="">
+  <div class="l-line"><i></i></div>
+</div>
+
+<nav id="pill" aria-label="Site menu">
+  <div class="p-count" aria-hidden="true"></div>
+  <div class="p-menu">
+    <a href="index.html">Home</a>
+    <a href="events.html">Events</a>
+    <a href="gallery.html">Gallery</a>
+    <a href="contact.html">Contact</a>
+  </div>
+</nav>
+
+<main class="reg-wrap">
+  <div class="ev-num">03 · Inter-College</div>
+  <h1>Prompting</h1>
+  <p class="sec-sub">Craft the sharpest AI prompts and pull the best outputs.</p>
+  <div class="r-prize">1st · ₹1,500 &nbsp;&nbsp; 2nd · ₹750</div>
+  <form id="reg-form" data-event="Prompting" novalidate>
+    <div class="field" id="f-name">
+      <label for="in-name">Full name</label>
+      <input id="in-name" type="text" autocomplete="name" placeholder="Your name">
+    </div>
+    <div class="field" id="f-college">
+      <label for="in-college">College</label>
+      <input id="in-college" type="text" autocomplete="organization" placeholder="Your college name">
+    </div>
+    <div class="field" id="f-phone">
+      <label for="in-phone">Phone</label>
+      <input id="in-phone" type="tel" inputmode="numeric" autocomplete="tel" placeholder="10-digit mobile number">
+    </div>
+    <div class="field" id="f-email">
+      <label for="in-email">Email</label>
+      <input id="in-email" type="email" autocomplete="email" placeholder="you@example.com">
+    </div>
+    <div class="field" id="f-team">
+      <label for="in-team">Team size</label>
+      <select id="in-team">
+        <option value="1">1 — Solo</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+        <option value="5">5</option>
+      </select>
+    </div>
+    <button class="btn btn-solid" type="submit" style="width:100%">Register for Prompting</button>
+    <p class="reg-note">Your details are saved on this device only. The organizers will announce confirmation and payment details soon.</p>
+    <div class="ok-msg" id="ok-msg" role="status"></div>
+  </form>
+</main>
+
+<footer>
+  <div class="f-nexus"><img src="assets/nexus-logo.webp" alt="NEXUS logo" loading="lazy"><span>NEXUS · BCA Department Association</span></div>
+  <div>Mar Augusthinose College, Ramapuram</div>
+  <div class="f-line">Five events. One day. One campus.</div>
+</footer>
+
+<script src="app.js" defer></script>
+</body>
+</html>
