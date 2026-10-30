@@ -41,17 +41,32 @@
   }
   tick(); setInterval(tick, 1000);
 
-  /* ---------- Pill: countdown in hero, menu on scroll (home only) ---------- */
+  /* ---------- Pill: countdown in hero, liquid morph to menu on scroll ---------- */
   var pill = document.getElementById("pill");
   var hero = document.getElementById("top");
-  if (pill && hero && !reduced) {
+  if (pill && hero) {
     pill.classList.add("countdown-mode");
-    var io = new IntersectionObserver(function (es) {
-      es.forEach(function (e) {
-        pill.classList.toggle("countdown-mode", e.isIntersecting);
-      });
-    }, { threshold: 0.25 });
-    io.observe(hero);
+    var morphT = null;
+    function setMode(showCountdown) {
+      var has = pill.classList.contains("countdown-mode");
+      if (has === showCountdown) return;
+      pill.classList.add("morphing");
+      clearTimeout(morphT);
+      morphT = setTimeout(function () {
+        pill.classList.toggle("countdown-mode", showCountdown);
+        setTimeout(function () { pill.classList.remove("morphing"); }, 560);
+      }, reduced ? 0 : 260);
+    }
+    if ("IntersectionObserver" in window) {
+      var io = new IntersectionObserver(function (es) {
+        es.forEach(function (e) { setMode(e.isIntersecting); });
+      }, { threshold: 0.25 });
+      io.observe(hero);
+    }
+    /* hard fallback: if hero check fails, keep countdown visible at top */
+    setTimeout(function () {
+      if (window.scrollY < window.innerHeight * .5) pill.classList.add("countdown-mode");
+    }, 1200);
   }
 
   /* ---------- Scroll reveals ---------- */
