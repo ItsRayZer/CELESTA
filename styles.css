@@ -276,3 +276,11 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--gold)}
 .ah-glabel{position:absolute;inset:0;display:grid;place-items:center;font-size:6.4cqw;font-weight:300;letter-spacing:.15em;text-transform:uppercase;color:#fff;text-shadow:0 0 14px rgba(0,0,0,.6);font-family:Georgia,serif;text-align:center;padding:0 8px}
 .ah-gcard:focus-visible{outline:2px solid #fff;outline-offset:4px}
 }
+/* ---------- Events preview: Asthra-style cards ---------- */
+.ax-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:26px}
+.ax-card{display:block;border:1px solid rgba(255,255,255,.14);border-radius:18px;overflow:hidden;background:linear-gradient(170deg,rgba(255,255,255,.07),rgba(255,255,255,.02));text-decoration:none;color:#fff;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.ax-img{aspect-ratio:1/1;overflow:hidden}
+.ax-img img{width:100%;height:100%;object-fit:cover;display:block}
+.ax-card h3{font-size:17px;font-weight:500;padding:14px 14px 2px;line-height:1.25}
+.ax-meta{font-size:12.5px;color:rgba(255,255,255,.55);padding:0 14px 16px}
+.ax-card:active{transform:scale(.98)}
