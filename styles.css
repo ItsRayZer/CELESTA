@@ -309,3 +309,15 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--gold)}
 .topmenu{position:absolute;top:0;left:0;right:0;z-index:90;display:flex;justify-content:center;gap:26px;padding:20px 16px;pointer-events:none}
 .topmenu a{pointer-events:auto;font-size:11px;letter-spacing:.22em;text-transform:uppercase;text-decoration:none;color:rgba(255,255,255,.75);transition:color .25s}
 .topmenu a:hover{color:var(--gold)}
+
+.ah-spark{left:50%;top:42%;width:30cqw;aspect-ratio:1;z-index:5;transform:translate(-50%,-50%) scale(0);opacity:0;pointer-events:none}
+.ah-spark i{position:absolute;left:50%;top:50%;width:2px;height:22%;transform-origin:50% 0;border-radius:2px;
+  background:linear-gradient(to top,rgba(255,236,190,0),#ffe9b8)}
+.ah-spark i:nth-child(1){transform:translate(-50%,0) rotate(0deg)}
+.ah-spark i:nth-child(2){transform:translate(-50%,0) rotate(60deg)}
+.ah-spark i:nth-child(3){transform:translate(-50%,0) rotate(120deg)}
+.ah-spark i:nth-child(4){transform:translate(-50%,0) rotate(180deg)}
+.ah-spark i:nth-child(5){transform:translate(-50%,0) rotate(240deg)}
+.ah-spark i:nth-child(6){transform:translate(-50%,0) rotate(300deg)}
+.ah-spark::before{content:"";position:absolute;inset:22%;border-radius:50%;
+  background:radial-gradient(circle,#fff 0%,rgba(255,236,190,.95) 28%,rgba(217,169,79,.5) 52%,transparent 70%)}

@@ -31,6 +31,10 @@
     /* Hands come together, birds drift — synced to scroll */
     tl.to(".ah-robot", { x:u(7.5), duration:1 }, 0)
       .to(".ah-human", { x:u(-7.5), duration:1 }, 0)
+      /* spark bursts the instant the hands touch */
+      .fromTo(".ah-spark", { scale:0, opacity:0, rotate:0 },
+        { scale:1, opacity:1, rotate:40, duration:.22, ease:"power2.out" }, .96)
+      .to(".ah-spark", { scale:1.35, opacity:0, duration:.5, ease:"power2.in" }, 1.18)
       .fromTo(".ah-b1", { x:0, y:0, scale:1 }, { x:u(42), y:u(-5), scale:1.15, duration:1.6 }, 0)
       .fromTo(".ah-b2", { x:u(-22), y:u(2), opacity:0 }, { x:u(27), y:u(-4), opacity:.65, duration:1.6 }, 0)
       /* Card rises into the middle */
