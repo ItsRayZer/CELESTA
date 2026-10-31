@@ -105,6 +105,7 @@ tbody tr:active{background:rgba(255,255,255,.04)}
   <div class="topbar">
     <div class="ttl">CELESTA Admin<small id="roleSub">DASHBOARD</small></div>
     <div style="display:flex;gap:8px;align-items:center">
+      <span class="rolepill" id="livePill" style="background:rgba(0,255,100,.12);border-color:rgba(0,255,100,.4);color:#4ade80">● LIVE</span>
       <span class="rolepill" id="rolePill">READ</span>
       <button class="iconbtn" id="logoutBtn">Logout</button>
     </div>
@@ -279,6 +280,15 @@ $('installBtn').onclick=doInstall;$('installBtn2').onclick=doInstall;
 
 // auto-login
 if(TOKEN&&ROLE)showDash();
+
+// live sync: refresh every 15s when dashboard visible
+setInterval(()=>{
+  if(!$('dash').classList.contains('hidden') && !document.hidden){
+    load();
+    const lp=$('livePill');
+    lp.style.opacity='.5';setTimeout(()=>lp.style.opacity='1',400);
+  }
+},15000);
 </script>
 </body>
 </html>
