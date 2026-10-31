@@ -12,7 +12,7 @@
 
   /* ---------- Stars (dense, lots of black between) ---------- */
   function fxSize() {
-    var r = Math.min(window.devicePixelRatio || 1, 2);
+    var r = Math.min(window.devicePixelRatio || 1, 1.75);
     cx.width = Math.round(cx.clientWidth * r); cx.height = Math.round(cx.clientHeight * r);
     if (gl) gl.viewport(0, 0, cx.width, cx.height);
   }
@@ -66,7 +66,7 @@
 
   /* ---------- WebGL morph ---------- */
   var gl = null, U = {}, ready = 0, mp = 0;
-  try { gl = cx.getContext("webgl", { premultipliedAlpha: true, alpha: true, antialias: true }); } catch (e) { gl = null; }
+  try { gl = cx.getContext("webgl", { premultipliedAlpha: true, alpha: true, antialias: false, powerPreference: "high-performance" }); } catch (e) { gl = null; }
   function fail() { hx.classList.add("nogl"); gl = null; }
   if (!gl) { fail(); } else {
     var vs = "attribute vec2 p;varying vec2 v;void main(){v=p*.5+.5;gl_Position=vec4(p,0.,1.);}";
@@ -147,14 +147,51 @@
     drawSky(t, sy); drawFx(t);
     raf = requestAnimationFrame(frame);
   }
-  size(); window.addEventListener("resize", size);
+  var lw = 0, lh = 0, rt = 0;
+  function onResize() {
+    var w = sky.clientWidth, h = sky.clientHeight;
+    if (w === lw && Math.abs(h - lh) < 120) return;   /* ignore mobile URL-bar jitter */
+    lw = w; lh = h; size();
+  }
+  size(); lw = sky.clientWidth; lh = sky.clientHeight;
+  window.addEventListener("resize", function () { clearTimeout(rt); rt = setTimeout(onResize, 150); }, { passive: true });
+  /* WebGL context loss -> fall back to the CSS crossfade instead of a blank hero */
+  cx.addEventListener("webglcontextlost", function (e) { e.preventDefault(); fail(); }, false);
+  /* pause when tab is hidden */
+  document.addEventListener("visibilitychange", function () {
+    if (document.hidden) vis = false;
+    else { vis = true; if (!raf && !reduced) { last = performance.now(); raf = requestAnimationFrame(frame); } }
+  });
   if (!reduced) {
     raf = requestAnimationFrame(frame);
     if ("IntersectionObserver" in window) {
       new IntersectionObserver(function (es) {
-        vis = es[0].isIntersecting;               /* pause everything when hero is off-screen */
+        vis = es[0].isIntersecting && !document.hidden;               /* pause everything when hero is off-screen */
         if (vis && !raf) { last = performance.now(); raf = requestAnimationFrame(frame); }
       }).observe(hx);
     }
   }
+
+  /* ---------- Scroll transform: astronaut scales + rises + tilts as you scroll ---------- */
+  function initScrollTransform(){
+    if(!window.gsap || !window.ScrollTrigger || reduced) return;
+    gsap.registerPlugin(ScrollTrigger);
+    // Astronaut image transforms on scroll
+    gsap.to(".hx-fw", {
+      yPercent: -18, scale: 1.12, rotation: 2, ease: "none",
+      scrollTrigger: { trigger: ".hx", start: "top top", end: "bottom top", scrub: true }
+    });
+    // Hero text parallax (moves faster, fades)
+    gsap.to(".hx-head", {
+      yPercent: -30, opacity: 0, ease: "none",
+      scrollTrigger: { trigger: ".hx", start: "top top", end: "70% top", scrub: true }
+    });
+    gsap.to(".hx-bottom", {
+      yPercent: -20, opacity: 0, ease: "none",
+      scrollTrigger: { trigger: ".hx", start: "top top", end: "60% top", scrub: true }
+    });
+  }
+  if(document.readyState === "complete") initScrollTransform();
+  else window.addEventListener("load", initScrollTransform);
+
 })();
