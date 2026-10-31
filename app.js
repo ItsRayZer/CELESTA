@@ -89,11 +89,11 @@
 
   /* ---------- Anchor links: smooth scroll in JS (native smooth fights pinned scrub) ---------- */
   document.addEventListener("click", function (e) {
-    var l = e.target.closest && e.target.closest('a[href^="#"], a[href^="index.html#"]');
+    var l = e.target.closest && e.target.closest('a[href^="#"], a[href^="/about#"]');
     if (!l) return;
     var href = l.getAttribute("href"), id = href.slice(href.indexOf("#") + 1);
-    var onIndex = /index\.html$/i.test(location.pathname) || location.pathname.slice(-1) === "/";
-    if (href.indexOf("index.html#") === 0 && !onIndex) return;
+    var onIndex = /(\/about|\/)$/i.test(location.pathname) || location.pathname.slice(-1) === "/";
+    if (href.indexOf("/about#") === 0 && !onIndex) return;
     var t = id && document.getElementById(id);
     if (!t) return;
     e.preventDefault();
@@ -202,9 +202,12 @@
   }
 
   /* ---------- Active menu link ---------- */
-  var path = (location.pathname.split("/").pop() || "index.html").toLowerCase();
+  var path = (location.pathname.split("/").pop() || "about").toLowerCase();
+  /* map clean URLs to menu hrefs */
+  var cleanMap = {"":"/about","about":"/about","events":"/events","maps":"/maps","contact":"/contact","gallery":"/gallery"};
+  var cleanPath = cleanMap[path] || path;
   document.querySelectorAll("#pill .p-menu a").forEach(function (a) {
     var href = (a.getAttribute("href") || "").toLowerCase();
-    if (href === path || (path === "" && href === "index.html")) a.classList.add("on");
+        if (href === cleanPath) a.classList.add("on");
   });
 })();
