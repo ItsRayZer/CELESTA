@@ -162,12 +162,12 @@
         if (!good) { ok = false; if (!first) first = f; }
       }
       function val(id) { var el = document.getElementById("in-" + id); return el ? el.value.trim() : ""; }
-      var name = val("name"), college = val("college"), phone = val("phone").replace(/\s+/g, ""), email = val("email"),
+      var name = val("name"), school = val("school"), phone = val("phone").replace(/\s+/g, ""), email = val("email"),
           team = parseInt(val("team"), 10), teamname = val("teamname"), members = val("members");
       var min = parseInt(form.getAttribute("data-min"), 10) || 1, max = parseInt(form.getAttribute("data-max"), 10) || 10;
       var list = members.split(/[\n,]+/).map(function (s) { return s.trim(); }).filter(Boolean);
       mark("name", name.length >= 2);
-      mark("college", college.length >= 2);
+      mark("school", school.length >= 2);
       mark("phone", /^[6-9]\d{9}$/.test(phone));
       mark("email", /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email));
       mark("team", team >= min && team <= max);
@@ -181,14 +181,14 @@
       var ev = form.getAttribute("data-event") || "Celesta 2K26";
       try {
         localStorage.setItem("celesta_reg_" + Date.now(), JSON.stringify({
-          event: ev, name: name, college: college, phone: phone, email: email,
+          event: ev, name: name, school: school, phone: phone, email: email,
           team: team, teamName: teamname, members: list, at: new Date().toISOString()
         }));
       } catch (err) { /* storage unavailable; still confirm */ }
       var box = document.getElementById("ok-msg");
       if (box) {
         box.innerHTML = "<h3>Registration noted</h3><p><strong>" + esc(ev) + "</strong><br>" +
-          (teamname ? esc(teamname) + " · " : "") + esc(name) + " · " + esc(college) + " · Team of " + esc(team) + "</p>" +
+          (teamname ? esc(teamname) + " · " : "") + esc(name) + " · " + esc(school) + " · Team of " + esc(team) + "</p>" +
           "<p class='reg-note'>Saved on this device only (static site demo). Carry a valid ID card on 20 November 2026 and report by 9:30 AM. The organizers will announce confirmation and payment details soon — please keep a screenshot.</p>";
         box.classList.add("show");
         box.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "center" });
