@@ -1,1 +1,44 @@
-{"rewrites": [{"destination": "/index.html", "source": "/about"}, {"destination": "/events.html", "source": "/events"}, {"destination": "/map.html", "source": "/maps"}, {"destination": "/contact.html", "source": "/contact"}, {"destination": "/gallery.html", "source": "/gallery"}, {"destination": "/register-:event.html", "source": "/registration/:event"}], "redirects": [{"source": "/registration", "destination": "/events", "permanent": false}, {"source": "/registration/", "destination": "/events", "permanent": false}]}
+{
+  "rewrites": [
+    {
+      "destination": "/index.html",
+      "source": "/about"
+    },
+    {
+      "destination": "/events.html",
+      "source": "/events"
+    },
+    {
+      "destination": "/map.html",
+      "source": "/maps"
+    },
+    {
+      "destination": "/contact.html",
+      "source": "/contact"
+    },
+    {
+      "destination": "/gallery.html",
+      "source": "/gallery"
+    },
+    {
+      "destination": "/register-:event.html",
+      "source": "/registration/:event"
+    },
+    {
+      "source": "/admin",
+      "destination": "/admin.html"
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/registration",
+      "destination": "/events",
+      "permanent": false
+    },
+    {
+      "source": "/registration/",
+      "destination": "/events",
+      "permanent": false
+    }
+  ]
+}

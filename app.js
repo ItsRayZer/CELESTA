@@ -179,12 +179,20 @@
         return;
       }
       var ev = form.getAttribute("data-event") || "Celesta 2K26";
+      var payload = {
+        event: ev, name: name, school: school, phone: phone, email: email,
+        team: team, teamName: teamname, members: list
+      };
       try {
-        localStorage.setItem("celesta_reg_" + Date.now(), JSON.stringify({
-          event: ev, name: name, school: school, phone: phone, email: email,
-          team: team, teamName: teamname, members: list, at: new Date().toISOString()
-        }));
-      } catch (err) { /* storage unavailable; still confirm */ }
+        localStorage.setItem("celesta_reg_" + Date.now(), JSON.stringify(
+          Object.assign({ at: new Date().toISOString() }, payload)));
+      } catch (err) {}
+      // send to server (non-blocking)
+      try {
+        fetch("/api/register", { method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload) }).catch(function(){});
+      } catch (err) {}
       var box = document.getElementById("ok-msg");
       if (box) {
         box.innerHTML = "<h3>Registration noted</h3><p><strong>" + esc(ev) + "</strong><br>" +

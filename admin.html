@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Admin — CELESTA 2K26</title>
+<meta name="theme-color" content="#0a0a0f">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/assets/logo.webp">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{--lime:#d4f500;--bg1:#0a0a0f;--bg2:#14141c;--glass:rgba(255,255,255,.07);--stroke:rgba(255,255,255,.12);--txt:#fff;--mut:#9a9ab0}
+body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro','Segoe UI',system-ui,sans-serif;background:linear-gradient(160deg,var(--bg1),var(--bg2) 60%,#1a1030);color:var(--txt);min-height:100vh;min-height:100dvh}
+/* ambient blobs */
+.bg{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:0}
+.bg i{position:absolute;border-radius:50%;filter:blur(90px);opacity:.35;animation:drift 14s ease-in-out infinite}
+.bg i:nth-child(1){width:340px;height:340px;background:#7b2ff7;top:-80px;left:-80px}
+.bg i:nth-child(2){width:280px;height:280px;background:#00d4c8;bottom:10%;right:-60px;animation-delay:-5s}
+.bg i:nth-child(3){width:220px;height:220px;background:#ff5c00;top:40%;left:60%;animation-delay:-9s;opacity:.22}
+@keyframes drift{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(30px,-30px) scale(1.12)}}
+.wrap{position:relative;z-index:1;max-width:1060px;margin:0 auto;padding:20px 16px 90px}
+/* glass card */
+.glass{background:var(--glass);backdrop-filter:blur(22px) saturate(1.4);-webkit-backdrop-filter:blur(22px) saturate(1.4);border:1px solid var(--stroke);border-radius:22px;box-shadow:0 8px 40px rgba(0,0,0,.35)}
+/* login */
+#login{min-height:90vh;min-height:90dvh;display:flex;align-items:center;justify-content:center;padding:20px}
+.login-card{width:100%;max-width:380px;padding:34px 28px;text-align:center}
+.login-card .mark{font-size:13px;font-weight:800;letter-spacing:.22em;color:var(--lime);margin-bottom:10px}
+.login-card h1{font-size:30px;font-weight:900;letter-spacing:-.03em;margin-bottom:6px}
+.login-card p{color:var(--mut);font-size:13.5px;margin-bottom:22px}
+.login-card input{width:100%;background:rgba(255,255,255,.06);border:1px solid var(--stroke);border-radius:14px;padding:15px 16px;font-size:16px;color:#fff;font-family:inherit;margin-bottom:12px;outline:none}
+.login-card input:focus{border-color:var(--lime)}
+.login-card button{width:100%;background:var(--lime);border:none;border-radius:14px;padding:15px;font-size:15px;font-weight:900;letter-spacing:.04em;cursor:pointer;color:#0a0a0a}
+.login-card button:active{transform:scale(.98)}
+#loginErr{color:#ff6b6b;font-size:13px;min-height:20px;margin-top:10px}
+/* header */
+.topbar{display:flex;align-items:center;justify-content:space-between;margin:8px 0 18px}
+.topbar .ttl{font-weight:900;font-size:20px;letter-spacing:-.02em}
+.topbar .ttl small{display:block;font-size:11px;font-weight:700;letter-spacing:.18em;color:var(--lime)}
+.rolepill{font-size:11px;font-weight:800;letter-spacing:.1em;padding:7px 14px;border-radius:99px;background:rgba(212,245,0,.14);border:1px solid rgba(212,245,0,.4);color:var(--lime)}
+.rolepill.write{background:rgba(255,92,0,.14);border-color:rgba(255,92,0,.45);color:#ff9a5c}
+.iconbtn{background:var(--glass);border:1px solid var(--stroke);color:#fff;border-radius:12px;padding:9px 14px;font-size:13px;font-weight:700;cursor:pointer;backdrop-filter:blur(12px)}
+/* stats */
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:16px}
+@media(min-width:720px){.stats{grid-template-columns:repeat(4,1fr)}}
+.stat{padding:18px 16px}
+.stat small{font-size:10.5px;font-weight:800;letter-spacing:.14em;color:var(--mut)}
+.stat b{display:block;font-size:30px;font-weight:900;letter-spacing:-.03em;margin-top:6px}
+.stat b.lime{color:var(--lime)}
+.stat b.org{color:#ff9a5c}
+/* toolbar */
+.toolbar{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.toolbar input,.toolbar select{background:rgba(255,255,255,.06);border:1px solid var(--stroke);border-radius:12px;padding:11px 14px;font-size:14px;color:#fff;font-family:inherit;outline:none}
+.toolbar input{flex:1;min-width:150px}
+.toolbar select option{background:#14141c}
+/* table */
+.twrap{overflow-x:auto;border-radius:22px}
+table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:640px}
+thead th{text-align:left;font-size:10.5px;letter-spacing:.12em;color:var(--mut);padding:14px 12px;border-bottom:1px solid var(--stroke);white-space:nowrap;position:sticky;top:0;background:rgba(20,20,28,.85);backdrop-filter:blur(12px)}
+tbody td{padding:13px 12px;border-bottom:1px solid rgba(255,255,255,.06);vertical-align:top}
+tbody tr:active{background:rgba(255,255,255,.04)}
+.evtag{font-size:10.5px;font-weight:800;letter-spacing:.06em;padding:4px 10px;border-radius:99px;background:rgba(212,245,0,.13);color:var(--lime);white-space:nowrap}
+.paybtn{border:1px solid var(--stroke);background:rgba(255,255,255,.06);color:#fff;font-size:12px;font-weight:800;padding:8px 14px;border-radius:99px;cursor:pointer;white-space:nowrap}
+.paybtn.paid{background:var(--lime);border-color:var(--lime);color:#0a0a0a}
+.paybtn:disabled{opacity:.45;cursor:default}
+.mut{color:var(--mut);font-size:12px}
+.amt{font-weight:800;color:var(--lime)}
+/* event breakdown */
+.evgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:16px}
+@media(min-width:720px){.evgrid{grid-template-columns:repeat(5,1fr)}}
+.evcard{padding:16px 14px;cursor:pointer;transition:transform .2s}
+.evcard:active{transform:scale(.97)}
+.evcard.sel{border-color:var(--lime);box-shadow:0 0 0 1px var(--lime),0 8px 40px rgba(0,0,0,.35)}
+.evcard b{display:block;font-size:15px;font-weight:800;margin-bottom:8px}
+.evcard .row{display:flex;justify-content:space-between;font-size:12px;color:var(--mut);margin-top:4px}
+.evcard .row em{color:#fff;font-style:normal;font-weight:800}
+/* actions */
+.actions{display:flex;gap:10px;margin:16px 0;flex-wrap:wrap}
+.abtn{flex:1;min-width:140px;padding:14px;border-radius:14px;font-weight:800;font-size:13.5px;cursor:pointer;border:1px solid var(--stroke);background:var(--glass);color:#fff;backdrop-filter:blur(12px)}
+.abtn.go{background:var(--lime);color:#0a0a0a;border-color:var(--lime)}
+.empty{text-align:center;padding:50px 20px;color:var(--mut)}
+.hidden{display:none!important}
+#installBtn{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:50}
+.toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(90px);background:var(--lime);color:#0a0a0a;font-weight:800;font-size:14px;padding:13px 26px;border-radius:99px;transition:transform .3s;z-index:99}
+.toast.show{transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<div class="bg" aria-hidden="true"><i></i><i></i><i></i></div>
+
+<!-- LOGIN -->
+<div id="login">
+  <div class="glass login-card">
+    <div class="mark">CELESTA 2K26</div>
+    <h1>Admin</h1>
+    <p>Enter your password to continue.<br>Read and write use the same screen.</p>
+    <input type="password" id="pw" placeholder="Password" autocomplete="current-password">
+    <button id="loginBtn">Unlock Dashboard</button>
+    <div id="loginErr"></div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dash" class="hidden">
+<div class="wrap">
+  <div class="topbar">
+    <div class="ttl">CELESTA Admin<small id="roleSub">DASHBOARD</small></div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <span class="rolepill" id="rolePill">READ</span>
+      <button class="iconbtn" id="logoutBtn">Logout</button>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="glass stat"><small>TOTAL REGISTRATIONS</small><b id="sTotal">0</b></div>
+    <div class="glass stat"><small>PAID STUDENTS</small><b class="lime" id="sPaid">0</b></div>
+    <div class="glass stat"><small>PAYMENT COLLECTED</small><b class="lime" id="sAmt">₹0</b></div>
+    <div class="glass stat"><small>PENDING PAYMENT</small><b class="org" id="sPend">0</b></div>
+  </div>
+
+  <div class="evgrid" id="evGrid"></div>
+
+  <div class="toolbar">
+    <input id="q" placeholder="Search name, school, phone...">
+    <select id="fEv"><option value="">All events</option></select>
+    <select id="fPay"><option value="">All payments</option><option value="paid">Paid</option><option value="unpaid">Unpaid</option></select>
+  </div>
+
+  <div class="glass twrap">
+    <table>
+      <thead><tr><th>Student</th><th>Event</th><th>Contact</th><th>Team</th><th>Payment</th><th></th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+    <div class="empty hidden" id="empty">No registrations yet.</div>
+  </div>
+
+  <div class="actions">
+    <button class="abtn go" id="csvBtn">⬇ Export CSV</button>
+    <button class="abtn" id="notifBtn">🔔 Enable Notifications</button>
+    <button class="abtn hidden" id="installBtn2">📲 Install App</button>
+  </div>
+</div>
+</div>
+
+<button class="abtn hidden" id="installBtn">📲 Install as App</button>
+<div class="toast" id="toast"></div>
+
+<script>
+const $=id=>document.getElementById(id);
+let TOKEN=localStorage.getItem('celesta_admin_tok')||'', ROLE=localStorage.getItem('celesta_admin_role')||'';
+let REGS=[], FILTER_EV='';
+
+const EVENTS=['Quiz','Treasure Hunt','Prompting','Idea Presentation','Reels Competition'];
+
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1800);}
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function fmt(n){return '₹'+Number(n||0).toLocaleString('en-IN');}
+
+// ---------- login ----------
+async function doLogin(){
+  const pw=$('pw').value;
+  if(!pw){$('loginErr').textContent='Enter password';return;}
+  $('loginBtn').textContent='Checking...';
+  try{
+    const r=await fetch('/api/admin-login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})});
+    const d=await r.json();
+    if(d.ok){TOKEN=d.token;ROLE=d.role;localStorage.setItem('celesta_admin_tok',TOKEN);localStorage.setItem('celesta_admin_role',ROLE);showDash();}
+    else $('loginErr').textContent=d.error||'Wrong password';
+  }catch(e){$('loginErr').textContent='Connection failed';}
+  $('loginBtn').textContent='Unlock Dashboard';
+}
+$('loginBtn').onclick=doLogin;
+$('pw').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+$('logoutBtn').onclick=()=>{localStorage.removeItem('celesta_admin_tok');localStorage.removeItem('celesta_admin_role');location.reload();};
+
+// ---------- dashboard ----------
+function showDash(){
+  $('login').classList.add('hidden');$('dash').classList.remove('hidden');
+  const w=ROLE==='write';
+  $('rolePill').textContent=w?'WRITE':'READ';
+  $('rolePill').classList.toggle('write',w);
+  $('roleSub').textContent=w?'FULL ACCESS':'READ ONLY';
+  const sel=$('fEv');EVENTS.forEach(e=>{const o=document.createElement('option');o.value=e;o.textContent=e;sel.appendChild(o);});
+  load();
+}
+
+async function load(){
+  try{
+    const r=await fetch('/api/registrations',{headers:{Authorization:'Bearer '+TOKEN}});
+    if(r.status===401){localStorage.clear();location.reload();return;}
+    const d=await r.json();
+    REGS=d.regs||[];render();
+  }catch(e){toast('Failed to load');}
+}
+
+function render(){
+  const q=$('q').value.toLowerCase(), fe=$('fEv').value, fp=$('fPay').value;
+  const list=REGS.filter(x=>{
+    if(fe&&x.event!==fe)return false;
+    if(fp==='paid'&&!x.paid)return false;
+    if(fp==='unpaid'&&x.paid)return false;
+    if(q&&!(x.name+' '+x.school+' '+x.phone+' '+(x.teamName||'')).toLowerCase().includes(q))return false;
+    return true;
+  });
+  // stats
+  $('sTotal').textContent=REGS.length;
+  const paid=REGS.filter(x=>x.paid);
+  $('sPaid').textContent=paid.length;
+  $('sAmt').textContent=fmt(paid.reduce((s,x)=>s+(x.amount||0),0));
+  $('sPend').textContent=REGS.length-paid.length;
+  // event cards
+  $('evGrid').innerHTML=EVENTS.map(e=>{
+    const er=REGS.filter(x=>x.event===e), ep=er.filter(x=>x.paid);
+    return `<div class="glass evcard ${FILTER_EV===e?'sel':''}" data-ev="${esc(e)}">
+      <b>${esc(e)}</b>
+      <div class="row"><span>Registered</span><em>${er.length}</em></div>
+      <div class="row"><span>Paid</span><em>${ep.length}</em></div>
+      <div class="row"><span>Collected</span><em class="amt">${fmt(ep.reduce((s,x)=>s+(x.amount||0),0))}</em></div>
+    </div>`;
+  }).join('');
+  document.querySelectorAll('.evcard').forEach(c=>c.onclick=()=>{FILTER_EV=FILTER_EV===c.dataset.ev?'':c.dataset.ev;$('fEv').value=FILTER_EV;render();});
+  // rows
+  const w=ROLE==='write';
+  $('empty').classList.toggle('hidden',list.length>0);
+  $('rows').innerHTML=list.map(x=>`<tr>
+    <td><b>${esc(x.name)}</b><br><span class="mut">${esc(x.school)}</span>${x.teamName?'<br><span class="mut">⛺ '+esc(x.teamName)+'</span>':''}</td>
+    <td><span class="evtag">${esc(x.event)}</span></td>
+    <td>${esc(x.phone)}<br><span class="mut">${esc(x.email||'—')}</span></td>
+    <td>${x.team}${x.members&&x.members.length?'<br><span class="mut">'+x.members.map(esc).join(', ')+'</span>':''}</td>
+    <td>${x.paid?'<span class="amt">'+fmt(x.amount)+'</span><br><span class="mut">PAID</span>':'<span class="mut">UNPAID</span>'}</td>
+    <td>${w?`<button class="paybtn ${x.paid?'paid':''}" data-id="${x.id}" data-paid="${x.paid?1:0}">${x.paid?'✓ Paid':'Mark paid'}</button>`:'<span class="mut">—</span>'}</td>
+  </tr>`).join('');
+  document.querySelectorAll('.paybtn').forEach(b=>b.onclick=()=>togglePay(b.dataset.id,b.dataset.paid==='1'));
+}
+
+async function togglePay(id,wasPaid){
+  let amount=0;
+  if(!wasPaid){
+    const v=prompt('Payment amount (₹):','');
+    if(v===null)return;
+    amount=parseInt(v,10)||0;
+  }
+  try{
+    const r=await fetch('/api/registrations',{method:'PATCH',headers:{'Content-Type':'application/json',Authorization:'Bearer '+TOKEN},body:JSON.stringify({id,paid:!wasPaid,amount})});
+    if(r.ok){toast(wasPaid?'Marked unpaid':'Marked paid');load();}
+    else toast('Failed');
+  }catch(e){toast('Failed');}
+}
+
+$('q').addEventListener('input',render);
+$('fEv').addEventListener('change',e=>{FILTER_EV=e.target.value;render();});
+$('fPay').addEventListener('change',render);
+
+// CSV export
+$('csvBtn').onclick=()=>{
+  const rows=[['ID','Event','Name','School','Phone','Email','Team Size','Team Name','Members','Paid','Amount','Registered At']];
+  REGS.forEach(x=>rows.push([x.id,x.event,x.name,x.school,x.phone,x.email||'',x.team,x.teamName||'',(x.members||[]).join('; '),x.paid?'YES':'NO',x.amount||0,x.at]));
+  const csv=rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download='celesta-registrations.csv';a.click();
+  toast('CSV downloaded');
+};
+
+// push notifications
+$('notifBtn').onclick=async()=>{
+  if(!('Notification' in window)){toast('Not supported');return;}
+  const p=await Notification.requestPermission();
+  toast(p==='granted'?'Notifications on':'Notifications blocked');
+  if(p==='granted'&&'serviceWorker' in navigator){
+    try{await navigator.serviceWorker.register('/sw.js');}catch(e){}
+  }
+};
+
+// PWA install
+let deferredPrompt=null;
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;$('installBtn').classList.remove('hidden');$('installBtn2').classList.remove('hidden');});
+function doInstall(){if(deferredPrompt){deferredPrompt.prompt();deferredPrompt=null;}}
+$('installBtn').onclick=doInstall;$('installBtn2').onclick=doInstall;
+
+// auto-login
+if(TOKEN&&ROLE)showDash();
+</script>
+</body>
+</html>

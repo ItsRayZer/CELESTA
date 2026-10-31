@@ -1,0 +1,12 @@
+{
+  "name": "CELESTA Admin",
+  "short_name": "CELESTA Admin",
+  "description": "CELESTA 2K26 admin dashboard",
+  "start_url": "/admin",
+  "display": "standalone",
+  "background_color": "#0a0a0f",
+  "theme_color": "#0a0a0f",
+  "icons": [
+    {"src": "/assets/logo.webp", "sizes": "512x512", "type": "image/webp"}
+  ]
+}
