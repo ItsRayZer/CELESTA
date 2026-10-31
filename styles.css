@@ -258,7 +258,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--gold)}
 .hx.b .hx-earth.w{opacity:1}.hx.b .hx-earth.c{opacity:0}
 .hx-fw{position:absolute;inset:0;z-index:3;pointer-events:none;will-change:transform}
 .hx-fx{position:absolute;left:50%;bottom:-3svh;height:63svh;width:calc(63svh*.75);margin-left:calc(63svh*-.375);animation:hxUp 1.8s 1s cubic-bezier(.2,.7,.2,1) both}
-.hx-fb{display:none;position:absolute;left:50%;bottom:-3svh;height:62svh;max-width:none;transform:translateX(-50%);opacity:0;transition:opacity 1.4s ease}
+.hx-fb{display:none;position:absolute;left:50%;bottom:-3svh;height:78svh;max-width:none;transform:translateX(-50%);opacity:0;transition:opacity 1.4s ease}
 .hx.nogl .hx-fx{display:none}.hx.nogl .hx-fb{display:block}
 .hx:not(.b) .hx-fb.a,.hx.b .hx-fb.k{opacity:1}
 .hx-shade{position:absolute;left:0;right:0;bottom:0;height:46svh;z-index:4;pointer-events:none;background:linear-gradient(180deg,transparent,rgba(1,2,7,.55) 45%,rgba(1,2,7,.88))}
