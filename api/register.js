@@ -1,5 +1,10 @@
-// POST /api/register — save a new registration
-import { kv } from '@vercel/kv';
+// POST /api/register — save a new registration (Upstash Redis direct)
+import { Redis } from '@upstash/redis';
+
+const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN,
+});
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -18,10 +23,10 @@ export default async function handler(req, res) {
   };
   
   try {
-    await kv.hset('celesta:regs', { [id]: JSON.stringify(record) });
-    await kv.zadd('celesta:reglist', { score: Date.now(), member: id });
+    await redis.hset('celesta:regs', { [id]: JSON.stringify(record) });
+    await redis.zadd('celesta:reglist', { score: Date.now(), member: id });
     return res.status(200).json({ ok: true, id });
   } catch (e) {
-    return res.status(500).json({ error: 'Storage unavailable' });
+    return res.status(500).json({ error: 'Storage unavailable: ' + e.message });
   }
 }
