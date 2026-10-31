@@ -4,10 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Celesta 2K26 — Inter-College Tech Fest</title>
-<meta name="description" content="Celesta 2K26 — inter-school tech fest presented by NEXUS, BCA Department Association, Mar Augusthinose College, Ramapuram. 20 November 2026, 10 AM. Five events, ₹17,250 in prizes.">
+<meta name="description" content="Celesta 2K26 — inter-college tech fest presented by NEXUS, Computer Applications Department Association, Mar Augusthinose College, Ramapuram. 20 November 2026, 10 AM. Five events, ₹17,250 in prizes.">
 <link rel="icon" type="image/png" href="assets/logo.webp">
+<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
 <link rel="preload" as="image" href="assets/wordmark-white.webp">
-<link rel="stylesheet" href="styles.css?v=28">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Marcellus&display=swap">
+<link rel="stylesheet" href="styles.css?v=38">
 </head>
 <body>
 
@@ -19,7 +23,7 @@
 <nav class="topmenu" aria-label="Top menu">
   <a href="index.html">Home</a>
   <a href="events.html">Events</a>
-  <a href="index.html#venue">Map</a>
+  <a href="map.html">Map</a>
   <a href="contact.html">Contact</a>
 </nav>
 
@@ -33,7 +37,7 @@
   <div class="p-menu">
     <a href="index.html">Home</a>
     <a href="events.html">Events</a>
-    <a href="index.html#venue">Map</a>
+    <a href="map.html">Map</a>
     <a href="contact.html">Contact</a>
   </div>
 </nav>
@@ -42,7 +46,7 @@
   <canvas class="hx-stars" aria-hidden="true"></canvas>
   <div class="hx-dots" aria-hidden="true"></div>
   <div class="hx-halo a" aria-hidden="true"></div><div class="hx-halo b" aria-hidden="true"></div>
-  <div class="hx-ew" aria-hidden="true"><img class="hx-earth c" src="assets/earth.webp" alt="" fetchpriority="high"><img class="hx-earth w" src="assets/earth.webp" alt=""></div>
+  <div class="hx-ew" aria-hidden="true"><img class="hx-earth c" src="assets/earth-fade.webp" alt="" fetchpriority="high" decoding="async"><img class="hx-earth w" src="assets/earth-warm.webp" alt="" decoding="async"></div>
   <div class="hx-fw">
     <canvas class="hx-fx" role="img" aria-label="An astronaut transforming into a golden astral guardian"></canvas>
     <img class="hx-fb a" src="assets/hero-astronaut.webp" alt="">
@@ -51,16 +55,15 @@
   <div class="hx-shade" aria-hidden="true"></div>
   <div class="hx-top">
     <img class="hx-wordmark" src="assets/wordmark-white.webp" alt="CELESTA" fetchpriority="high">
-    <div class="kicker">By NEXUS · BCA Department Association</div>
-    <div class="hero-tag">Inter-School Fest · 2026</div>
+    <div class="hx-tag">Inter-College Fest · 2026</div>
   </div>
-  <h1 class="hx-head"><span>Schools</span><span class="ac">meet</span><span>to compete.</span></h1>
-  <div class="hx-meta">
-      <div class="hx-date-row"><span class="hx-line"></span><span class="hx-date">20 November 2026</span><span class="hx-line"></span></div>
+  <h1 class="hx-head"><span>Colleges <em class="ac">meet</em></span><span>to compete.</span></h1>
+  <div class="hx-bottom">
+    <div class="hx-meta">
+      <div class="hx-date">20 November 2026</div>
       <div class="hx-venue">Mar Augusthinose College, Ramapuram</div>
-      <div class="hx-sub-row"><span>Starts 10 AM</span><span class="hx-dot">·</span><span>Five events</span><span class="hx-dot">·</span><span class="hx-prize">₹17,250 in prizes</span></div>
+      <div class="hx-sub-row"><span>10 AM</span><i>·</i><span>5 events</span><i>·</i><span class="hx-prize">₹17,250 in prizes</span></div>
     </div>
-  <div class="hx-cta">
     <a class="btn btn-solid" href="#heroes" id="scroll-now">Scroll Now</a>
   </div>
 </header>
@@ -72,12 +75,12 @@
     <img class="ah-bird ah-b2" src="assets/age-bird-2.webp" alt="" aria-hidden="true">
     <img class="ah-bird ah-b1" src="assets/age-bird-1.webp" alt="" aria-hidden="true">
     <p class="ah-quote">&ldquo;Every era has its creation.&rdquo;</p>
-    <img class="ah-hand ah-robot" src="assets/age-robot-hand.webp" alt="" aria-hidden="true">
-    <img class="ah-hand ah-human" src="assets/age-human-hand.webp" alt="" aria-hidden="true">
+    <img decoding="async" class="ah-hand ah-robot" src="assets/age-robot-hand.webp" alt="" aria-hidden="true">
+    <img decoding="async" class="ah-hand ah-human" src="assets/age-human-hand.webp" alt="" aria-hidden="true">
     <div class="ah-spark" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
-    <h1 class="ah-title">The age of heroes</h1>
+    <h2 class="ah-title">The age of heroes</h2>
     <div class="ah-card" aria-hidden="true">
-      <div class="ah-slide"><div class="ah-frame"><img src="assets/poster-quiz.webp" alt=""></div><span class="ah-label">Quiz</span></div>
+      <div class="ah-slide on"><div class="ah-frame"><img src="assets/poster-quiz.webp" alt=""></div><span class="ah-label">Quiz</span></div>
       <div class="ah-slide"><div class="ah-frame"><img src="assets/poster-treasure-hunt.webp" alt=""></div><span class="ah-label">Treasure Hunt</span></div>
       <div class="ah-slide"><div class="ah-frame"><img src="assets/poster-prompting.webp" alt=""></div><span class="ah-label">Prompting</span></div>
       <div class="ah-slide"><div class="ah-frame"><img src="assets/poster-idea-presentation.webp" alt=""></div><span class="ah-label">Idea Presentation</span></div>
@@ -86,36 +89,144 @@
   </div>
 </section>
 <section class="ah-gallery" aria-label="Events">
-  <a class="ah-gcard" href="events.html"><div class="ah-gframe"><img src="assets/poster-quiz.webp" alt="Quiz"></div><span class="ah-glabel">Quiz</span></a>
-  <a class="ah-gcard" href="events.html"><div class="ah-gframe"><img src="assets/poster-treasure-hunt.webp" alt="Treasure Hunt"></div><span class="ah-glabel">Treasure Hunt</span></a>
-  <a class="ah-gcard" href="events.html"><div class="ah-gframe"><img src="assets/poster-prompting.webp" alt="Prompting"></div><span class="ah-glabel">Prompting</span></a>
-  <a class="ah-gcard" href="events.html"><div class="ah-gframe"><img src="assets/poster-idea-presentation.webp" alt="Idea Presentation"></div><span class="ah-glabel">Idea Presentation</span></a>
-  <a class="ah-gcard" href="events.html"><div class="ah-gframe"><img src="assets/poster-reels-competition.webp" alt="Reels Competition"></div><span class="ah-glabel">Reels Competition</span></a>
+  <a class="ah-gcard" href="events.html"><div class="ah-gframe"><img loading="lazy" decoding="async" src="assets/poster-quiz.webp" alt="Quiz"></div><span class="ah-glabel">Quiz</span></a>
+  <a class="ah-gcard" href="events.html"><div class="ah-gframe"><img loading="lazy" decoding="async" src="assets/poster-treasure-hunt.webp" alt="Treasure Hunt"></div><span class="ah-glabel">Treasure Hunt</span></a>
+  <a class="ah-gcard" href="events.html"><div class="ah-gframe"><img loading="lazy" decoding="async" src="assets/poster-prompting.webp" alt="Prompting"></div><span class="ah-glabel">Prompting</span></a>
+  <a class="ah-gcard" href="events.html"><div class="ah-gframe"><img loading="lazy" decoding="async" src="assets/poster-idea-presentation.webp" alt="Idea Presentation"></div><span class="ah-glabel">Idea Presentation</span></a>
+  <a class="ah-gcard" href="events.html"><div class="ah-gframe"><img loading="lazy" decoding="async" src="assets/poster-reels-competition.webp" alt="Reels Competition"></div><span class="ah-glabel">Reels Competition</span></a>
 </section>
 
 <main>
-  <!-- ABOUT -->
-  <section class="section" id="about">
-    <div class="reveal">
-      <div class="sec-tag">About the fest</div>
-      <h2 class="sec-title">Where the campus<br>comes alive.</h2>
+  <!-- SECTION 4: WHITE SKY & SACRED BLUEPRINT REALM (FEST INTRO + NEXUS + CAMPUS CLOUD BRIDGE) -->
+  <section class="wb-realm" id="about" aria-label="About Celesta 2K26 and Mar Augusthinose College">
+    <!-- Top atmospheric cloud & halftone transition from dark events section -->
+    <div class="wb-sky-transition" aria-hidden="true">
+      <div class="wb-cloud-layer c1"></div>
+      <div class="wb-cloud-layer c2"></div>
+      <svg class="wb-hatch-svg wb-hatch-top" viewBox="0 0 1200 320" preserveAspectRatio="none">
+        <defs>
+          <pattern id="diagHatch" width="8" height="8" patternTransform="rotate(38 0 0)" patternUnits="userSpaceOnUse">
+            <line x1="0" y1="0" x2="0" y2="8" stroke="#18191d" stroke-width="1.5" stroke-opacity="0.26"/>
+          </pattern>
+          <pattern id="dotsHatch" width="10" height="10" patternUnits="userSpaceOnUse">
+            <circle cx="3" cy="3" r="1.15" fill="#18191d" fill-opacity="0.18"/>
+          </pattern>
+          <radialGradient id="cloudMaskA" cx="72%" cy="28%" r="48%">
+            <stop offset="0%" stop-color="#fff" stop-opacity="1"/>
+            <stop offset="65%" stop-color="#fff" stop-opacity="0.45"/>
+            <stop offset="100%" stop-color="#fff" stop-opacity="0"/>
+          </radialGradient>
+          <radialGradient id="cloudMaskB" cx="22%" cy="62%" r="42%">
+            <stop offset="0%" stop-color="#fff" stop-opacity="0.9"/>
+            <stop offset="60%" stop-color="#fff" stop-opacity="0.35"/>
+            <stop offset="100%" stop-color="#fff" stop-opacity="0"/>
+          </radialGradient>
+          <mask id="mTopA"><rect width="1200" height="320" fill="url(#cloudMaskA)"/></mask>
+          <mask id="mTopB"><rect width="1200" height="320" fill="url(#cloudMaskB)"/></mask>
+        </defs>
+        <g mask="url(#mTopA)">
+          <ellipse cx="860" cy="88" rx="440" ry="130" fill="url(#diagHatch)"/>
+          <ellipse cx="720" cy="140" rx="340" ry="95" fill="url(#dotsHatch)"/>
+        </g>
+        <g mask="url(#mTopB)">
+          <ellipse cx="260" cy="195" rx="390" ry="110" fill="url(#diagHatch)"/>
+          <ellipse cx="380" cy="150" rx="280" ry="85" fill="url(#dotsHatch)"/>
+        </g>
+      </svg>
     </div>
-    <div class="about-grid">
-      <div class="about-copy reveal">
-        <div class="powered">Powered by <b>Mar Augusthinose College, Ramapuram</b></div>
-        <p>Celesta is the inter-school tech fest of the BCA department — a single day where students from schools across Kerala gather on one campus to compete, create and celebrate. Five arenas, one stage, and a prize pool of ₹17,250.</p>
+
+    <!-- Ambient interactive canvas for subtle sacred geometry & drifting cloud particles -->
+    <canvas id="wb-canvas" class="wb-canvas" aria-hidden="true"></canvas>
+
+    <div class="wb-container">
+      <!-- 4A: Emblem Crest & Fest Header -->
+      <div class="wb-head" id="wb-head">
+        
+        <img class="wb-wordmark" src="assets/wordmark-dark.webp" alt="CELESTA" loading="lazy" decoding="async">
+        <h2 class="wb-title">CELESTA 2K26</h2>
+        <p class="wb-date">20 NOVEMBER &middot; 10 AM</p>
+      </div>
+
+      <!-- 4B: Scroll-Scrubbed Manifesto with Halftone Engraving Cloud Accent -->
+      <div class="wb-manifesto-wrap">
+        <svg class="wb-hatch-svg wb-hatch-mid" viewBox="0 0 800 340" preserveAspectRatio="none" aria-hidden="true">
+          <g mask="url(#mTopB)">
+            <ellipse cx="190" cy="165" rx="340" ry="125" fill="url(#diagHatch)"/>
+            <ellipse cx="310" cy="120" rx="240" ry="90" fill="url(#dotsHatch)"/>
+          </g>
+        </svg>
+
+        <p class="wb-powered">
+          <span>POWERED BY MAR AUGUSTHINOSE COLLEGE, RAMAPURAM</span>
+          <small>PRESENTED BY NEXUS &middot; COMPUTER APPLICATIONS DEPARTMENT ASSOCIATION</small>
+        </p>
+
+        <p class="wb-manifesto" id="fi-text">
+          CELESTA 2K26, THE INTER-COLLEGE TECH FEST OF MAR AUGUSTHINOSE COLLEGE, RAMAPURAM, STANDS AS A SYMBOL OF YOUNG INNOVATION, CREATIVITY, AND EXCELLENCE. PRESENTED BY NEXUS, THE BCA DEPARTMENT ASSOCIATION, CELESTA PROVIDES A DYNAMIC ARENA WHERE COLLEGE STUDENTS, YOUNG INNOVATORS, AND TECHNOPHILES ACROSS KERALA COME TOGETHER TO IDEATE, COMPETE, AND SHOWCASE THEIR TALENTS.
+        </p>
+      </div>
+
+      <!-- 4C: Vitruvian Celestial Guardian Centerpiece + Rotating Official Seal + Real NEXUS Badge -->
+      <div class="wb-stage" id="wb-stage">
+        
+
+        
+
+        <figure class="wb-art" id="wb-art">
+          <img src="assets/about-guardian-sketch.webp" alt="Celesta 2K26 Celestial Architect Sketch" loading="lazy" decoding="async">
+        </figure>
+      </div>
+
+      <!-- 4D: Real NEXUS Department Association Showcase inside the White Realm -->
+      <div class="wb-nexus-box" id="nexus">
+        <div class="wb-nexus-tag">Presented By</div>
+        <img class="wb-nexus-logo" src="assets/nexus-logo-dark.webp" alt="NEXUS — Computer Applications Department Association" loading="lazy" decoding="async">
+        <p class="wb-nexus-desc">
+          The <strong>Computer Applications (BCA) Department Association</strong> of Mar Augusthinose College, Ramapuram &mdash; the student collective that architects, builds, and hosts Celesta every year.
+        </p>
+        <div class="wb-pillars">
+          <div class="wb-pillar"><b>05</b><span>Signature Arenas</span></div>
+          <div class="wb-pillar"><b>&#8377;17,250</b><span>Total Prize Pool</span></div>
+          <div class="wb-pillar"><b>Inter-College</b><span>Kerala Track</span></div>
+        </div>
       </div>
     </div>
 
-  <!-- EVENTS PREVIEW -->
-  
+    <!-- Bottom Volumetric White Cloud & Mist Bridge into Mar Augusthinose College Campus -->
+    <div class="wb-campus-bridge" id="college">
+      <div class="wb-clouds-upper" aria-hidden="true"></div>
+      <div class="wb-campus-photo" aria-hidden="true">
+        <img id="wb-campus-img" src="assets/campus.webp" alt="Mar Augusthinose College, Ramapuram campus" loading="lazy" decoding="async">
+        <div class="wb-campus-mist-top"></div>
+        <div class="wb-campus-mist-btm"></div>
+      </div>
+
+      <div class="mc-in">
+        <div class="mc-badge reveal">The Host Institution</div>
+        <h2 class="mc-title reveal">Mar Augusthinose College</h2>
+        <p class="mc-sub reveal">Ramapuram &middot; Kottayam &middot; Kerala</p>
+        <p class="mc-text reveal">Mar Augusthinose College, Ramapuram is managed by the Eparchy of Pala and affiliated to Mahatma Gandhi University, Kottayam. Since 1995 it has offered undergraduate and postgraduate programmes, and it is home to the BCA department behind Celesta.</p>
+        <div class="mc-stats reveal">
+          <div><b>31</b><span>Years since 1995</span></div>
+          <div><b>MGU</b><span>Affiliated university</span></div>
+          <div><b>UG &middot; PG</b><span>Programmes</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- QUOTE -->
+  <section class="qt">
+    <div class="qt-bg" aria-hidden="true"><img src="assets/art-gold-sky.webp" alt="" loading="lazy" decoding="async"></div>
+    <p class="qt-text reveal">&ldquo;Five events. &#8377;17,250 in prizes. One campus, one day &mdash; where colleges meet to compete.&rdquo;</p>
+  </section>
 
   <!-- CLOSING -->
   <section class="closing">
     <div class="knight" aria-hidden="true"></div>
     <div class="shade" aria-hidden="true"></div>
     <div class="in">
-      <p class="blurb reveal">Celesta 2K26 is the inter-school tech fest presented by NEXUS, the BCA Department Association of Mar Augusthinose College, Ramapuram — one day, one campus, five arenas.</p>
+      <p class="blurb reveal">Celesta 2K26 is the inter-college tech fest presented by NEXUS, the Computer Applications Department Association of Mar Augusthinose College, Ramapuram — one day, one campus, five arenas.</p>
       <div class="coord-grid">
         <div class="coord reveal"><h4>Faculty Coordinator</h4><p>Coordinator details coming soon</p></div>
         <div class="coord reveal"><h4>Student Coordinator</h4><p>Coordinator details coming soon</p></div>
@@ -123,7 +234,7 @@
       </div>
       <a class="allc reveal" href="contact.html">View all contacts</a>
       <div class="flinks reveal">
-        <a href="index.html">Home</a><a href="events.html">Events</a>
+        <a href="index.html">About</a><a href="events.html">Events</a>
         <a href="gallery.html">Gallery</a><a href="contact.html">Contact</a>
       </div>
       <h2 class="statement reveal">One campus. One day.<br>Your move.</h2>
@@ -131,7 +242,7 @@
     </div>
   </section>
 
-  <!-- COLLEGE MAP -->
+  <!-- VENUE MAP -->
   <section class="section" id="venue">
     <div class="reveal">
       <div class="sec-tag">Find us</div>
@@ -148,15 +259,16 @@
 </main>
 
 <footer>
-  <div class="f-nexus"><img src="assets/nexus-logo.webp" alt="NEXUS logo" loading="lazy"><span>NEXUS · BCA Department Association</span></div>
+  <div class="f-nexus"><img src="assets/nexus-logo-dark.webp" alt="NEXUS logo" loading="lazy"><span>NEXUS &middot; Computer Applications Department Association</span></div>
   <div>Mar Augusthinose College, Ramapuram</div>
   <div class="f-line">Five events. One day. One campus.</div>
 </footer>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js" defer></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js" defer></script>
-<script src="hero.js?v=26" defer></script>
-<script src="age.js?v=27" defer></script>
-<script src="app.js?v=26" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+<script src="hero.js?v=28" defer></script>
+<script src="age.js?v=30" defer></script>
+<script src="about.js?v=36" defer></script>
+<script src="app.js?v=28" defer></script>
 </body>
 </html>
