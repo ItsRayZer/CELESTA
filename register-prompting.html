@@ -4,11 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Register — Prompting | Celesta 2K26</title>
-<meta name="description" content="Register for Prompting at Celesta 2K26, the inter-school tech fest presented by NEXUS, Mar Augusthinose College, Ramapuram.">
+<meta name="description" content="Register for Prompting at Celesta 2K26 — rules, requirements and prizes. Inter-college tech fest by NEXUS, Mar Augusthinose College, Ramapuram.">
 <link rel="icon" type="image/png" href="assets/logo.webp">
-<link rel="stylesheet" href="styles.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=Marcellus&display=swap">
+<link rel="stylesheet" href="styles.css?v=36">
+<style>#pill{display:none!important}</style>
 </head>
-<body>
+<body class="reg-page">
 
 <div id="loader" aria-hidden="true">
   <img src="assets/wordmark-white.webp" alt="">
@@ -18,57 +22,45 @@
 <nav id="pill" aria-label="Site menu">
   <div class="p-count" aria-hidden="true"></div>
   <div class="p-menu">
-    <a href="index.html">Home</a>
+    <a href="index.html">About</a>
     <a href="events.html">Events</a>
     <a href="gallery.html">Gallery</a>
     <a href="contact.html">Contact</a>
   </div>
 </nav>
 
+<div class="rg-blobs" aria-hidden="true"><i></i><i></i><i></i></div>
 <main class="reg-wrap">
-  <div class="ev-num">03 · Inter-School</div>
-  <h1>Prompting</h1>
-  <p class="sec-sub">Craft the sharpest AI prompts and pull the best outputs.</p>
-  <div class="r-prize">1st · ₹1,500 &nbsp;&nbsp; 2nd · ₹750</div>
-  <form id="reg-form" data-event="Prompting" novalidate>
-    <div class="field" id="f-name">
-      <label for="in-name">Full name</label>
-      <input id="in-name" type="text" autocomplete="name" placeholder="Your name">
+  <div class="rg-bar"><a class="glass-back" href="events.html" aria-label="Back to events"><svg width="11" height="18" viewBox="0 0 11 18" fill="none" aria-hidden="true"><path d="M9.5 1.5 2 9l7.5 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Events</span></a></div>
+  <header class="rg-head"><span class="rg-chip">03 · Inter-College</span><h1>Prompting</h1><p class="rg-tag">Craft the sharpest prompt and make AI deliver.</p><div class="rg-prizes"><span>🥇 ₹1,500</span><span>🥈 ₹750</span></div></header>
+  <form id="reg-form" class="rg-form" data-event="Prompting" data-min="1" data-max="2" novalidate>
+    <div class="rg-group">
+      <div class="field" id="f-name"><label for="in-name">Name</label><input id="in-name" type="text" autocomplete="name" placeholder="Team leader"><div class="err">Enter your full name.</div></div>
+      <div class="field" id="f-college"><label for="in-college">College</label><input id="in-college" type="text" autocomplete="organization" placeholder="Your college"><div class="err">Enter your college name.</div></div>
+      <div class="field" id="f-phone"><label for="in-phone">Phone</label><input id="in-phone" type="tel" inputmode="numeric" autocomplete="tel" maxlength="10" placeholder="10-digit mobile"><div class="err">Enter a valid 10-digit mobile number.</div></div>
+      <div class="field" id="f-email"><label for="in-email">Email</label><input id="in-email" type="email" autocomplete="email" placeholder="you@example.com"><div class="err">Enter a valid email address.</div></div>
     </div>
-    <div class="field" id="f-college">
-      <label for="in-college">College</label>
-      <input id="in-college" type="text" autocomplete="organization" placeholder="Your college name">
+    <div class="rg-group">
+      <div class="field" id="f-team"><label for="in-team">Team size</label><select id="in-team"><option value="1">1 — Solo</option><option value="2">2</option></select><div class="err">Choose your team size.</div></div>
+      <div class="field" id="f-teamname"><label for="in-teamname">Team name</label><input id="in-teamname" type="text" placeholder="Optional"></div>
+      <div class="field" id="f-members" hidden><label for="in-members">Members</label><textarea id="in-members" placeholder="Other members, one per line"></textarea><div class="err" id="err-members">Add the names of your other team members.</div></div>
     </div>
-    <div class="field" id="f-phone">
-      <label for="in-phone">Phone</label>
-      <input id="in-phone" type="tel" inputmode="numeric" autocomplete="tel" placeholder="10-digit mobile number">
+    <div class="rg-group">
+      <div class="field check" id="f-agree"><label for="in-agree">I confirm these details are correct and every member will carry a valid college ID card on 20 November 2026.</label><input id="in-agree" type="checkbox"></div>
     </div>
-    <div class="field" id="f-email">
-      <label for="in-email">Email</label>
-      <input id="in-email" type="email" autocomplete="email" placeholder="you@example.com">
-    </div>
-    <div class="field" id="f-team">
-      <label for="in-team">Team size</label>
-      <select id="in-team">
-        <option value="1">1 — Solo</option>
-        <option value="2">2</option>
-        <option value="3">3</option>
-        <option value="4">4</option>
-        <option value="5">5</option>
-      </select>
-    </div>
-    <button class="btn btn-solid" type="submit" style="width:100%">Register for Prompting</button>
-    <p class="reg-note">Your details are saved on this device only. The organizers will announce confirmation and payment details soon.</p>
+    <button class="rg-submit" type="submit">Register for Prompting</button>
+    <p class="reg-note">Saved on this device only. The organizers will announce confirmation and payment details soon.</p>
     <div class="ok-msg" id="ok-msg" role="status"></div>
   </form>
+  <div class="rd-below"><p class="rd-about">Show how well you can talk to AI. You receive briefs and must write prompts that get the best possible output — accurate, creative and efficient.</p><div class="ww-card"><div class="ww-row"><span class="ww-k">When</span><span>Fri, 20 Nov 2026 · 10 AM</span></div><div class="ww-row"><span class="ww-k">Where</span><span>Mar Augusthinose College, Ramapuram</span></div><div class="ww-row"><span class="ww-k">Team</span><span>1–2 members</span></div><div class="ww-row"><span class="ww-k">Duration</span><span>≈ 60 minutes</span></div></div><details class="rd-acc"><summary>How it works</summary><ul class="rd-list num"><li><b>Round 1 — Prompt challenge.</b> Solve the given tasks with the fewest and best prompts.</li><li><b>Round 2 — Final brief.</b> Top participants get a surprise brief and a live time limit.</li></ul></details><details class="rd-acc"><summary>Rules</summary><ul class="rd-list dot"><li>Only the AI tool(s) announced for the event may be used.</li><li>Copy-pasting ready-made answers from outside the tool is not allowed.</li><li>Prompts and outputs are reviewed by the judges.</li><li>Judges' and organizers' decisions are final.</li><li>Misconduct or cheating leads to disqualification.</li></ul></details><details class="rd-acc"><summary>Judging</summary><ul class="rd-list dot"><li>Accuracy and relevance of the output</li><li>Creativity and clarity of the prompt</li><li>Efficiency — fewer attempts score higher</li></ul></details><details class="rd-acc"><summary>Requirements</summary><ul class="rd-list dot"><li><b>Valid college ID card</b> for every participant.</li><li>Report at the registration desk <b>by 9:30 AM</b>.</li><li>Open to college students only. One team per student, per event.</li><li>A laptop or smartphone with internet (if you want to use your own device).</li><li>A free account for the AI tool will be announced before the event.</li></ul></details></div>
 </main>
 
 <footer>
-  <div class="f-nexus"><img src="assets/nexus-logo.webp" alt="NEXUS logo" loading="lazy"><span>NEXUS · BCA Department Association</span></div>
+  <div class="f-nexus"><img src="assets/nexus-logo-dark.webp" alt="NEXUS logo" loading="lazy"><span>NEXUS · Computer Applications Department Association</span></div>
   <div>Mar Augusthinose College, Ramapuram</div>
   <div class="f-line">Five events. One day. One campus.</div>
 </footer>
 
-<script src="app.js" defer></script>
+<script src="app.js?v=28" defer></script>
 </body>
 </html>
