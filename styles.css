@@ -1013,10 +1013,10 @@ footer .f-nexus img{width:40px}
 .dark-page .ev-marquee{display:none}
 
 /* ---------- Premium white editorial (events page) ---------- */
-.premium-page{background:linear-gradient(rgba(250,249,246,.62),rgba(250,249,246,.62)),url(/assets/holo-bg.webp) center top/cover no-repeat fixed;color:#141412;--ink:#141412;--mut:#6f6c64;--gold:#8a6d2f;--line:rgba(20,20,18,.1)}
+.premium-page{background-color:#faf9f6;background-image:linear-gradient(rgba(250,249,246,.55),rgba(250,249,246,.55)),radial-gradient(560px 560px at 15% 15%,rgba(255,92,138,.38),transparent 65%),radial-gradient(680px 680px at 85% 65%,rgba(124,58,237,.38),transparent 65%),radial-gradient(480px 480px at 60% 5%,rgba(45,212,191,.32),transparent 65%),url(/assets/holo-bg.webp);background-repeat:no-repeat;background-size:auto,560px 560px,680px 680px,480px 480px,cover;background-position:0 0,0% 0%,100% 100%,50% 0%,center top;background-attachment:scroll,fixed,fixed,fixed,fixed;animation:holoDrift 36s ease-in-out infinite alternate;color:#141412;--ink:#141412;--mut:#6f6c64;--gold:#8a6d2f;--line:rgba(20,20,18,.1)}
 /* Holographic background (fffuel hhholographic) on the other subpages — home page keeps its own look */
-body.light-page,body.reg-page{background:linear-gradient(rgba(255,255,255,.62),rgba(255,255,255,.62)),url(/assets/holo-bg.webp) center top/cover no-repeat fixed}
-body.dark-page{background:linear-gradient(rgba(6,6,8,.5),rgba(6,6,8,.5)),url(/assets/holo-bg.webp) center top/cover no-repeat fixed}
+body.light-page,body.reg-page{background-color:#fff;background-image:linear-gradient(rgba(255,255,255,.55),rgba(255,255,255,.55)),radial-gradient(560px 560px at 15% 15%,rgba(255,92,138,.38),transparent 65%),radial-gradient(680px 680px at 85% 65%,rgba(124,58,237,.38),transparent 65%),radial-gradient(480px 480px at 60% 5%,rgba(45,212,191,.32),transparent 65%),url(/assets/holo-bg.webp);background-repeat:no-repeat;background-size:auto,560px 560px,680px 680px,480px 480px,cover;background-position:0 0,0% 0%,100% 100%,50% 0%,center top;background-attachment:scroll,fixed,fixed,fixed,fixed;animation:holoDrift 36s ease-in-out infinite alternate}
+body.dark-page{background-color:#060608;background-image:linear-gradient(rgba(6,6,8,.45),rgba(6,6,8,.45)),radial-gradient(560px 560px at 15% 15%,rgba(255,92,138,.5),transparent 65%),radial-gradient(680px 680px at 85% 65%,rgba(124,58,237,.5),transparent 65%),radial-gradient(480px 480px at 60% 5%,rgba(45,212,191,.42),transparent 65%),url(/assets/holo-bg.webp);background-repeat:no-repeat;background-size:auto,560px 560px,680px 680px,480px 480px,cover;background-position:0 0,0% 0%,100% 100%,50% 0%,center top;background-attachment:scroll,fixed,fixed,fixed,fixed;animation:holoDrift 36s ease-in-out infinite alternate}
 /* Fontshare fonts on subpages — home page keeps its own fonts */
 body.premium-page,body.dark-page,body.light-page,body.reg-page{--serif:'Zodiak',Georgia,serif;--display:'Clash Display','Satoshi',sans-serif;--sans:'Satoshi',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif}
 body.reg-page{font-family:'Satoshi',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif}
@@ -1138,3 +1138,11 @@ body.premium-page .gz-head h1{font-weight:800}
 .premium-page .ev-marquee{-webkit-mask-image:none;mask-image:none}
 .premium-page .ev-marquee span{font-size:17px;font-weight:900;letter-spacing:.06em;line-height:1;color:#fff;-webkit-text-stroke:0;padding:0}
 .premium-page .ev-marquee em{color:#111;font-size:17px}
+
+/* Living holographic background: the image drifts and the colour blobs float */
+@keyframes holoDrift{
+  0%{background-position:0 0,0% 0%,100% 100%,50% 0%,0% 0%}
+  50%{background-position:0 0,90% 30%,10% 60%,80% 90%,60% 60%}
+  100%{background-position:0 0,30% 90%,50% 0%,0% 70%,100% 100%}
+}
+@media (prefers-reduced-motion:reduce){body.premium-page,body.dark-page,body.light-page,body.reg-page{animation:none}}
