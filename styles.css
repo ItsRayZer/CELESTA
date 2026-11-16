@@ -1164,3 +1164,6 @@ body.dark-page .gz-tag--light{background:#111;color:#fff}
 .dark-page .f-nexus{color:#141412}
 .dark-page .f-nexus img{filter:invert(1)}
 .dark-page .f-line{color:#8a6d2f}
+
+/* Age of Heroes: scroll is locked while the one-time intro plays */
+html.ah-lock,html.ah-lock body{overflow:hidden!important;touch-action:none;overscroll-behavior:none}
