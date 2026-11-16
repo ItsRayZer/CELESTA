@@ -255,15 +255,16 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--gold)}
 .hx-halo.b{background:radial-gradient(circle,rgba(255,170,80,.24),transparent 60%);opacity:0}
 .hx.b .hx-halo.a{opacity:0}.hx.b .hx-halo.b{opacity:1}
 .hx-ew{position:absolute;inset:0;z-index:1;pointer-events:none;will-change:transform}
-.hx-earth{position:absolute;left:50%;bottom:0;max-width:none;width:max(100vw,min(190vw,150svh));transform:translate3d(-50%,0,0);transition:opacity 1.6s ease;will-change:opacity;backface-visibility:hidden}
-.hx-earth.w{opacity:0}
-.hx.b .hx-earth.w{opacity:1}.hx.b .hx-earth.c{opacity:0}
+.hx-land{position:absolute;inset:0;width:100%;height:100%;display:block}
+.hx-landfb{display:none;position:absolute;left:50%;bottom:0;max-width:none;width:max(100vw,calc(80svh*1.648));transform:translateX(-50%);
+  -webkit-mask-image:linear-gradient(180deg,transparent,#000 38%);mask-image:linear-gradient(180deg,transparent,#000 38%)}
+.hx.landfb .hx-landfb{display:block}.hx.landfb .hx-land{display:none}
 .hx-fw{position:absolute;inset:0;z-index:3;pointer-events:none;will-change:transform}
 .hx-fx{position:absolute;left:50%;bottom:-3svh;height:63svh;width:calc(63svh*.75);margin-left:calc(63svh*-.375);animation:hxUp .7s .3s cubic-bezier(.2,.7,.2,1) both}
 .hx-fb{display:none;position:absolute;left:50%;bottom:-3svh;height:78svh;max-width:none;transform:translateX(-50%);opacity:0;transition:opacity 1.4s ease}
 .hx.nogl .hx-fx{display:none}.hx.nogl .hx-fb{display:block}
 .hx:not(.b) .hx-fb.a,.hx.b .hx-fb.k{opacity:1}
-.hx-shade{position:absolute;left:0;right:0;bottom:0;height:46svh;z-index:4;pointer-events:none;background:linear-gradient(180deg,transparent,rgba(1,2,7,.55) 45%,rgba(1,2,7,.88))}
+.hx-shade{position:absolute;left:0;right:0;bottom:0;height:46svh;z-index:4;pointer-events:none;background:linear-gradient(180deg,transparent,rgba(1,2,7,.3) 45%,rgba(1,2,7,.68))}
 /* --- hero text: one type system (serif for statements, spaced sans caps for labels), two clear zones --- */
 .hx{--hx-label:10.5px;--hx-track:.26em}
 .hx-top{position:relative;z-index:6;display:flex;flex-direction:column;align-items:center;gap:12px;padding:calc(env(safe-area-inset-top,0px) + 66px) 20px 0}
@@ -284,7 +285,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--gold)}
 .hx-prize{color:#d4af69}
 .hx-bottom .btn{padding:12px 28px;font-size:11px;white-space:nowrap}
 @keyframes hxUp{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
-@media (prefers-reduced-motion:reduce){.hx-wordmark,.hx-tag,.hx-head span,.hx-bottom,.hx-fx{animation:none}.hx-earth,.hx-halo,.hx-head .ac{transition-duration:.01s}}
+@media (prefers-reduced-motion:reduce){.hx-wordmark,.hx-tag,.hx-head span,.hx-bottom,.hx-fx{animation:none}.hx-halo,.hx-head .ac{transition-duration:.01s}}
 @media (max-width:360px){.hx{--hx-track:.18em}.hx-sub-row{gap:7px}}
 /* ---------- Age of Heroes: scroll-synced ---------- */
 .ah-hero{position:relative;height:100vh;height:100svh;overflow:hidden;background:#000;display:grid;place-items:center}

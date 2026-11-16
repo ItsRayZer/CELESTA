@@ -36,7 +36,7 @@
         ph: Math.random() * 6.28, sp: .5 + Math.random() * 1.1,
         col: Math.random() < .7 ? "#ffe2b0" : "#b9d8ff" });
     }
-    fxSize(); if (reduced) drawSky(0, 0);
+    fxSize(); if (typeof landSize === "function") landSize(); if (reduced) drawSky(0, 0);
   }
   function drawSky(t, y) {
     c.clearRect(0, 0, W, H);
@@ -133,6 +133,117 @@
     gl.uniform1f(U.P, mp); gl.uniform1f(U.T, t); gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   }
 
+
+  /* ---------- Live landscape (sunset lake) ----------
+     One photo, brought to life in a shader: drifting/morphing clouds, rippling perspective water,
+     sun-reflection sparkles, breathing sun glow. Colour grade follows the same cool <-> warm
+     scene value (mp) as the astronaut/guardian morph, and scroll adds a slow zoom. */
+  var lc = hx.querySelector(".hx-land"), lfb = hx.querySelector(".hx-landfb");
+  var lg = null, LU = {}, lready = false;
+  function landFail() { hx.classList.add("landfb"); lg = null; }
+  function landSize() {
+    if (!lc) return;
+    var r = Math.min(window.devicePixelRatio || 1, 1.25);
+    lc.width = Math.max(2, Math.round(lc.clientWidth * r)); lc.height = Math.max(2, Math.round(lc.clientHeight * r));
+    if (lg) lg.viewport(0, 0, lc.width, lc.height);
+  }
+  if (lc && lfb) {
+    try { lg = lc.getContext("webgl", { premultipliedAlpha: true, alpha: true, antialias: false }); } catch (e) { lg = null; }
+    if (!lg) { landFail(); } else {
+      var lvs = "attribute vec2 p;varying vec2 v;void main(){v=p*.5+.5;gl_Position=vec4(p,0.,1.);}";
+      var lfs = [
+        "#ifdef GL_FRAGMENT_PRECISION_HIGH", "precision highp float;", "#else", "precision mediump float;", "#endif",
+        "varying vec2 v;uniform sampler2D I;uniform vec2 R,IS;uniform float T,P,S,FX;",
+        "const vec2 SUN=vec2(.79,.30);",
+        "float h(vec2 q){return fract(sin(dot(q,vec2(127.1,311.7)))*43758.5453);}",
+        "float n(vec2 q){vec2 i=floor(q),f=fract(q);f=f*f*(3.-2.*f);return mix(mix(h(i),h(i+vec2(1.,0.)),f.x),mix(h(i+vec2(0.,1.)),h(i+vec2(1.,1.)),f.x),f.y);}",
+        "float fb(vec2 q){return n(q)*.5+n(q*2.03+7.1)*.3+n(q*4.1+3.7)*.2;}",
+        "void main(){",
+        /* cover-fit, bottom aligned, focus on the sunset side */
+        "  float s=max(R.x/IS.x,.8*R.y/IS.y);vec2 D=IS*s;",
+        "  float left=clamp(R.x*.5-FX*D.x,R.x-D.x,0.);",
+        "  vec2 p=v*R;vec2 q=vec2((p.x-left)/D.x,p.y/D.y);",
+        /* sky melts into the starfield at the top */
+        "  float a=(1.-smoothstep(.36,1.02,v.y))*(1.-smoothstep(.6,1.,q.y));",
+        "  if(a<=0.){gl_FragColor=vec4(0.);return;}",
+        "  float ps=smoothstep(0.,1.,P);",
+        /* scroll: slow push-in */
+        "  vec2 c0=vec2(.5,.25);q=c0+(q-c0)*(1.-clamp(S,0.,1.2)*.05);",
+        /* sky: clouds slowly morph + drift */
+        "  float sky=smoothstep(.34,.6,q.y);",
+        "  vec2 fl=vec2(fb(q*vec2(2.4,3.)+vec2(T*.02,0.)),fb(q*vec2(2.7,3.3)+vec2(4.3,-T*.017)))-.5;",
+        "  q+=fl*.016*sky;",
+        /* water: perspective ripples (denser toward horizon) */
+        "  float depth=clamp((.245-q.y)/.245,0.,1.);",
+        "  float wy=1.-smoothstep(.2,.245,q.y);",
+        "  float pz=1./max(.27-q.y,.02);",
+        "  float ph=pz*4.-T*1.5+sin(q.x*8.+T*.3)*1.5;",
+        "  q.x+=sin(ph)*.0018*wy*(.35+.65*depth);",
+        "  q.y+=sin(q.x*60.+T*1.2)*.0005*wy;",
+        "  vec3 col=texture2D(I,clamp(q,0.,1.)).rgb;",
+        "  float lum=dot(col,vec3(.3,.55,.15));",
+        /* colour grade: cool dusk <-> golden hour */
+        "  vec3 cool=col*vec3(.74,.88,1.2);cool=mix(cool,vec3(dot(cool,vec3(.3,.55,.15))),.1)*.94;",
+        "  vec3 warm=col*vec3(1.05,1.,.93)*1.03;",
+        "  col=mix(cool,warm,ps);",
+        /* extra drifting cloud layer, lit by the sun */
+        "  float sunp=exp(-length((q-SUN)*vec2(IS.x/IS.y,1.))*2.6);",
+        "  vec2 cp=vec2(q.x*3.4+T*.022,q.y*7.5)+fl*1.4;",
+        "  float cl=smoothstep(.5,.82,fb(cp));",
+        "  float cm=cl*sky*(1.-smoothstep(.62,.95,q.y));",
+        "  vec3 cc=mix(mix(vec3(.45,.55,.95),vec3(.62,.46,.9),ps),vec3(1.,.74,.46),clamp(sunp*1.6,0.,1.)*ps);",
+        "  col=1.-(1.-col)*(1.-cc*cm*.3);",
+        /* sun breathes */
+        "  float pulse=.85+.15*sin(T*.8)+.05*sin(T*2.1);",
+        "  vec3 gc=mix(vec3(.45,.6,1.),vec3(1.,.72,.3),ps);",
+        "  col+=gc*sunp*sunp*.35*pulse*(.5+.7*ps);",
+        /* sparkles on the sun-lit water */
+        "  vec2 sp=vec2(q.x*220.,pz*2.5)+vec2(T*.5,-T*1.3);",
+        "  vec2 cell=floor(sp);float g=h(cell);",
+        "  float tw=.5+.5*sin(T*3.+h(cell+3.)*6.28);",
+        "  float spk=step(.93,g)*tw*smoothstep(.5,.1,length(fract(sp)-.5))*smoothstep(.5,.8,lum)*wy*(.4+.6*depth);",
+        "  col+=mix(vec3(.7,.85,1.),vec3(1.,.9,.7),ps)*spk*.8;",
+        /* soft vignette */
+        "  col*=1.-.28*pow(abs(v.x-.5)*2.,2.);",
+        "  gl_FragColor=vec4(min(col,vec3(1.))*a,a);}"
+      ].join("\n");
+      var lsh = function (ty, src) { var x = lg.createShader(ty); lg.shaderSource(x, src); lg.compileShader(x); return x; };
+      var lpr = lg.createProgram();
+      lg.attachShader(lpr, lsh(lg.VERTEX_SHADER, lvs)); lg.attachShader(lpr, lsh(lg.FRAGMENT_SHADER, lfs)); lg.linkProgram(lpr);
+      if (!lg.getProgramParameter(lpr, lg.LINK_STATUS)) { landFail(); } else {
+        lg.useProgram(lpr);
+        lg.bindBuffer(lg.ARRAY_BUFFER, lg.createBuffer());
+        lg.bufferData(lg.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), lg.STATIC_DRAW);
+        var lloc = lg.getAttribLocation(lpr, "p"); lg.enableVertexAttribArray(lloc); lg.vertexAttribPointer(lloc, 2, lg.FLOAT, false, 0, 0);
+        lg.pixelStorei(lg.UNPACK_FLIP_Y_WEBGL, true);
+        ["R", "IS", "T", "P", "S", "FX"].forEach(function (k) { LU[k] = lg.getUniformLocation(lpr, k); });
+        var loadLand = function () {
+          if (!lg) return;
+          try {
+            var tx = lg.createTexture(); lg.activeTexture(lg.TEXTURE0); lg.bindTexture(lg.TEXTURE_2D, tx);
+            lg.texImage2D(lg.TEXTURE_2D, 0, lg.RGBA, lg.RGBA, lg.UNSIGNED_BYTE, lfb);
+            [lg.TEXTURE_MIN_FILTER, lg.TEXTURE_MAG_FILTER].forEach(function (q) { lg.texParameteri(lg.TEXTURE_2D, q, lg.LINEAR); });
+            [lg.TEXTURE_WRAP_S, lg.TEXTURE_WRAP_T].forEach(function (q) { lg.texParameteri(lg.TEXTURE_2D, q, lg.CLAMP_TO_EDGE); });
+            lg.uniform1i(lg.getUniformLocation(lpr, "I"), 0);
+            lg.uniform2f(LU.IS, lfb.naturalWidth, lfb.naturalHeight);
+            lg.uniform1f(LU.FX, .62);
+            lready = true; landSize(); if (reduced) drawLand(0, 0);
+          } catch (e) { landFail(); }
+        };
+        if (lfb.complete && lfb.naturalWidth) loadLand();
+        else { lfb.addEventListener("load", loadLand); lfb.addEventListener("error", landFail); }
+        lc.addEventListener("webglcontextlost", function (e) { e.preventDefault(); landFail(); }, false);
+      }
+    }
+  }
+  function drawLand(t, sy) {
+    if (!lg || !lready) return;
+    lg.clearColor(0, 0, 0, 0); lg.clear(lg.COLOR_BUFFER_BIT);
+    lg.uniform2f(LU.R, lc.width, lc.height);
+    lg.uniform1f(LU.T, t); lg.uniform1f(LU.P, mp); lg.uniform1f(LU.S, sy / (window.innerHeight || 1));
+    lg.drawArrays(lg.TRIANGLE_STRIP, 0, 4);
+  }
+
   /* ---------- Scene driver ---------- */
   var t0 = performance.now(), last = t0, cur = -1;
   function frame(now) {
@@ -144,7 +255,7 @@
     var stp = dt / 2.6; mp += Math.max(-stp, Math.min(stp, sc - mp));
     fw.style.transform = "translate3d(0," + (sy * .22).toFixed(1) + "px,0) scale(" + (1 + Math.min(sy / vh, 1) * .07).toFixed(3) + ")";
     ew.style.transform = "translate3d(0," + (sy * .1).toFixed(1) + "px,0)";
-    drawSky(t, sy); drawFx(t);
+    drawSky(t, sy); drawFx(t); drawLand(t, sy);
     raf = requestAnimationFrame(frame);
   }
   var lw = 0, lh = 0, rt = 0;
