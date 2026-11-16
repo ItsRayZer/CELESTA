@@ -55,9 +55,8 @@
   if(reduced) return; /* reduced motion: skip the intro, show the final layout */
 
   /* ---------- 3. One-shot, auto-playing hand-touching animation ----------
-     No pin, no scrubbing. When the section reaches (almost) full screen it snaps to
-     the top, locks scroll, plays the animation ONCE by time, then unlocks.
-     After that, scrolling simply moves on to the next section. */
+     No pin, no scrubbing, no scroll lock. When the section is ~full screen the animation
+     plays ONCE by time. The user can keep scrolling normally at any moment. */
   var robot  = stage.querySelector(".ah-robot"),
       human  = stage.querySelector(".ah-human"),
       spark  = stage.querySelector(".ah-spark"),
@@ -116,36 +115,15 @@
 
   render(0); /* start state: hands apart, card hidden */
 
-  /* ----- scroll lock while playing ----- */
-  var KEYS = { 32:1, 33:1, 34:1, 35:1, 36:1, 38:1, 40:1 };
-  function stop(e){ if(e.cancelable) e.preventDefault(); }
-  function stopKey(e){ if(KEYS[e.keyCode]) stop(e); }
-  function lock(){
-    document.documentElement.classList.add("ah-lock");
-    window.addEventListener("wheel", stop, { passive:false });
-    window.addEventListener("touchmove", stop, { passive:false });
-    window.addEventListener("keydown", stopKey, { passive:false });
-  }
-  function unlock(){
-    document.documentElement.classList.remove("ah-lock");
-    window.removeEventListener("wheel", stop, { passive:false });
-    window.removeEventListener("touchmove", stop, { passive:false });
-    window.removeEventListener("keydown", stopKey, { passive:false });
-  }
-
+  /* ----- play once, no scroll lock: user can scroll away any time ----- */
   function finish(){
     played = true; playing = false;
     render(1);
-    unlock();
   }
 
   function play(){
     if(played || playing) return;
     playing = true;
-    /* snap exactly onto the section so it is truly full screen */
-    var y = hero.getBoundingClientRect().top + window.pageYOffset;
-    window.scrollTo({ top:y, left:0, behavior:"instant" });
-    lock();
     var start = 0;
     function frame(now){
       if(!playing) return;
@@ -155,15 +133,14 @@
       if(p < 1) requestAnimationFrame(frame); else finish();
     }
     requestAnimationFrame(frame);
-    /* safety net: never leave the page locked */
-    setTimeout(function(){ if(playing) finish(); }, DURATION + 1500);
   }
 
   function check(){
     if(played || playing) return;
     var r = hero.getBoundingClientRect(), vh = window.innerHeight || 800;
-    if(r.bottom <= 0){ finish(); return; }                 /* user jumped past it: show end state */
-    if(r.top <= vh * 0.15 && r.bottom >= vh * 0.6) play(); /* section is (almost) full screen */
+    if(r.bottom <= 0){ finish(); return; }               /* jumped past it: show end state */
+    var vis = Math.min(r.bottom, vh) - Math.max(r.top, 0); /* visible height */
+    if(vis >= Math.min(r.height, vh) * 0.9) play();        /* section is ~full screen */
   }
 
   var raf = 0;
