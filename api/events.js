@@ -269,6 +269,10 @@ function cleanEvent(body, existing) {
 
 export default async function handler(req, res) {
   if (req.method === 'GET') {
+    // Events change rarely; the public site fetches this on every page load.
+    // 60s server cache + stale-while-revalidate keeps it fast without
+    // ever showing a stale event for long.
+    res.setHeader('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300');
     try {
       const events = await loadEvents();
       return res.status(200).json({ events });

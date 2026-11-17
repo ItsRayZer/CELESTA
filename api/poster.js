@@ -30,7 +30,10 @@ export default async function handler(req, res) {
       if (!b64) return res.status(404).json({ error: 'No custom poster' });
       const buf = Buffer.from(b64, 'base64');
       res.setHeader('Content-Type', 'image/webp');
-      res.setHeader('Cache-Control', 'no-store');
+      // Posters change rarely; browsers + CDN may cache 5 minutes. The admin
+      // appends a cache-buster (?v=) after an upload/reset, so it always
+      // sees the fresh poster right away.
+      res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=300');
       return res.status(200).send(buf);
     } catch (e) {
       return res.status(500).json({ error: 'Storage unavailable' });

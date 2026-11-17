@@ -3,7 +3,8 @@
 // POST /api/activity-log — undo a change entry (full-access only). Body: { id }
 //   Undo is two clicks in the UI (Undo -> Confirm). The original entry is never
 //   edited or deleted: the undo is itself a new entry that points at it.
-// Entries are capped at 100 (oldest trimmed). Logging never throws and never
+// Entries are capped at 500 (oldest trimmed) — keeps the whole fest's
+// history at ~250KB. Logging never throws and never
 // breaks the action it records.
 // What is captured: time, role, what changed, device type + browser (from the
 // user-agent), IP address, and city/country (from Vercel's IP headers).
@@ -23,7 +24,7 @@ const redis = new Redis({
 });
 
 const KEY = 'celesta:activity';
-const MAX_ENTRIES = 100;
+const MAX_ENTRIES = 500;
 
 // Device type + browser, parsed from the user-agent. Best effort only.
 function parseDevice(ua) {

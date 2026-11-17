@@ -15,12 +15,33 @@ export default async function handler(req, res) {
   if (!role) return res.status(401).json({ error: 'Unauthorized' });
 
   if (req.method === 'GET') {
+    // Paginated: ?limit= (default 50, max 200) &offset= (default 0), newest first.
+    // Totals are computed server-side so the admin stats stay right on any page.
+    const limit = Math.min(Math.max(parseInt(req.query.limit || '50', 10) || 50, 1), 200);
+    const offset = Math.max(parseInt(req.query.offset || '0', 10) || 0, 0);
     try {
-      const ids = await redis.zrange('celesta:reglist', 0, -1, { rev: true });
-      if (!ids.length) return res.status(200).json({ regs: [] });
-      const vals = await redis.hmget('celesta:regs', ...ids);
-      const regs = Object.values(vals || {}).map(v => parseVal(v)).filter(Boolean);
-      return res.status(200).json({ regs, role });
+      const total = await redis.zcard('celesta:reglist');
+      const ids = await redis.zrange('celesta:reglist', offset, offset + limit - 1, { rev: true });
+      let regs = [];
+      if (ids.length) {
+        const vals = await redis.hmget('celesta:regs', ...ids);
+        regs = Object.values(vals || {}).map(v => parseVal(v)).filter(Boolean);
+      }
+      let paidCount = 0, paidAmount = 0, unchecked = 0;
+      const byEvent = {};
+      try {
+        const all = await redis.hgetall('celesta:regs');
+        if (all) for (const v of Object.values(all)) {
+          const r = parseVal(v);
+          if (!r) continue;
+          if (!r.ai) unchecked++;
+          const k = r.eventSlug || r.event;
+          const b = byEvent[k] || (byEvent[k] = { n: 0, paid: 0, amount: 0 });
+          b.n++;
+          if (r.paid) { paidCount++; paidAmount += Number(r.amount || 0); b.paid++; b.amount += Number(r.amount || 0); }
+        }
+      } catch { /* totals stay 0 on a read failure */ }
+      return res.status(200).json({ regs, role, total, paidCount, paidAmount, byEvent, unchecked });
     } catch (e) {
       return res.status(500).json({ error: 'Storage unavailable' });
     }
