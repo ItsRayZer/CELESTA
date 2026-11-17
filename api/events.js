@@ -15,7 +15,7 @@ export const DEFAULT_EVENTS = [
     "slug": "quiz",
     "name": "Quiz",
     "tagline": "Battle of wits across tech, science and general knowledge.",
-    "about": "A fast, team-based quiz covering technology, science, current affairs and general knowledge. Think quickly, trust your team, and outscore every other college.",
+    "about": "A fast, team-based quiz covering technology, science, current affairs and general knowledge. Think quickly, trust your team, and outscore every other school.",
     "prize1": 2000,
     "prize2": 1000,
     "teamMin": 2,
@@ -36,7 +36,7 @@ export const DEFAULT_EVENTS = [
       "Misconduct or cheating leads to disqualification."
     ],
     "reqs": [
-      "Valid college ID card for every participant.",
+      "Valid school ID card for every participant.",
       "Report at the registration desk by 9:30 AM.",
       "Open to school students only. One team per student, per event.",
       "Pen and a rough sheet (if you prefer your own)."
@@ -71,7 +71,7 @@ export const DEFAULT_EVENTS = [
       "Misconduct or cheating leads to disqualification."
     ],
     "reqs": [
-      "Valid college ID card for every participant.",
+      "Valid school ID card for every participant.",
       "Report at the registration desk by 9:30 AM.",
       "Open to school students only. One team per student, per event.",
       "One smartphone per team (some clues need it).",
@@ -105,7 +105,7 @@ export const DEFAULT_EVENTS = [
       "Misconduct or cheating leads to disqualification."
     ],
     "reqs": [
-      "Valid college ID card for every participant.",
+      "Valid school ID card for every participant.",
       "Report at the registration desk by 9:30 AM.",
       "Open to school students only. One team per student, per event.",
       "A laptop or smartphone with internet (if you want to use your own device).",
@@ -140,7 +140,7 @@ export const DEFAULT_EVENTS = [
       "Misconduct or cheating leads to disqualification."
     ],
     "reqs": [
-      "Valid college ID card for every participant.",
+      "Valid school ID card for every participant.",
       "Report at the registration desk by 9:30 AM.",
       "Open to school students only. One team per student, per event.",
       "Your slides (PPT / PDF) on a pen drive, plus a backup copy by email.",
@@ -176,7 +176,7 @@ export const DEFAULT_EVENTS = [
       "Misconduct or cheating leads to disqualification."
     ],
     "reqs": [
-      "Valid college ID card for every participant.",
+      "Valid school ID card for every participant.",
       "Report at the registration desk by 9:30 AM.",
       "Open to school students only. One team per student, per event.",
       "A smartphone or camera and a charger / power bank.",
@@ -199,7 +199,41 @@ export async function loadEvents() {
   }
   const list = vals.map(v => parseVal(v)).filter(Boolean);
   list.sort((a, b) => (a.order || 99) - (b.order || 99) || String(a.name).localeCompare(String(b.name)));
+  // One-time correction of stale wording from when the fest was inter-college:
+  // fix the stored copy in place so the site shows the right text. After the
+  // first run nothing is stale anymore, so this never writes again.
+  let dirty = false;
+  for (const e of list) if (normalizeEvent(e)) dirty = true;
+  if (dirty) {
+    const obj = {};
+    list.forEach(e => { obj[e.slug] = JSON.stringify(e); });
+    await redis.hset('celesta:events', obj);
+  }
   return list;
+}
+
+// Rewrites wording left over from the inter-college version. Returns true if
+// anything changed. The venue name ("Mar Augusthinose College") is correct
+// and is never touched.
+const STALE_FIXES = [
+  ['Valid college ID card', 'Valid school ID card'],
+  ['outscore every other college', 'outscore every other school'],
+];
+function normalizeEvent(e) {
+  let changed = false;
+  const fixText = (s) => {
+    let v = s;
+    for (const [a, b] of STALE_FIXES) v = v.split(a).join(b);
+    if (v !== s) changed = true;
+    return v;
+  };
+  for (const k of ['about', 'tagline']) {
+    if (typeof e[k] === 'string') e[k] = fixText(e[k]);
+  }
+  for (const k of ['how', 'rules', 'reqs']) {
+    if (Array.isArray(e[k])) e[k] = e[k].map(fixText);
+  }
+  return changed;
 }
 
 function slugify(name) {
