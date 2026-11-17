@@ -6,7 +6,7 @@ const redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL,
   token: process.env.UPSTASH_REDIS_REST_TOKEN,
 });
-import { verify } from './admin-login.js';
+import { verify, parseVal } from './admin-login.js';
 
 export default async function handler(req, res) {
   const token = (req.headers.authorization || '').replace('Bearer ', '');
@@ -18,7 +18,7 @@ export default async function handler(req, res) {
       const ids = await redis.zrange('celesta:reglist', 0, -1, { rev: true });
       if (!ids.length) return res.status(200).json({ regs: [] });
       const vals = await redis.hmget('celesta:regs', ...ids);
-      const regs = Object.values(vals || {}).map(v => { try { return JSON.parse(v); } catch { return null; } }).filter(Boolean);
+      const regs = Object.values(vals || {}).map(v => parseVal(v)).filter(Boolean);
       return res.status(200).json({ regs, role });
     } catch (e) {
       return res.status(500).json({ error: 'Storage unavailable' });
@@ -31,8 +31,8 @@ export default async function handler(req, res) {
     if (!id) return res.status(400).json({ error: 'Missing id' });
     try {
       const raw = await redis.hget('celesta:regs', id);
-      if (!raw) return res.status(404).json({ error: 'Not found' });
-      const rec = JSON.parse(raw);
+      const rec = parseVal(raw);
+      if (!rec) return res.status(404).json({ error: 'Not found' });
       if (typeof paid === 'boolean') rec.paid = paid;
       if (typeof amount === 'number') rec.amount = amount;
       // full edit: name, school, phone, email, team size, team name, members

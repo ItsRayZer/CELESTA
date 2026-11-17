@@ -3,7 +3,7 @@
 // PATCH  /api/events — update an event by slug (write role only). The slug never changes, so links keep working after a rename.
 // DELETE /api/events?slug=... — delete (write role only). Blocked when registrations exist; hide the event instead.
 import { Redis } from '@upstash/redis';
-import { verify } from './admin-login.js';
+import { verify, parseVal } from './admin-login.js';
 
 const redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL,
@@ -197,7 +197,7 @@ export async function loadEvents() {
     await redis.hset('celesta:events', obj);
     vals = Object.values(obj);
   }
-  const list = vals.map(v => { try { return JSON.parse(v); } catch { return null; } }).filter(Boolean);
+  const list = vals.map(v => parseVal(v)).filter(Boolean);
   list.sort((a, b) => (a.order || 99) - (b.order || 99) || String(a.name).localeCompare(String(b.name)));
   return list;
 }
@@ -276,13 +276,11 @@ export default async function handler(req, res) {
             const vals = await redis.hmget('celesta:regs', ...regIds);
             const updates = {};
             vals.forEach((v, i) => {
-              try {
-                const r = JSON.parse(v);
-                if (r.event === old.name && (r.eventSlug === slug || !r.eventSlug)) {
-                  r.event = e.name;
-                  updates[regIds[i]] = JSON.stringify(r);
-                }
-              } catch { /* skip bad record */ }
+              const r = parseVal(v);
+              if (r && r.event === old.name && (r.eventSlug === slug || !r.eventSlug)) {
+                r.event = e.name;
+                updates[regIds[i]] = JSON.stringify(r);
+              }
             });
             if (Object.keys(updates).length) await redis.hset('celesta:regs', updates);
           }
@@ -304,7 +302,8 @@ export default async function handler(req, res) {
       // Blocked when registrations exist — hide the event instead of deleting it.
       const regVals = await redis.hvals('celesta:regs');
       const n = (regVals || []).filter(v => {
-        try { const r = JSON.parse(v); return r.eventSlug === slug || r.event === ev.name; } catch { return false; }
+        const r = parseVal(v);
+        return r && (r.eventSlug === slug || r.event === ev.name);
       }).length;
       if (n > 0) return res.status(409).json({ error: 'This event has ' + n + ' registration(s). Hide it instead of deleting.' });
       await redis.hdel('celesta:events', slug);

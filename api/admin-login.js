@@ -22,6 +22,15 @@ export function verify(token) {
   return role;
 }
 
+// Parse a value read from Redis. The Upstash client auto-parses JSON strings
+// into objects, so a stored record may come back as an object already —
+// calling JSON.parse on an object throws, which emptied every list.
+export function parseVal(v) {
+  if (v == null) return null;
+  if (typeof v === 'object') return v;
+  try { return JSON.parse(v); } catch { return null; }
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   

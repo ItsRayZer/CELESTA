@@ -2,7 +2,7 @@
 // POST   /api/coordinators — add or update a coordinator (write role only). Body: { id?, name, team, event?, cls?, phone? }
 // DELETE /api/coordinators?id=... — remove a coordinator (write role only).
 import { Redis } from '@upstash/redis';
-import { verify } from './admin-login.js';
+import { verify, parseVal } from './admin-login.js';
 
 const redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL,
@@ -53,7 +53,7 @@ export default async function handler(req, res) {
     try {
       await ensureSeeded();
       const vals = await redis.hvals('celesta:coordinators');
-      const list = (vals || []).map(v => { try { return JSON.parse(v); } catch { return null; } }).filter(Boolean);
+      const list = (vals || []).map(v => parseVal(v)).filter(Boolean);
       return res.status(200).json({ coordinators: list });
     } catch (e) {
       return res.status(200).json({ coordinators: DEFAULTS });
