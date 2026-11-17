@@ -17,7 +17,10 @@ const redis = new Redis({
   token: process.env.UPSTASH_REDIS_REST_TOKEN,
 });
 
-const RL_LIMIT = 5;      // max registrations per IP
+// 20 per 10 min per IP: still stops a flood from one device, but a whole
+// venue on shared Wi-Fi (one public IP) can register normally. Duplicates
+// are already blocked per phone+event, and junk is flagged for review.
+const RL_LIMIT = 20;
 const RL_WINDOW = 600;   // per 10 minutes
 
 function clientIp(req) {
