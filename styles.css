@@ -260,8 +260,8 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--gold)}
   -webkit-mask-image:linear-gradient(180deg,transparent,#000 38%);mask-image:linear-gradient(180deg,transparent,#000 38%)}
 .hx.landfb .hx-landfb{display:block}.hx.landfb .hx-land{display:none}
 .hx-fw{position:absolute;inset:0;z-index:3;pointer-events:none;will-change:transform}
-.hx-fx{position:absolute;left:50%;bottom:-3svh;height:63svh;width:calc(63svh*.75);margin-left:calc(63svh*-.375);animation:hxUp .7s .3s cubic-bezier(.2,.7,.2,1) both}
-.hx-fb{display:none;position:absolute;left:50%;bottom:-3svh;height:78svh;max-width:none;transform:translateX(-50%);opacity:0;transition:opacity 1.4s ease}
+.hx-fx{position:absolute;left:50%;bottom:19svh;height:min(66svh,100vw);width:min(66svh,100vw);margin-left:calc(min(66svh,100vw)*-.5);animation:hxUp .7s .3s cubic-bezier(.2,.7,.2,1) both}
+.hx-fb{display:none;position:absolute;left:50%;bottom:19svh;width:min(66svh,100vw);height:auto;max-width:none;transform:translateX(-50%);opacity:0;transition:opacity 1.4s ease}
 .hx.nogl .hx-fx{display:none}.hx.nogl .hx-fb{display:block}
 .hx:not(.b) .hx-fb.a,.hx.b .hx-fb.k{opacity:1}
 .hx-shade{position:absolute;left:0;right:0;bottom:0;height:46svh;z-index:4;pointer-events:none;background:linear-gradient(180deg,transparent,rgba(1,2,7,.3) 45%,rgba(1,2,7,.68))}
@@ -1165,3 +1165,16 @@ body.dark-page .gz-tag--light{background:#111;color:#fff}
 .dark-page .f-nexus img{filter:invert(1)}
 .dark-page .f-line{color:#8a6d2f}
 
+
+/* Hero character: on wide/landscape screens keep him below the headline */
+@media (min-aspect-ratio:1/1){.hx-fx{bottom:15svh;height:48svh;width:48svh;margin-left:-24svh}.hx-fb{bottom:15svh;width:48svh}}
+
+/* Team sections (contact page) */
+.tm-h{font-family:'Clash Display','Satoshi',sans-serif;font-weight:800;font-size:clamp(24px,6.5vw,34px);letter-spacing:-.02em;text-transform:uppercase;color:#141412;margin:38px 0 4px}
+.tm-sub{color:#555;font-size:14px;margin-bottom:6px}
+.tm-grid{display:grid;grid-template-columns:1fr;gap:16px;margin:16px 0 8px}
+@media(min-width:560px){.tm-grid{grid-template-columns:1fr 1fr}}
+.tm-grid .gz-info-card:nth-child(n){transform:none}
+.tm-grid .gz-info-card b{margin-top:8px;font-size:16px}
+.tm-grid .gz-info-card b:first-of-type{margin-top:0}
+.tm-grid .gz-info-card small{margin-top:1px}

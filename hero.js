@@ -1,4 +1,4 @@
-/* Celesta 2K26 — hero: stars + astronaut ⇄ astral guardian WebGL morph.
+/* Celesta 2K26 — hero: stars + coder ⇄ NEXUS guardian WebGL morph.
    Scene flips every 6s on its own and again as you scroll through the hero. */
 (function () {
   "use strict";
@@ -77,7 +77,7 @@
       "float n(vec2 q){vec2 i=floor(q),f=fract(q);f=f*f*(3.-2.*f);return mix(mix(h(i),h(i+vec2(1.,0.)),f.x),mix(h(i+vec2(0.,1.)),h(i+vec2(1.,1.)),f.x),f.y);}",
       "float fb(vec2 q){return n(q)*.5+n(q*2.1)*.3+n(q*4.3)*.2;}",
       "vec4 smp(sampler2D s,vec2 uv,float ar,float hs,float ox){",
-      "  vec2 q=vec2((uv.x-.5-ox)*.75/(ar*hs)+.5,uv.y/hs);",
+      "  vec2 q=vec2((uv.x-.5-ox)*1./(ar*hs)+.5,uv.y/hs);",
       "  if(q.x<0.||q.x>1.||q.y<0.||q.y>1.)return vec4(0.);",
       "  vec4 c=texture2D(s,q);return vec4(c.rgb*c.a,c.a);}",
       "void main(){",
@@ -91,9 +91,9 @@
       "  float km=1.-smoothstep(-.03,.03,d);",
       "  float e=exp(-abs(d)*22.)*sin(3.14159*ps);",
       "  vec2 uk=uv;uk.x+=sin(uk.y*9.-t*2.)*.008*(1.-uk.y);",
-      "  vec4 c=smp(A,uv,.538,.9,.02)*(1.-km)+smp(K,uk,.727,.86,0.)*km;",
+      "  vec4 c=smp(A,uv,.972,.96,0.)*(1.-km)+smp(K,uk,.987,.95,0.)*km;",
       "  float cr=e*.014;",
-      "  c.r+=(smp(A,uv+vec2(cr,0.),.538,.9,.02).r*(1.-km)+smp(K,uk+vec2(cr,0.),.727,.86,0.).r*km-c.r)*.7;",
+      "  c.r+=(smp(A,uv+vec2(cr,0.),.972,.96,0.).r*(1.-km)+smp(K,uk+vec2(cr,0.),.987,.95,0.).r*km-c.r)*.7;",
       "  vec3 gc=mix(vec3(.45,.8,1.),vec3(1.,.72,.3),ps);",
       "  float sp=step(.975,h(floor(v*vec2(70.,90.))+floor(t*7.)))*e*4.;",
       "  c.rgb+=(gc*e*1.5+(vec3(1.)+gc)*sp)*clamp(c.a*1.6,0.,1.);",
@@ -108,7 +108,7 @@
       gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
       var lc = gl.getAttribLocation(pr, "p"); gl.enableVertexAttribArray(lc); gl.vertexAttribPointer(lc, 2, gl.FLOAT, false, 0, 0);
       gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-      ["assets/hero-astronaut.webp", "assets/hero-guardian.webp"].forEach(function (src, i) {
+      ["assets/hero-coder.webp", "assets/hero-wizard.webp"].forEach(function (src, i) {
         var im = new Image();
         im.onload = function () {
           if (!gl) return;
