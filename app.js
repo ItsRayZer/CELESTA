@@ -4,6 +4,15 @@
    mirror is honest about local-only storage. */
 (function () {
   "use strict";
+
+  /* ---------- Visits: count one per browser session ---------- */
+  try{
+    if(!sessionStorage.getItem('celesta_visit')){
+      sessionStorage.setItem('celesta_visit','1');
+      fetch('/api/visits',{method:'POST',keepalive:true}).catch(function(){});
+    }
+  }catch(e){}
+
   var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   /* ---------- Loader: fast, fades out into hero ---------- */
