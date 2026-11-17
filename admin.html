@@ -4,26 +4,27 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Admin — CELESTA 2K26</title>
-<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f4f3f0">
-<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#000000">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f2f2f5">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#040405">
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" href="/assets/logo.webp">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-:root{--gold:#d4a853;--gold-dim:rgba(212,168,83,.14);--goldbtn:#d4a853;--bg:#000;--glass:rgba(255,255,255,.045);--glass-hi:rgba(255,255,255,.08);--stroke:rgba(255,255,255,.09);--txt:#f5f5f7;--mut:#86868b;--red:#ff453a;--green:#30d158;--inputbg:rgba(255,255,255,.05);--inputph:#48484e;--theadbg:rgba(8,8,10,.9);--toastbg:rgba(30,30,34,.92);--tipbg:rgba(28,28,32,.97);--shadow:0 12px 48px rgba(0,0,0,.5);--optbg:#0a0a0a;--imgbg:#111;--rowline:rgba(255,255,255,.05);--hover:rgba(255,255,255,.03);color-scheme:dark}
+:root{--gold:#4cd27a;--gold-dim:rgba(76,210,122,.14);--goldbtn:#4cd27a;--bg:#040405;--glass:rgba(255,255,255,.045);--glass-hi:rgba(255,255,255,.08);--stroke:rgba(255,255,255,.09);--txt:#f4f4f6;--mut:#8b8b93;--red:#ff453a;--green:#4cd27a;--inputbg:rgba(255,255,255,.05);--inputph:#48484e;--theadbg:rgba(8,8,10,.9);--toastbg:rgba(30,30,34,.92);--tipbg:rgba(28,28,32,.97);--shadow:0 12px 48px rgba(0,0,0,.5);--optbg:#0a0a0a;--imgbg:#111;--rowline:rgba(255,255,255,.05);--hover:rgba(255,255,255,.03);color-scheme:dark}
 /* light mode follows the browser: white for light-browser users, black for dark */
 @media (prefers-color-scheme:light){
-:root{--gold:#8a6d1b;--gold-dim:rgba(138,109,27,.12);--bg:#f4f3f0;--glass:rgba(255,255,255,.78);--glass-hi:#ffffff;--stroke:rgba(0,0,0,.1);--txt:#17171a;--mut:#6b6b70;--red:#d92d20;--green:#0f7a4d;--inputbg:rgba(0,0,0,.04);--inputph:#9a9aa0;--theadbg:rgba(255,255,255,.94);--toastbg:rgba(255,255,255,.96);--tipbg:rgba(255,255,255,.97);--shadow:0 12px 32px rgba(0,0,0,.12);--optbg:#ffffff;--imgbg:#e8e6e2;--rowline:rgba(0,0,0,.07);--hover:rgba(0,0,0,.03);color-scheme:light}
-.bg i:nth-child(1){background:#e8e0cf;opacity:.5}
-.bg i:nth-child(2){background:#e0dcd2;opacity:.5}
-.bg i:nth-child(3){background:#d4a853;opacity:.1}
+:root{--gold:#15803d;--gold-dim:rgba(21,128,61,.1);--bg:#f2f2f5;--glass:rgba(255,255,255,.78);--glass-hi:#ffffff;--stroke:rgba(0,0,0,.1);--txt:#17171c;--mut:#45454e;--red:#d92d20;--green:#15803d;--inputbg:rgba(0,0,0,.04);--inputph:#9a9aa0;--theadbg:rgba(255,255,255,.94);--toastbg:rgba(255,255,255,.96);--tipbg:rgba(255,255,255,.97);--shadow:0 12px 32px rgba(0,0,0,.12);--optbg:#ffffff;--imgbg:#e8e6e2;--rowline:rgba(0,0,0,.07);--hover:rgba(0,0,0,.03);color-scheme:light}
+.bg i:nth-child(1){background:rgba(88,101,242,.1);opacity:.6}
+.bg i:nth-child(2){background:rgba(190,80,160,.07);opacity:.6}
+.bg i:nth-child(3){background:rgba(76,210,122,.12);opacity:.6}
 }
-body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','SF Pro Text','Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;min-height:100dvh;-webkit-font-smoothing:antialiased}
+body{font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;min-height:100dvh;-webkit-font-smoothing:antialiased;overflow-x:hidden}
 .bg{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:0}
 .bg i{position:absolute;border-radius:50%;filter:blur(120px);opacity:.16;animation:drift 18s ease-in-out infinite}
-.bg i:nth-child(1){width:420px;height:420px;background:#2c2c3a;top:-120px;left:-120px}
-.bg i:nth-child(2){width:320px;height:320px;background:#1a1a24;bottom:5%;right:-80px;animation-delay:-6s}
-.bg i:nth-child(3){width:200px;height:200px;background:#d4a853;top:45%;left:70%;animation-delay:-12s;opacity:.06}
+.bg i:nth-child(1){width:420px;height:420px;background:rgba(255,180,120,.14);top:-120px;left:-120px}
+.bg i:nth-child(2){width:320px;height:320px;background:rgba(88,101,242,.14);bottom:5%;right:-80px;animation-delay:-6s}
+.bg i:nth-child(3){width:200px;height:200px;background:rgba(76,210,122,.12);top:45%;left:70%;animation-delay:-12s}
 @keyframes drift{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(24px,-24px) scale(1.06)}}
 .wrap{position:relative;z-index:1;max-width:1060px;margin:0 auto;padding:20px 16px 90px}
 .glass{background:linear-gradient(135deg,var(--glass-hi),var(--glass));backdrop-filter:blur(28px) saturate(1.6);-webkit-backdrop-filter:blur(28px) saturate(1.6);border:1px solid var(--stroke);border-radius:20px;box-shadow:var(--shadow),inset 0 1px 0 rgba(255,255,255,.06)}
@@ -46,25 +47,36 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','SF Pro Text'
 .topbar .ttl small{display:block;font-size:10px;font-weight:600;letter-spacing:.22em;color:var(--gold);margin-top:2px}
 .rolepill{font-size:10.5px;font-weight:700;letter-spacing:.12em;padding:8px 16px;border-radius:99px;background:var(--inputbg);border:1px solid var(--stroke);color:var(--mut);white-space:nowrap}
 .rolepill.write{background:var(--gold-dim);border-color:rgba(212,168,83,.35);color:var(--gold)}
-#livePill{background:rgba(48,209,88,.1)!important;border-color:rgba(48,209,88,.3)!important;color:var(--green)!important}
 .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);margin-right:6px;vertical-align:1px}
 .iconbtn{background:var(--glass);border:1px solid var(--stroke);color:var(--txt);border-radius:12px;padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer;backdrop-filter:blur(16px)}
 .iconbtn:active{opacity:.7}
-/* top-side menu (•••) */
-.menuwrap{position:relative}
-#menuBtn{letter-spacing:.14em;padding:10px 15px}
-.menupop{position:absolute;right:0;top:calc(100% + 8px);min-width:220px;background:var(--tipbg);border:1px solid var(--stroke);border-radius:14px;padding:6px;box-shadow:var(--shadow);z-index:120;display:none}
-.menupop.show{display:block}
-.menupop button{display:block;width:100%;text-align:left;background:none;border:none;color:var(--txt);font-size:14px;font-weight:600;padding:11px 12px;border-radius:9px;cursor:pointer;font-family:inherit}
-.menupop button:active{background:var(--inputbg)}
-.menupop button.danger{color:var(--red)}
-.sync{font-size:12px;color:var(--mut);margin:0 0 14px}
-.sync button{background:none;border:none;color:var(--gold);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;padding:0}
+/* Axofy-style bottom menu: minimal line button, panel opens upward */
+/* Axofy-style bottom dock + left drawer */
+.dock{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(12px + env(safe-area-inset-bottom));z-index:90;display:flex;justify-content:space-between;gap:2px;padding:6px;border-radius:30px;width:min(400px,calc(100% - 24px));background:var(--tipbg);-webkit-backdrop-filter:blur(20px) saturate(1.6);backdrop-filter:blur(20px) saturate(1.6);border:1px solid var(--stroke);box-shadow:0 8px 20px rgba(0,0,0,.22)}
+.dock button{flex:1;min-width:0;border:0;background:none;color:var(--mut);display:grid;justify-items:center;gap:3px;padding:8px 0 7px;border-radius:24px;font:600 10px 'Plus Jakarta Sans',sans-serif;cursor:pointer;transition:.25s;white-space:nowrap}
+.dock button svg{width:20px;height:20px}
+.dock button.on{background:rgba(255,255,255,.13);color:var(--txt);box-shadow:inset 0 1px 0 rgba(255,255,255,.16)}
+.dock button:active{transform:scale(.96)}
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:110;opacity:0;pointer-events:none;transition:opacity .3s}
+.scrim.on{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;bottom:0;left:0;width:min(300px,84vw);z-index:120;transform:translateX(-105%);transition:transform .4s cubic-bezier(.2,.8,.2,1);padding:calc(20px + env(safe-area-inset-top)) 12px 18px;display:flex;flex-direction:column;gap:2px;border-radius:0 28px 28px 0;background:linear-gradient(180deg,rgba(24,24,28,.94),rgba(12,12,15,.96));-webkit-backdrop-filter:blur(20px) saturate(1.6);backdrop-filter:blur(20px) saturate(1.6);border-right:1px solid var(--stroke)}
+.drawer.open{transform:none}
+.dr-brand{font-size:26px;font-weight:800;letter-spacing:-.02em;padding:10px 12px 20px;color:var(--txt);line-height:1}
+.dr-brand small{display:block;font-size:10px;font-weight:700;letter-spacing:.22em;color:var(--mut);margin-top:5px}
+.dr-link{display:flex;align-items:center;gap:14px;padding:13px 12px;border-radius:14px;color:var(--txt);font-size:15px;font-weight:600;cursor:pointer;border:1px solid transparent;text-decoration:none}
+.dr-link svg{width:22px;height:22px;flex:none;color:var(--mut)}
+.dr-link:active{background:var(--inputbg)}
+.dr-link.on{background:linear-gradient(90deg,rgba(255,209,102,.3),rgba(255,209,102,.08));border-color:rgba(255,209,102,.5);color:#ffd166}
+.dr-link.on svg{color:#ffd166}
+.dr-link.danger{color:var(--red);margin-top:auto}
+.dr-link.danger svg{color:var(--red)}
+@media (prefers-color-scheme:light){
+.dock button.on{background:rgba(0,0,0,.07);box-shadow:inset 0 1px 0 rgba(0,0,0,.06)}
+.drawer{background:linear-gradient(180deg,rgba(255,255,255,.95),rgba(244,244,246,.97))}
+.dr-link.on{color:#8a5f00}
+.dr-link.on svg{color:#8a5f00}
+}
 /* menu */
-.tabs{display:flex;gap:8px;margin-bottom:18px;overflow-x:auto;scrollbar-width:none;flex-wrap:wrap}
-.tabs::-webkit-scrollbar{display:none}
-.tab{flex:1;min-width:110px;text-align:center;padding:13px 10px;border-radius:14px;border:1px solid var(--stroke);background:var(--glass);color:var(--mut);font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap}
-.tab.sel{background:var(--gold-dim);border-color:rgba(212,168,83,.4);color:var(--gold)}
 .secttl{display:flex;align-items:center;gap:8px;font-size:17px;font-weight:700;margin:4px 0 4px}
 .secsub{font-size:13px;color:var(--mut);margin-bottom:14px}
 /* ? tooltip */
@@ -117,7 +129,7 @@ tbody tr.flash{animation:flash 2.4s ease}
 .abtn.go{background:var(--goldbtn);color:#000;border-color:var(--goldbtn);font-weight:700}
 .empty{text-align:center;padding:56px 20px;color:var(--mut);font-size:14px}
 .hidden{display:none!important}
-.toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(90px);background:var(--toastbg);backdrop-filter:blur(20px);border:1px solid var(--stroke);color:var(--txt);font-weight:600;font-size:14px;padding:14px 28px;border-radius:99px;transition:transform .35s cubic-bezier(.2,.9,.3,1.2);z-index:99;box-shadow:var(--shadow)}
+.toast{position:fixed;bottom:96px;z-index:200;left:50%;transform:translateX(-50%) translateY(160px);background:var(--toastbg);backdrop-filter:blur(20px);border:1px solid var(--stroke);color:var(--txt);font-weight:600;font-size:14px;padding:14px 28px;border-radius:99px;transition:transform .35s cubic-bezier(.2,.9,.3,1.2);z-index:99;box-shadow:var(--shadow)}
 .toast.show{transform:translateX(-50%) translateY(0)}
 /* posters */
 .pgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
@@ -185,30 +197,9 @@ tbody tr.flash{animation:flash 2.4s ease}
 <div class="wrap">
   <div class="topbar">
     <div class="ttl">CELESTA Admin<small id="roleSub">DASHBOARD</small></div>
-    <div style="display:flex;gap:8px;align-items:center">
-      <span class="rolepill" id="livePill"><i class="dot"></i>LIVE</span>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <span class="rolepill" id="rolePill">READ</span>
-      <div class="menuwrap">
-        <button class="iconbtn" id="menuBtn" aria-label="Menu">•••</button>
-        <div class="menupop" id="menuPop">
-          <button id="menuSite">View live site</button>
-          <button id="csvBtn">Export CSV</button>
-          <button id="refreshBtn2">Refresh now</button>
-          <button id="notifBtn">Enable notifications</button>
-          <button id="installBtn2" class="hidden">Install as app</button>
-          <button id="logoutBtn" class="danger">Logout</button>
-        </div>
-      </div>
     </div>
-  </div>
-  <div class="sync"><span id="syncTxt">Syncing…</span> · auto-refresh every 5s</div>
-
-  <div class="tabs">
-    <button class="tab sel" data-tab="overview">Overview</button>
-    <button class="tab" data-tab="reg">Registrations</button>
-    <button class="tab" data-tab="events">Events</button>
-    <button class="tab" data-tab="posters">Posters</button>
-    <button class="tab" data-tab="coords">Coordinators</button>
   </div>
 
   <!-- OVERVIEW -->
@@ -310,6 +301,25 @@ tbody tr.flash{animation:flash 2.4s ease}
     </div>
   </section>
 </div>
+
+<nav class="dock" id="dock">
+  <button data-tab="overview" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/></svg>Overview</button>
+  <button data-tab="reg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg>Regs</button>
+  <button data-tab="events"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Events</button>
+  <button data-tab="posters"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="2"/><path d="M4 18l5-5 3 3 4-4 4 4"/></svg>Posters</button>
+  <button id="dockMenu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 8h14M5 16h14"/></svg>Menu</button>
+</nav>
+<div class="scrim" id="scrim"></div>
+<nav class="drawer" id="drawer">
+  <div class="dr-brand">CELESTA<small>ADMIN · 2K26</small></div>
+  <a class="dr-link" data-tab="coords"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.2 3.4-5 6.5-5s5.7 1.8 6.5 5"/><circle cx="17" cy="9" r="2.5"/><path d="M16.5 15.5c2.4.4 4.2 1.9 4.8 4"/></svg>Coordinators</a>
+  <a class="dr-link" id="menuSite"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4L10 14M9 5H5a1 1 0 0 0-1 1v13a1 1 0 0 0 1 1h13a1 1 0 0 0 1-1v-4"/></svg>View live site</a>
+  <a class="dr-link" id="csvBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 11l5 5 5-5M4 20h16"/></svg>Export CSV</a>
+  <a class="dr-link" id="refreshBtn2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 3v5h-5"/></svg>Refresh now</a>
+  <a class="dr-link" id="notifBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 9a6 6 0 1 0-12 0c0 6-2 7-2 7h16s-2-1-2-7"/><path d="M10 20a2 2 0 0 0 4 0"/></svg>Notifications</a>
+  <a class="dr-link hidden" id="installBtn2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg>Install as app</a>
+  <a class="dr-link danger" id="logoutBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3M16 17l5-5-5-5M21 12H9"/></svg>Logout</a>
+</nav>
 </div>
 
 <button class="abtn hidden" id="installBtn">Install as App</button>
@@ -364,7 +374,7 @@ tbody tr.flash{animation:flash 2.4s ease}
 <script>
 const $=id=>document.getElementById(id);
 let TOKEN=localStorage.getItem('celesta_admin_tok')||'', ROLE=localStorage.getItem('celesta_admin_role')||'';
-let REGS=[], FILTER_EV='', SEEN=new Set(), COORDS=[], POSTER_CUSTOM={};
+let REGS=[], FILTER_EV='', SEEN=new Set(), COORDS=[], POSTER_CUSTOM={}, SEEN_READY=false;
 let EDIT_ID=null;
 
 let EVENTS=[], EVENTS_DB=[], EVSLUG={};
@@ -384,7 +394,7 @@ async function ensureEvents(force){
 }
 function evOf(x){return EVENTS_DB.find(e=>e.slug===x.eventSlug||e.name===x.event)||null;}
 
-function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1800);}
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2600);}
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function fmt(n){return '₹'+Number(n||0).toLocaleString('en-IN');}
 function isWrite(){return ROLE==='write';}
@@ -411,15 +421,22 @@ document.addEventListener('click',e=>{
   if(!e.target.closest('#tip')){tipEl.classList.remove('show');document.querySelectorAll('.ti').forEach(x=>x.classList.remove('on'));}
 });
 
-// ---------- tabs / menu ----------
-document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
-  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('sel'));
-  t.classList.add('sel');
-  ['overview','reg','events','posters','coords'].forEach(k=>$('sec-'+k).classList.toggle('hidden',k!==t.dataset.tab));
-  if(t.dataset.tab==='events')renderEventsAdmin();
-  if(t.dataset.tab==='posters')loadPosters();
-  if(t.dataset.tab==='coords')loadCoords();
-});
+// ---------- dock + drawer (Axofy-style) ----------
+function goTab(k){
+  document.querySelectorAll('#dock button[data-tab]').forEach(x=>x.classList.toggle('on',x.dataset.tab===k));
+  document.querySelectorAll('.dr-link[data-tab]').forEach(x=>x.classList.toggle('on',x.dataset.tab===k));
+  ['overview','reg','events','posters','coords'].forEach(s=>$('sec-'+s).classList.toggle('hidden',s!==k));
+  if(k==='events')renderEventsAdmin();
+  if(k==='posters')loadPosters();
+  if(k==='coords')loadCoords();
+  closeDrawer();window.scrollTo(0,0);
+}
+document.querySelectorAll('#dock button[data-tab]').forEach(b=>b.onclick=()=>goTab(b.dataset.tab));
+document.querySelectorAll('.dr-link[data-tab]').forEach(a=>a.onclick=()=>goTab(a.dataset.tab));
+function openDrawer(o){$('drawer').classList.toggle('open',o);$('scrim').classList.toggle('on',o);}
+function closeDrawer(){openDrawer(false);}
+$('dockMenu').onclick=()=>openDrawer(true);
+$('scrim').onclick=closeDrawer;
 
 // ---------- login ----------
 async function doLogin(){
@@ -451,6 +468,7 @@ async function showDash(){
   EVENTS_DB.forEach(e=>{const o=document.createElement('option');o.value=e.slug;o.textContent=e.name;sel.appendChild(o);});
   renderEventsAdmin();
   load();
+  setInterval(()=>{if(!$('dash').classList.contains('hidden')&&!document.hidden&&navigator.onLine)load();},30000);
 }
 
 async function load(){
@@ -458,8 +476,14 @@ async function load(){
     const r=await fetch('/api/registrations',{headers:{Authorization:'Bearer '+TOKEN}});
     if(r.status===401){localStorage.clear();location.reload();return;}
     const d=await r.json();
+    const fresh=(d.regs||[]).filter(x=>!SEEN.has(x.id));
     REGS=d.regs||[];render();
-    $('syncTxt').textContent='Last synced '+new Date().toLocaleTimeString('en-IN',{hour12:false});
+    if(fresh.length&&SEEN_READY){
+      const msg=fresh.length===1?('New registration: '+fresh[0].name+' — '+fresh[0].event):(fresh.length+' new registrations');
+      toast(msg);
+      if('Notification' in window&&Notification.permission==='granted'){try{new Notification('CELESTA — new registration',{body:msg});}catch(e){}}
+    }
+    SEEN_READY=true;
   }catch(e){toast('Failed to load');}
   try{
     const vr=await fetch('/api/visits');
@@ -470,11 +494,8 @@ async function load(){
 }
 $('refreshBtn2').onclick=load;
 
-// ---------- top-side menu (•••) ----------
-$('menuBtn').onclick=e=>{e.stopPropagation();$('menuPop').classList.toggle('show');};
-document.addEventListener('click',e=>{if(!e.target.closest('.menuwrap'))$('menuPop').classList.remove('show');});
-$('menuPop').addEventListener('click',e=>{if(e.target.tagName==='BUTTON')$('menuPop').classList.remove('show');});
-$('menuSite').onclick=()=>window.open('/','_blank');
+$('menuSite').onclick=()=>{closeDrawer();window.open('/','_blank');};
+document.querySelectorAll('.dr-link:not([data-tab])').forEach(a=>a.addEventListener('click',()=>closeDrawer()));
 
 function render(){
   const q=$('q').value.toLowerCase(), fe=$('fEv').value, fp=$('fPay').value;
@@ -855,14 +876,9 @@ $('installBtn').onclick=doInstall;$('installBtn2').onclick=doInstall;
 // auto-login
 if(TOKEN&&ROLE)showDash();
 
-// live sync: refresh every 5s when dashboard visible
-setInterval(()=>{
-  if(!$('dash').classList.contains('hidden') && !document.hidden){
-    load();
-    const lp=$('livePill');
-    lp.style.opacity='.5';setTimeout(()=>lp.style.opacity='1',400);
-  }
-},5000);
+// connection + new-registration notifications (30s check, no live sync)
+window.addEventListener('offline',()=>toast("You're offline"));
+window.addEventListener('online',()=>{toast('Back online');if(!$('dash').classList.contains('hidden'))load();});
 </script>
 </body>
 </html>
