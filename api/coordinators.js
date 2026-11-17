@@ -3,6 +3,7 @@
 // DELETE /api/coordinators?id=... — remove a coordinator (write role only).
 import { Redis } from '@upstash/redis';
 import { verify, parseVal } from './admin-login.js';
+import { appendLog } from './activity-log.js';
 
 const redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL,
@@ -75,7 +76,14 @@ export default async function handler(req, res) {
       phone: String(c.phone || '').trim(),
     };
     try {
+      const old = parseVal(await redis.hget('celesta:coordinators', rec.id));
       await redis.hset('celesta:coordinators', { [rec.id]: JSON.stringify(rec) });
+      await appendLog({
+        actor: 'write', action: old ? 'Coordinator updated' : 'Coordinator added',
+        detail: rec.name + ' (' + rec.team + (rec.event ? ' · ' + rec.event : '') + ')' + (old && old.phone !== rec.phone ? ': phone ' + (old.phone || '—') + ' → ' + (rec.phone || '—') : ''),
+        target: { kind: 'coordinator', id: rec.id, name: rec.name },
+        undo: old ? { kind: 'coord-update', record: old } : { kind: 'coord-delete', id: rec.id },
+      }, req);
       return res.status(200).json({ ok: true, coordinator: rec });
     } catch (e) {
       return res.status(500).json({ error: 'Storage unavailable' });
@@ -86,7 +94,16 @@ export default async function handler(req, res) {
     const id = req.query.id;
     if (!id) return res.status(400).json({ error: 'Missing id' });
     try {
+      const old = parseVal(await redis.hget('celesta:coordinators', id));
       await redis.hdel('celesta:coordinators', id);
+      if (old) {
+        await appendLog({
+          actor: 'write', action: 'Coordinator removed',
+          detail: old.name + ' (' + old.team + (old.event ? ' · ' + old.event : '') + ')',
+          target: { kind: 'coordinator', id, name: old.name },
+          undo: { kind: 'coord-add', record: old },
+        }, req);
+      }
       return res.status(200).json({ ok: true });
     } catch (e) {
       return res.status(500).json({ error: 'Storage unavailable' });

@@ -3,6 +3,7 @@
 // DELETE /api/poster?event=quiz — remove the custom poster, back to the static asset (write role only).
 import { Redis } from '@upstash/redis';
 import { verify } from './admin-login.js';
+import { appendLog } from './activity-log.js';
 
 const redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL,
@@ -52,7 +53,14 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Image too large (max ~650KB after compression)' });
     }
     try {
+      const prev = await redis.hget('celesta:posters', event);
       await redis.hset('celesta:posters', { [event]: b64 });
+      await appendLog({
+        actor: 'write', action: 'Poster updated',
+        detail: EVENTS[event] + ' poster ' + (prev ? 'replaced (was custom)' : 'changed from the original'),
+        target: { kind: 'poster', id: event, name: EVENTS[event] },
+        undo: { kind: 'poster-restore', slug: event, prev: prev || null },
+      }, req);
       return res.status(200).json({ ok: true, event });
     } catch (e) {
       return res.status(500).json({ error: 'Storage unavailable' });
@@ -63,7 +71,16 @@ export default async function handler(req, res) {
     const event = req.query.event;
     if (!EVENTS[event]) return res.status(400).json({ error: 'Unknown event' });
     try {
+      const prev = await redis.hget('celesta:posters', event);
       await redis.hdel('celesta:posters', event);
+      if (prev) {
+        await appendLog({
+          actor: 'write', action: 'Poster reset',
+          detail: EVENTS[event] + ' poster reset to the original',
+          target: { kind: 'poster', id: event, name: EVENTS[event] },
+          undo: { kind: 'poster-restore', slug: event, prev },
+        }, req);
+      }
       return res.status(200).json({ ok: true, event });
     } catch (e) {
       return res.status(500).json({ error: 'Storage unavailable' });

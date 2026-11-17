@@ -7,6 +7,7 @@ const redis = new Redis({
   token: process.env.UPSTASH_REDIS_REST_TOKEN,
 });
 import { verify, parseVal } from './admin-login.js';
+import { appendLog } from './activity-log.js';
 
 export default async function handler(req, res) {
   const token = (req.headers.authorization || '').replace('Bearer ', '');
@@ -33,6 +34,8 @@ export default async function handler(req, res) {
       const raw = await redis.hget('celesta:regs', id);
       const rec = parseVal(raw);
       if (!rec) return res.status(404).json({ error: 'Not found' });
+      const before = {};
+      for (const k of ['paid', 'amount', 'name', 'school', 'phone', 'email', 'teamName', 'team', 'members']) before[k] = rec[k];
       if (typeof paid === 'boolean') rec.paid = paid;
       if (typeof amount === 'number') rec.amount = amount;
       // full edit: name, school, phone, email, team size, team name, members
@@ -42,6 +45,26 @@ export default async function handler(req, res) {
       if (typeof req.body.team === 'number') rec.team = req.body.team;
       if (Array.isArray(req.body.members)) rec.members = req.body.members.map(String);
       await redis.hset('celesta:regs', { [id]: JSON.stringify(rec) });
+      // Log only what actually changed, with the old values for undo.
+      const changed = {};
+      const bits = [];
+      const show = (v) => Array.isArray(v) ? v.join(', ') : String(v);
+      for (const k of Object.keys(before)) {
+        if (JSON.stringify(before[k]) !== JSON.stringify(rec[k])) {
+          changed[k] = before[k];
+          bits.push(k === 'paid' ? 'paid ' + (before[k] ? 'yes' : 'no') + ' → ' + (rec[k] ? 'yes' : 'no')
+            : k === 'amount' ? 'amount ₹' + (before[k] || 0) + ' → ₹' + (rec[k] || 0)
+            : k + ' ' + show(before[k]) + ' → ' + show(rec[k]));
+        }
+      }
+      if (bits.length) {
+        await appendLog({
+          actor: 'write', action: 'Registration updated',
+          detail: rec.event + ' — ' + rec.name + ': ' + bits.join(', '),
+          target: { kind: 'registration', id, name: rec.name },
+          undo: { kind: 'reg-update', id, before: changed },
+        }, req);
+      }
       return res.status(200).json({ ok: true, reg: rec });
     } catch (e) {
       return res.status(500).json({ error: 'Storage unavailable' });
@@ -53,8 +76,17 @@ export default async function handler(req, res) {
     const { id } = req.body || {};
     if (!id) return res.status(400).json({ error: 'Missing id' });
     try {
+      const rec = parseVal(await redis.hget('celesta:regs', id));
       await redis.hdel('celesta:regs', id);
       await redis.zrem('celesta:reglist', id);
+      if (rec) {
+        await appendLog({
+          actor: 'write', action: 'Registration deleted',
+          detail: rec.event + ' — ' + rec.name + ' (Team ' + (rec.team || '?') + ')',
+          target: { kind: 'registration', id, name: rec.name },
+          undo: { kind: 'reg-add', record: rec },
+        }, req);
+      }
       return res.status(200).json({ ok: true });
     } catch (e) {
       return res.status(500).json({ error: 'Storage unavailable' });

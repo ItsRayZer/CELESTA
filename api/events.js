@@ -4,6 +4,7 @@
 // DELETE /api/events?slug=... — delete (write role only). Blocked when registrations exist; hide the event instead.
 import { Redis } from '@upstash/redis';
 import { verify, parseVal } from './admin-login.js';
+import { appendLog } from './activity-log.js';
 
 const redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL,
@@ -287,6 +288,12 @@ export default async function handler(req, res) {
       const e = cleanEvent(req.body || {}, null);
       e.slug = slug;
       await redis.hset('celesta:events', { [slug]: JSON.stringify(e) });
+      await appendLog({
+        actor: 'write', action: 'Event created',
+        detail: e.name + ' (1st ₹' + e.prize1 + ' / 2nd ₹' + e.prize2 + ', Team ' + e.teamMin + '–' + e.teamMax + ')',
+        target: { kind: 'event', id: slug, name: e.name },
+        undo: { kind: 'event-delete', slug, name: e.name },
+      }, req);
       return res.status(200).json({ ok: true, event: e });
     } catch (e) {
       return res.status(400).json({ error: e.message || 'Invalid event' });
@@ -302,6 +309,21 @@ export default async function handler(req, res) {
       const e = cleanEvent(req.body || {}, old);
       e.slug = old.slug; // slug never changes — links keep working after a rename
       await redis.hset('celesta:events', { [slug]: JSON.stringify(e) });
+      const evBits = [];
+      if (old.name !== e.name) evBits.push('name ' + old.name + ' → ' + e.name);
+      if (old.prize1 !== e.prize1 || old.prize2 !== e.prize2) evBits.push('prizes ₹' + old.prize1 + '/' + old.prize2 + ' → ₹' + e.prize1 + '/' + e.prize2);
+      if (old.teamMin !== e.teamMin || old.teamMax !== e.teamMax) evBits.push('team ' + old.teamMin + '–' + old.teamMax + ' → ' + e.teamMin + '–' + e.teamMax);
+      if (old.visible !== e.visible) evBits.push('visible ' + (old.visible ? 'yes' : 'no') + ' → ' + (e.visible ? 'yes' : 'no'));
+      if (old.regOpen !== e.regOpen) evBits.push('registration ' + (old.regOpen ? 'open' : 'closed') + ' → ' + (e.regOpen ? 'open' : 'closed'));
+      if (old.tagline !== e.tagline || old.about !== e.about || old.duration !== e.duration || old.when !== e.when || old.where !== e.where || JSON.stringify(old.how) !== JSON.stringify(e.how) || JSON.stringify(old.rules) !== JSON.stringify(e.rules) || JSON.stringify(old.reqs) !== JSON.stringify(e.reqs) || old.order !== e.order) evBits.push('details edited');
+      if (evBits.length) {
+        await appendLog({
+          actor: 'write', action: 'Event updated',
+          detail: e.name + ': ' + evBits.join(', '),
+          target: { kind: 'event', id: slug, name: e.name },
+          undo: { kind: 'event-update', slug, before: old },
+        }, req);
+      }
       // If the event was renamed, update existing registrations so they stay matched to it.
       if (old.name !== e.name) {
         try {
@@ -342,6 +364,12 @@ export default async function handler(req, res) {
       if (n > 0) return res.status(409).json({ error: 'This event has ' + n + ' registration(s). Hide it instead of deleting.' });
       await redis.hdel('celesta:events', slug);
       await redis.hdel('celesta:posters', slug); // drop its custom poster too
+      await appendLog({
+        actor: 'write', action: 'Event deleted',
+        detail: ev.name + ' (custom poster removed too)',
+        target: { kind: 'event', id: slug, name: ev.name },
+        undo: { kind: 'event-add', event: ev },
+      }, req);
       return res.status(200).json({ ok: true });
     } catch (e) {
       return res.status(500).json({ error: 'Storage unavailable' });

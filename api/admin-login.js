@@ -1,5 +1,6 @@
 // POST /api/admin-login — verify password, return role token
 import { createHmac } from 'crypto';
+import { appendLog, recentEntries, clientInfo } from './activity-log.js';
 
 const SECRET = process.env.ADMIN_SECRET || 'celesta-admin-fallback-secret-change-me';
 
@@ -43,10 +44,22 @@ export default async function handler(req, res) {
   }
   
   if (password === writePw) {
+    await appendLog({ type: 'login', actor: 'write', action: 'Full-access admin logged in' }, req);
     return res.status(200).json({ ok: true, role: 'write', token: sign('write') });
   }
   if (password === readPw) {
+    await appendLog({ type: 'login', actor: 'read', action: 'Read-only admin logged in' }, req);
     return res.status(200).json({ ok: true, role: 'read', token: sign('read') });
   }
+  // Log failed attempts, but at most one per IP every 5 minutes so a flood
+  // of wrong passwords can't flush real entries out of the capped log.
+  try {
+    const info = clientInfo(req);
+    const recent = await recentEntries(5);
+    const lastFail = recent.find(e => e.type === 'login' && e.actor === 'failed' && e.ip === info.ip);
+    if (!lastFail || Date.now() - Date.parse(lastFail.at) > 5 * 60 * 1000) {
+      await appendLog({ type: 'login', actor: 'failed', action: 'Failed login attempt' }, req);
+    }
+  } catch { /* login still fails the same way */ }
   return res.status(401).json({ error: 'Wrong password' });
 }
