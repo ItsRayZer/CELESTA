@@ -20,7 +20,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','SF Pro Text'
 .wrap{position:relative;z-index:1;max-width:1060px;margin:0 auto;padding:20px 16px 90px}
 .glass{background:linear-gradient(135deg,var(--glass-hi),var(--glass));backdrop-filter:blur(28px) saturate(1.6);-webkit-backdrop-filter:blur(28px) saturate(1.6);border:1px solid var(--stroke);border-radius:20px;box-shadow:0 12px 48px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.06)}
 #login{min-height:92vh;min-height:92dvh;display:flex;align-items:center;justify-content:center;padding:20px}
-.login-card{width:100%;max-width:380px;padding:40px 30px;text-align:center}
+.login-card{width:100%;max-width:400px;padding:40px 30px;text-align:center}
 .login-card .mark{font-size:11px;font-weight:700;letter-spacing:.28em;color:var(--gold);margin-bottom:12px}
 .login-card h1{font-size:32px;font-weight:700;letter-spacing:-.02em;margin-bottom:8px}
 .login-card p{color:var(--mut);font-size:14px;line-height:1.5;margin-bottom:26px}
@@ -30,14 +30,32 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','SF Pro Text'
 .login-card button{width:100%;background:var(--gold);border:none;border-radius:14px;padding:16px;font-size:15px;font-weight:700;letter-spacing:.02em;cursor:pointer;color:#000;transition:transform .15s,opacity .15s}
 .login-card button:active{transform:scale(.98);opacity:.9}
 #loginErr{color:var(--red);font-size:13px;min-height:20px;margin-top:12px}
-.topbar{display:flex;align-items:center;justify-content:space-between;margin:10px 0 20px}
+.rolehelp{text-align:left;background:rgba(255,255,255,.04);border:1px solid var(--stroke);border-radius:14px;padding:14px 16px;margin-top:18px;font-size:13px;line-height:1.65;color:var(--mut)}
+.rolehelp b{color:var(--txt)}
+.rolehelp .gold{color:var(--gold)}
+.topbar{display:flex;align-items:center;justify-content:space-between;margin:10px 0 6px}
 .topbar .ttl{font-weight:700;font-size:21px;letter-spacing:-.02em}
 .topbar .ttl small{display:block;font-size:10px;font-weight:600;letter-spacing:.22em;color:var(--gold);margin-top:2px}
-.rolepill{font-size:10.5px;font-weight:700;letter-spacing:.12em;padding:8px 16px;border-radius:99px;background:rgba(255,255,255,.06);border:1px solid var(--stroke);color:var(--mut)}
+.rolepill{font-size:10.5px;font-weight:700;letter-spacing:.12em;padding:8px 16px;border-radius:99px;background:rgba(255,255,255,.06);border:1px solid var(--stroke);color:var(--mut);white-space:nowrap}
 .rolepill.write{background:var(--gold-dim);border-color:rgba(212,168,83,.35);color:var(--gold)}
 #livePill{background:rgba(48,209,88,.1)!important;border-color:rgba(48,209,88,.3)!important;color:var(--green)!important}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);margin-right:6px;vertical-align:1px}
 .iconbtn{background:var(--glass);border:1px solid var(--stroke);color:var(--txt);border-radius:12px;padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer;backdrop-filter:blur(16px)}
 .iconbtn:active{opacity:.7}
+.sync{font-size:12px;color:var(--mut);margin:0 0 14px}
+.sync button{background:none;border:none;color:var(--gold);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;padding:0}
+/* menu */
+.tabs{display:flex;gap:8px;margin-bottom:18px;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex:1;min-width:110px;text-align:center;padding:13px 10px;border-radius:14px;border:1px solid var(--stroke);background:var(--glass);color:var(--mut);font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap}
+.tab.sel{background:var(--gold-dim);border-color:rgba(212,168,83,.4);color:var(--gold)}
+.secttl{display:flex;align-items:center;gap:8px;font-size:17px;font-weight:700;margin:4px 0 4px}
+.secsub{font-size:13px;color:var(--mut);margin-bottom:14px}
+/* ? tooltip */
+.ti{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;border:1px solid var(--stroke);background:rgba(255,255,255,.05);color:var(--mut);font-size:12px;font-weight:700;cursor:pointer;flex:none;font-family:inherit}
+.ti.on{background:var(--gold);border-color:var(--gold);color:#000}
+#tip{position:fixed;z-index:200;max-width:280px;background:rgba(28,28,32,.97);border:1px solid var(--stroke);border-radius:14px;padding:14px 16px;font-size:13.5px;line-height:1.55;color:var(--txt);box-shadow:0 12px 40px rgba(0,0,0,.6);display:none}
+#tip.show{display:block}
 .stats{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:14px}
 @media(min-width:720px){.stats{grid-template-columns:repeat(4,1fr)}}
 .stat{padding:20px 18px}
@@ -57,11 +75,16 @@ thead th{text-align:left;font-size:10px;font-weight:600;letter-spacing:.14em;col
 tbody td{padding:14px;border-bottom:1px solid rgba(255,255,255,.05);vertical-align:top}
 tbody tr:active{background:rgba(255,255,255,.03)}
 tbody tr:last-child td{border-bottom:none}
+tbody tr.flash{animation:flash 2.4s ease}
+@keyframes flash{0%{background:rgba(212,168,83,.22)}100%{background:transparent}}
 .evtag{font-size:11px;font-weight:600;letter-spacing:.04em;padding:5px 12px;border-radius:99px;background:var(--gold-dim);color:var(--gold);white-space:nowrap;border:1px solid rgba(212,168,83,.2)}
 .paybtn{border:1px solid var(--stroke);background:rgba(255,255,255,.05);color:var(--txt);font-size:12.5px;font-weight:600;padding:9px 16px;border-radius:99px;cursor:pointer;white-space:nowrap;font-family:inherit;transition:all .2s}
 .paybtn.paid{background:var(--green);border-color:var(--green);color:#000}
 .paybtn:disabled{opacity:.4;cursor:default}
 .paybtn:not(:disabled):active{transform:scale(.96)}
+.mini{border:1px solid var(--stroke);background:rgba(255,255,255,.05);color:var(--txt);font-size:12px;font-weight:600;padding:8px 13px;border-radius:99px;cursor:pointer;font-family:inherit;white-space:nowrap}
+.mini.danger{color:var(--red);border-color:rgba(255,69,58,.4)}
+.mini:active{opacity:.7}
 .mut{color:var(--mut);font-size:12.5px}
 .amt{font-weight:700;color:var(--gold);font-variant-numeric:tabular-nums}
 .evgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:14px}
@@ -80,7 +103,45 @@ tbody tr:last-child td{border-bottom:none}
 .hidden{display:none!important}
 .toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(90px);background:rgba(30,30,34,.92);backdrop-filter:blur(20px);border:1px solid var(--stroke);color:var(--txt);font-weight:600;font-size:14px;padding:14px 28px;border-radius:99px;transition:transform .35s cubic-bezier(.2,.9,.3,1.2);z-index:99;box-shadow:0 8px 32px rgba(0,0,0,.5)}
 .toast.show{transform:translateX(-50%) translateY(0)}
-@media (prefers-reduced-motion:reduce){.bg i{animation:none}}
+/* posters */
+.pgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+@media(min-width:720px){.pgrid{grid-template-columns:repeat(3,1fr)}}
+.pcard{padding:14px}
+.pcard img{width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:12px;background:#111;display:block}
+.pcard b{display:block;font-size:14px;margin:12px 0 2px}
+.pcard .badge{font-size:10.5px;font-weight:700;letter-spacing:.1em;padding:4px 10px;border-radius:99px;background:var(--gold-dim);color:var(--gold);border:1px solid rgba(212,168,83,.25)}
+.pcard .badge.def{background:rgba(255,255,255,.05);color:var(--mut);border-color:var(--stroke)}
+.pcard .row{display:flex;gap:8px;margin-top:12px}
+/* coordinators */
+.cgroup{margin-bottom:18px}
+.cgroup h3{font-size:12px;letter-spacing:.14em;color:var(--mut);margin-bottom:8px;text-transform:uppercase}
+.crow{display:flex;gap:10px;align-items:center;padding:13px 14px;margin-bottom:8px;flex-wrap:wrap}
+.crow .who{flex:1;min-width:130px}
+.crow .who b{display:block;font-size:14.5px}
+.crow .who span{font-size:12px;color:var(--mut)}
+.crow input[type=tel]{background:rgba(255,255,255,.05);border:1px solid var(--stroke);border-radius:10px;padding:10px 12px;font-size:14px;color:#fff;font-family:inherit;outline:none;width:150px}
+.crow input[type=tel]:focus{border-color:var(--gold)}
+.addform{padding:18px}
+.addform .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.addform input,.addform select{background:rgba(255,255,255,.05);border:1px solid var(--stroke);border-radius:12px;padding:12px 14px;font-size:14px;color:#fff;font-family:inherit;outline:none;width:100%}
+.addform select option{background:#0a0a0a}
+.addform input:focus,.addform select:focus{border-color:var(--gold)}
+/* modal */
+#modal,#modal-ev{position:fixed;inset:0;z-index:150;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);display:none;align-items:flex-end;justify-content:center}
+#modal.show,#modal-ev.show{display:flex}
+@media(min-width:720px){#modal,#modal-ev{align-items:center}}
+.mcard{width:100%;max-width:480px;padding:24px;max-height:88vh;overflow-y:auto;border-radius:20px 20px 0 0}
+@media(min-width:720px){.mcard{border-radius:20px}}
+.mcard h3{font-size:19px;margin-bottom:14px}
+.mcard label{display:block;font-size:11px;font-weight:700;letter-spacing:.12em;color:var(--mut);margin:12px 0 5px}
+.mcard input{width:100%;background:rgba(255,255,255,.05);border:1px solid var(--stroke);border-radius:12px;padding:12px 14px;font-size:14px;color:#fff;font-family:inherit;outline:none}
+.mcard input:focus{border-color:var(--gold)}
+.mcard .row{display:flex;gap:10px;margin-top:20px}
+.mcard textarea{width:100%;background:rgba(255,255,255,.05);border:1px solid var(--stroke);border-radius:12px;padding:12px 14px;font-size:14px;color:#fff;font-family:inherit;outline:none;min-height:74px;resize:vertical}
+.mcard textarea:focus{border-color:var(--gold)}
+.mcard .chk{display:flex;gap:10px;align-items:center;margin-top:14px;font-size:14px;font-weight:600}
+.mcard .chk input{width:auto}
+@media (prefers-reduced-motion:reduce){.bg i{animation:none}tbody tr.flash{animation:none}}
 </style>
 </head>
 <body>
@@ -91,10 +152,15 @@ tbody tr:last-child td{border-bottom:none}
   <div class="glass login-card">
     <div class="mark">CELESTA 2K26</div>
     <h1>Admin</h1>
-    <p>Enter your password to continue.<br>Read and write use the same screen.</p>
+    <p>Enter your password to continue.</p>
     <input type="password" id="pw" placeholder="Password" autocomplete="current-password">
     <button id="loginBtn">Unlock Dashboard</button>
     <div id="loginErr"></div>
+    <div class="rolehelp">
+      <b>Two passwords, two roles.</b><br>
+      <span class="gold">Coordinators</span> use the read-only password — view registrations, no changes.<br>
+      <span class="gold">Teachers, admins and Aben</span> use the full-access password — view, edit, mark paid, delete, change posters and coordinator numbers.
+    </div>
   </div>
 </div>
 
@@ -104,56 +170,223 @@ tbody tr:last-child td{border-bottom:none}
   <div class="topbar">
     <div class="ttl">CELESTA Admin<small id="roleSub">DASHBOARD</small></div>
     <div style="display:flex;gap:8px;align-items:center">
-      <span class="rolepill" id="livePill" style="background:rgba(0,255,100,.12);border-color:rgba(0,255,100,.4);color:#4ade80">● LIVE</span>
+      <span class="rolepill" id="livePill"><i class="dot"></i>LIVE</span>
       <span class="rolepill" id="rolePill">READ</span>
       <button class="iconbtn" id="logoutBtn">Logout</button>
     </div>
   </div>
+  <div class="sync"><span id="syncTxt">Syncing…</span> · auto-refresh every 5s · <button id="refreshBtn">Refresh now</button></div>
 
-  <div class="stats">
-    <div class="glass stat"><small>TOTAL REGISTRATIONS</small><b id="sTotal">0</b></div>
-    <div class="glass stat"><small>PAID STUDENTS</small><b class="green" id="sPaid">0</b></div>
-    <div class="glass stat"><small>PAYMENT COLLECTED</small><b class="gold" id="sAmt">₹0</b></div>
-    <div class="glass stat"><small>PENDING PAYMENT</small><b id="sPend" style="color:var(--red)">0</b></div>
+  <div class="tabs">
+    <button class="tab sel" data-tab="reg">Registrations</button>
+    <button class="tab" data-tab="events">Events</button>
+    <button class="tab" data-tab="posters">Posters</button>
+    <button class="tab" data-tab="coords">Coordinators</button>
   </div>
 
-  <div class="evgrid" id="evGrid"></div>
+  <!-- REGISTRATIONS -->
+  <section id="sec-reg">
+    <div class="secttl">Registrations <button class="ti" data-tip="Every student sign-up, live. Use search and the filters to find someone, tap an event card to filter by that event. Full-access accounts can mark fees paid, edit details, or delete a registration.">?</button></div>
+    <div class="secsub">Students who registered for the fest, across all 5 events.</div>
 
-  <div class="toolbar">
-    <input id="q" placeholder="Search name, school, phone...">
-    <select id="fEv"><option value="">All events</option></select>
-    <select id="fPay"><option value="">All payments</option><option value="paid">Paid</option><option value="unpaid">Unpaid</option></select>
-  </div>
+    <div class="stats">
+      <div class="glass stat"><small>TOTAL REGISTRATIONS</small><b id="sTotal">0</b></div>
+      <div class="glass stat"><small>PAID STUDENTS</small><b class="green" id="sPaid">0</b></div>
+      <div class="glass stat"><small>PAYMENT COLLECTED</small><b class="gold" id="sAmt">₹0</b></div>
+      <div class="glass stat"><small>PENDING PAYMENT</small><b id="sPend" style="color:var(--red)">0</b></div>
+    </div>
 
-  <div class="glass twrap">
-    <table>
-      <thead><tr><th>Student</th><th>Event</th><th>Contact</th><th>Team</th><th>Payment</th><th></th></tr></thead>
-      <tbody id="rows"></tbody>
-    </table>
-    <div class="empty hidden" id="empty">No registrations yet.</div>
-  </div>
+    <div class="evgrid" id="evGrid"></div>
 
-  <div class="actions">
-    <button class="abtn go" id="csvBtn">Export CSV</button>
-    <button class="abtn" id="notifBtn">Enable Notifications</button>
-    <button class="abtn hidden" id="installBtn2">Install as App</button>
-  </div>
+    <div class="toolbar">
+      <input id="q" placeholder="Search name, school, phone...">
+      <select id="fEv"><option value="">All events</option></select>
+      <select id="fPay"><option value="">All payments</option><option value="paid">Paid</option><option value="unpaid">Unpaid</option></select>
+    </div>
+
+    <div class="glass twrap">
+      <table>
+        <thead><tr><th>Student</th><th>Event</th><th>Contact</th><th>Team</th><th>Payment</th><th></th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+      <div class="empty hidden" id="empty">No registrations yet.</div>
+    </div>
+
+    <div class="actions">
+      <button class="abtn go" id="csvBtn">Export CSV</button>
+      <button class="abtn" id="notifBtn">Enable Notifications</button>
+      <button class="abtn hidden" id="installBtn2">Install as App</button>
+    </div>
+  </section>
+
+  <!-- EVENTS -->
+  <section id="sec-events" class="hidden">
+    <div class="secttl">Events <button class="ti" data-tip="Everything on the Events page and the registration forms comes from here. Edit any field and it goes live instantly. Hiding an event removes it from the site but keeps its registrations. Deleting is blocked while students are registered — hide it instead. Renaming never breaks links: the short address stays the same.">?</button></div>
+    <div class="secsub">Add, edit, hide, close or reorder events. Changes go live instantly.</div>
+    <div id="evAdminList"></div>
+    <div class="glass addform hidden" id="addEventForm">
+      <div class="secttl" style="margin-bottom:12px">Add event</div>
+      <div class="grid">
+        <input id="evName" placeholder="Event name (e.g. Coding Sprint)" style="grid-column:1/-1">
+        <input id="evTag" placeholder="Tagline (short line under the name)" style="grid-column:1/-1">
+        <input id="evP1" type="number" min="0" placeholder="1st prize ₹">
+        <input id="evP2" type="number" min="0" placeholder="2nd prize ₹">
+        <input id="evMin" type="number" min="1" placeholder="Min team size">
+        <input id="evMax" type="number" min="1" placeholder="Max team size">
+        <input id="evDur" placeholder="Duration (e.g. ≈ 60 minutes)">
+        <input id="evOrd" type="number" min="1" placeholder="Order (1 = first)">
+      </div>
+      <div class="row" style="display:flex;gap:10px;margin-top:14px">
+        <button class="abtn go" id="evAddBtn" style="flex:1">Add event</button>
+      </div>
+      <p class="mut" style="margin-top:10px">After adding, tap Edit on the event to fill in the description, how it works, rules and requirements.</p>
+    </div>
+  </section>
+
+  <!-- POSTERS -->
+  <section id="sec-posters" class="hidden">
+    <div class="secttl">Event Posters <button class="ti" data-tip="The poster shown for each event on the Events page and the home page. Upload a new one and it goes live instantly — no redeploy. Reset brings back the original poster. Images are compressed automatically before upload.">?</button></div>
+    <div class="secsub">Change what students see for each event. Read-only accounts can view only.</div>
+    <div class="pgrid" id="pGrid"></div>
+  </section>
+
+  <!-- COORDINATORS -->
+  <section id="sec-coords" class="hidden">
+    <div class="secttl">Coordinators <button class="ti" data-tip="The people running the fest. Add or change a phone number here and it appears on the Contact page right away. Full-access accounts can also add or remove people.">?</button></div>
+    <div class="secsub">Team lists and phone numbers, as shown on the Contact page.</div>
+    <div id="cList"></div>
+    <div class="glass addform hidden" id="addForm">
+      <div class="secttl" style="margin-bottom:12px">Add coordinator</div>
+      <div class="grid">
+        <input id="nName" placeholder="Name" style="grid-column:1/-1">
+        <select id="nTeam">
+          <option>Event Coordinators</option><option>Decoration Team</option><option>Technical Team</option>
+          <option>Media Team</option><option>Marketing Team</option><option>Finance Team</option>
+          <option>Exhibition Team</option><option>Open Games</option><option>Student Coordinators</option>
+        </select>
+        <select id="nEvent">
+          <option value="">No event</option><option>Quiz</option><option>Treasure Hunt</option><option>Prompting</option>
+          <option>Idea Presentation</option><option>Reels Competition</option>
+        </select>
+        <input id="nCls" placeholder="Class (e.g. 3rd BCA A)">
+        <input id="nPhone" type="tel" placeholder="Phone number">
+      </div>
+      <div class="row" style="display:flex;gap:10px;margin-top:14px">
+        <button class="abtn go" id="addBtn" style="flex:1">Add coordinator</button>
+      </div>
+    </div>
+  </section>
 </div>
 </div>
 
 <button class="abtn hidden" id="installBtn">Install as App</button>
 <div class="toast" id="toast"></div>
+<div id="tip"></div>
+
+<!-- EDIT REGISTRATION MODAL -->
+<div id="modal">
+  <div class="glass mcard">
+    <h3>Edit registration</h3>
+    <label>NAME</label><input id="eName">
+    <label>SCHOOL</label><input id="eSchool">
+    <label>PHONE</label><input id="ePhone" type="tel">
+    <label>EMAIL</label><input id="eEmail">
+    <label>TEAM SIZE</label><input id="eTeam" type="number" min="1" max="5">
+    <label>TEAM NAME</label><input id="eTeamName">
+    <label>MEMBERS (comma separated)</label><input id="eMembers">
+    <div class="row">
+      <button class="abtn" id="modalCancel" style="flex:1">Cancel</button>
+      <button class="abtn go" id="modalSave" style="flex:1">Save changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT EVENT MODAL -->
+<div id="modal-ev">
+  <div class="glass mcard">
+    <h3>Edit event</h3>
+    <label>NAME</label><input id="evEName">
+    <label>TAGLINE</label><input id="evETag">
+    <label>ABOUT</label><textarea id="evEAbout"></textarea>
+    <label>1ST PRIZE (₹)</label><input id="evEP1" type="number" min="0">
+    <label>2ND PRIZE (₹)</label><input id="evEP2" type="number" min="0">
+    <label>MIN TEAM SIZE</label><input id="evEMin" type="number" min="1">
+    <label>MAX TEAM SIZE</label><input id="evEMax" type="number" min="1">
+    <label>DURATION</label><input id="evEDur">
+    <label>WHEN</label><input id="evEWhen">
+    <label>WHERE</label><input id="evEWhere">
+    <label>HOW IT WORKS (one step per line)</label><textarea id="evEHow"></textarea>
+    <label>RULES (one per line)</label><textarea id="evERules"></textarea>
+    <label>REQUIREMENTS (one per line)</label><textarea id="evEReqs"></textarea>
+    <label>ORDER</label><input id="evEOrd" type="number" min="1">
+    <label class="chk"><input id="evEVis" type="checkbox"> Visible on the site</label>
+    <label class="chk"><input id="evEOpen" type="checkbox"> Registrations open</label>
+    <div class="row">
+      <button class="abtn" id="modalEvCancel" style="flex:1">Cancel</button>
+      <button class="abtn go" id="modalEvSave" style="flex:1">Save event</button>
+    </div>
+  </div>
+</div>
 
 <script>
 const $=id=>document.getElementById(id);
 let TOKEN=localStorage.getItem('celesta_admin_tok')||'', ROLE=localStorage.getItem('celesta_admin_role')||'';
-let REGS=[], FILTER_EV='';
+let REGS=[], FILTER_EV='', SEEN=new Set(), COORDS=[], POSTER_CUSTOM={};
+let EDIT_ID=null;
 
-const EVENTS=['Quiz','Treasure Hunt','Prompting','Idea Presentation','Reels Competition'];
+let EVENTS=[], EVENTS_DB=[], EVSLUG={};
+let EDIT_EV=null;
+
+// Events come from the database (/api/events), not a hardcoded list.
+async function ensureEvents(force){
+  if(EVENTS_DB.length&&!force)return EVENTS_DB;
+  try{
+    const r=await fetch('/api/events');
+    const d=await r.json();
+    EVENTS_DB=(d.events||[]).sort((a,b)=>(a.order||99)-(b.order||99));
+  }catch(e){EVENTS_DB=[];}
+  EVENTS=EVENTS_DB.map(e=>e.name);
+  EVSLUG={};EVENTS_DB.forEach(e=>{EVSLUG[e.name]=e.slug;});
+  return EVENTS_DB;
+}
+function evOf(x){return EVENTS_DB.find(e=>e.slug===x.eventSlug||e.name===x.event)||null;}
 
 function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1800);}
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function fmt(n){return '₹'+Number(n||0).toLocaleString('en-IN');}
+function isWrite(){return ROLE==='write';}
+function authHeaders(json){const h={Authorization:'Bearer '+TOKEN};if(json)h['Content-Type']='application/json';return h;}
+
+// ---------- tooltips (?) ----------
+const tipEl=$('tip');
+document.addEventListener('click',e=>{
+  const b=e.target.closest('.ti');
+  if(b){
+    e.stopPropagation();
+    const r=b.getBoundingClientRect();
+    const wasOn=b.classList.contains('on');
+    document.querySelectorAll('.ti').forEach(x=>x.classList.remove('on'));
+    if(wasOn){tipEl.classList.remove('show');return;}
+    b.classList.add('on');
+    tipEl.textContent=b.dataset.tip;
+    tipEl.classList.add('show');
+    const tw=Math.min(280,window.innerWidth-24);
+    let x=Math.min(Math.max(12,r.left-40),window.innerWidth-tw-12);
+    tipEl.style.left=x+'px';tipEl.style.top=(r.bottom+8+window.scrollY)+'px';
+    return;
+  }
+  if(!e.target.closest('#tip')){tipEl.classList.remove('show');document.querySelectorAll('.ti').forEach(x=>x.classList.remove('on'));}
+});
+
+// ---------- tabs / menu ----------
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('sel'));
+  t.classList.add('sel');
+  ['reg','events','posters','coords'].forEach(k=>$('sec-'+k).classList.toggle('hidden',k!==t.dataset.tab));
+  if(t.dataset.tab==='events')renderEventsAdmin();
+  if(t.dataset.tab==='posters')loadPosters();
+  if(t.dataset.tab==='coords')loadCoords();
+});
 
 // ---------- login ----------
 async function doLogin(){
@@ -173,13 +406,17 @@ $('pw').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
 $('logoutBtn').onclick=()=>{localStorage.removeItem('celesta_admin_tok');localStorage.removeItem('celesta_admin_role');location.reload();};
 
 // ---------- dashboard ----------
-function showDash(){
+async function showDash(){
   $('login').classList.add('hidden');$('dash').classList.remove('hidden');
-  const w=ROLE==='write';
-  $('rolePill').textContent=w?'WRITE':'READ';
+  const w=isWrite();
+  $('rolePill').textContent=w?'WRITE · FULL ACCESS':'READ · VIEW ONLY';
   $('rolePill').classList.toggle('write',w);
   $('roleSub').textContent=w?'FULL ACCESS':'READ ONLY';
-  const sel=$('fEv');EVENTS.forEach(e=>{const o=document.createElement('option');o.value=e;o.textContent=e;sel.appendChild(o);});
+  $('addForm').classList.toggle('hidden',!w);
+  await ensureEvents();
+  const sel=$('fEv');sel.innerHTML='<option value="">All events</option>';
+  EVENTS_DB.forEach(e=>{const o=document.createElement('option');o.value=e.slug;o.textContent=e.name;sel.appendChild(o);});
+  renderEventsAdmin();
   load();
 }
 
@@ -189,13 +426,18 @@ async function load(){
     if(r.status===401){localStorage.clear();location.reload();return;}
     const d=await r.json();
     REGS=d.regs||[];render();
+    $('syncTxt').textContent='Last synced '+new Date().toLocaleTimeString('en-IN',{hour12:false});
   }catch(e){toast('Failed to load');}
 }
+$('refreshBtn').onclick=load;
 
 function render(){
   const q=$('q').value.toLowerCase(), fe=$('fEv').value, fp=$('fPay').value;
   const list=REGS.filter(x=>{
-    if(fe&&x.event!==fe)return false;
+    if(fe&&x.eventSlug!==fe&&x.event!==fe){
+      const ev=EVENTS_DB.find(e=>e.slug===fe);
+      if(!ev||x.event!==ev.name)return false;
+    }
     if(fp==='paid'&&!x.paid)return false;
     if(fp==='unpaid'&&x.paid)return false;
     if(q&&!(x.name+' '+x.school+' '+x.phone+' '+(x.teamName||'')).toLowerCase().includes(q))return false;
@@ -207,11 +449,18 @@ function render(){
   $('sPaid').textContent=paid.length;
   $('sAmt').textContent=fmt(paid.reduce((s,x)=>s+(x.amount||0),0));
   $('sPend').textContent=REGS.length-paid.length;
+  // keep the reg counts on the Events tab fresh without rebuilding the list
+  document.querySelectorAll('[data-count]').forEach(el=>{
+    const e=EVENTS_DB.find(x=>x.slug===el.dataset.count);
+    if(!e)return;
+    const n=evRegCount(e.slug,e.name);
+    el.textContent=n+' reg'+(n===1?'':'s');
+  });
   // event cards
-  $('evGrid').innerHTML=EVENTS.map(e=>{
-    const er=REGS.filter(x=>x.event===e), ep=er.filter(x=>x.paid);
-    return `<div class="glass evcard ${FILTER_EV===e?'sel':''}" data-ev="${esc(e)}">
-      <b>${esc(e)}</b>
+  $('evGrid').innerHTML=EVENTS_DB.map(e=>{
+    const er=REGS.filter(x=>x.eventSlug===e.slug||x.event===e.name), ep=er.filter(x=>x.paid);
+    return `<div class="glass evcard ${FILTER_EV===e.slug?'sel':''}" data-ev="${esc(e.slug)}">
+      <b>${esc(e.name)}</b>
       <div class="row"><span>Registered</span><em>${er.length}</em></div>
       <div class="row"><span>Paid</span><em>${ep.length}</em></div>
       <div class="row"><span>Collected</span><em class="amt">${fmt(ep.reduce((s,x)=>s+(x.amount||0),0))}</em></div>
@@ -219,17 +468,23 @@ function render(){
   }).join('');
   document.querySelectorAll('.evcard').forEach(c=>c.onclick=()=>{FILTER_EV=FILTER_EV===c.dataset.ev?'':c.dataset.ev;$('fEv').value=FILTER_EV;render();});
   // rows
-  const w=ROLE==='write';
+  const w=isWrite();
   $('empty').classList.toggle('hidden',list.length>0);
-  $('rows').innerHTML=list.map(x=>`<tr>
+  $('rows').innerHTML=list.map(x=>{
+    const isNew=!SEEN.has(x.id);SEEN.add(x.id);
+    return `<tr class="${isNew?'flash':''}">
     <td><b>${esc(x.name)}</b><br><span class="mut">${esc(x.school)}</span>${x.teamName?'<br><span class="mut">'+esc(x.teamName)+'</span>':''}</td>
     <td><span class="evtag">${esc(x.event)}</span></td>
     <td>${esc(x.phone)}<br><span class="mut">${esc(x.email||'—')}</span></td>
     <td>${x.team}${x.members&&x.members.length?'<br><span class="mut">'+x.members.map(esc).join(', ')+'</span>':''}</td>
     <td>${x.paid?'<span class="amt">'+fmt(x.amount)+'</span><br><span class="mut">PAID</span>':'<span class="mut">UNPAID</span>'}</td>
-    <td>${w?`<button class="paybtn ${x.paid?'paid':''}" data-id="${x.id}" data-paid="${x.paid?1:0}">${x.paid?'Paid':'Mark paid'}</button>`:'<span class="mut">—</span>'}</td>
-  </tr>`).join('');
+    <td style="white-space:nowrap">${w?`<button class="paybtn ${x.paid?'paid':''}" data-id="${x.id}" data-paid="${x.paid?1:0}">${x.paid?'Paid':'Mark paid'}</button>
+    <button class="mini" data-edit="${x.id}">Edit</button>
+    <button class="mini danger" data-del="${x.id}">Delete</button>`:'<span class="mut">—</span>'}</td>
+  </tr>`;}).join('');
   document.querySelectorAll('.paybtn').forEach(b=>b.onclick=()=>togglePay(b.dataset.id,b.dataset.paid==='1'));
+  document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>openEdit(b.dataset.edit));
+  document.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>delReg(b.dataset.del));
 }
 
 async function togglePay(id,wasPaid){
@@ -240,15 +495,285 @@ async function togglePay(id,wasPaid){
     amount=parseInt(v,10)||0;
   }
   try{
-    const r=await fetch('/api/registrations',{method:'PATCH',headers:{'Content-Type':'application/json',Authorization:'Bearer '+TOKEN},body:JSON.stringify({id,paid:!wasPaid,amount})});
+    const r=await fetch('/api/registrations',{method:'PATCH',headers:authHeaders(true),body:JSON.stringify({id,paid:!wasPaid,amount})});
     if(r.ok){toast(wasPaid?'Marked unpaid':'Marked paid');load();}
     else toast('Failed');
   }catch(e){toast('Failed');}
 }
 
+async function delReg(id){
+  const x=REGS.find(r=>r.id===id);
+  if(!x)return;
+  if(!confirm('Delete registration of '+x.name+' ('+x.event+')? This cannot be undone.'))return;
+  try{
+    const r=await fetch('/api/registrations',{method:'DELETE',headers:authHeaders(true),body:JSON.stringify({id})});
+    if(r.ok){toast('Registration deleted');load();}
+    else toast('Failed');
+  }catch(e){toast('Failed');}
+}
+
+function openEdit(id){
+  const x=REGS.find(r=>r.id===id);
+  if(!x)return;
+  EDIT_ID=id;
+  $('eName').value=x.name||'';$('eSchool').value=x.school||'';$('ePhone').value=x.phone||'';
+  $('eEmail').value=x.email||'';$('eTeam').value=x.team||'';$('eTeamName').value=x.teamName||'';
+  $('eMembers').value=(x.members||[]).join(', ');
+  $('modal').classList.add('show');
+}
+$('modalCancel').onclick=()=>{$('modal').classList.remove('show');EDIT_ID=null;};
+$('modal').addEventListener('click',e=>{if(e.target===$('modal')){$('modal').classList.remove('show');EDIT_ID=null;}});
+$('modalSave').onclick=async()=>{
+  if(!EDIT_ID)return;
+  const body={id:EDIT_ID,name:$('eName').value,school:$('eSchool').value,phone:$('ePhone').value,
+    email:$('eEmail').value,team:parseInt($('eTeam').value,10)||1,teamName:$('eTeamName').value,
+    members:$('eMembers').value.split(',').map(s=>s.trim()).filter(Boolean)};
+  try{
+    const r=await fetch('/api/registrations',{method:'PATCH',headers:authHeaders(true),body:JSON.stringify(body)});
+    if(r.ok){toast('Saved');$('modal').classList.remove('show');EDIT_ID=null;load();}
+    else toast('Failed');
+  }catch(e){toast('Failed');}
+};
+
 $('q').addEventListener('input',render);
 $('fEv').addEventListener('change',e=>{FILTER_EV=e.target.value;render();});
 $('fPay').addEventListener('change',render);
+
+// ---------- posters ----------
+async function loadPosters(){
+  $('pGrid').innerHTML=EVENTS_DB.map(e=>{
+    const slug=e.slug, custom=POSTER_CUSTOM[slug];
+    return `<div class="glass pcard">
+      <img src="/api/poster?event=${slug}" onerror="this.onerror=null;this.src='/assets/poster-${slug}.webp'" alt="${esc(e.name)} poster">
+      <b>${esc(e.name)}</b>
+      <span class="badge ${custom?'':'def'}">${custom?'CUSTOM POSTER':'ORIGINAL POSTER'}</span>
+      ${isWrite()?`<div class="row">
+        <label class="mini" style="cursor:pointer">Upload new<input type="file" accept="image/*" data-up="${slug}" style="display:none"></label>
+        <button class="mini danger" data-reset="${slug}" ${custom?'':'disabled style="opacity:.4"'}>Reset</button>
+      </div>`:'<div class="row"><span class="mut">Read-only — upload needs full access.</span></div>'}
+    </div>`;
+  }).join('');
+  // check which events have a custom poster
+  for(const e of EVENTS_DB){
+    const slug=e.slug;
+    try{const r=await fetch('/api/poster?event='+slug);POSTER_CUSTOM[slug]=r.ok;}
+    catch(err){POSTER_CUSTOM[slug]=false;}
+  }
+  // refresh badges after checks
+  document.querySelectorAll('#pGrid .pcard').forEach((card,i)=>{
+    const slug=EVENTS_DB[i].slug, badge=card.querySelector('.badge');
+    if(!badge)return;
+    badge.textContent=POSTER_CUSTOM[slug]?'CUSTOM POSTER':'ORIGINAL POSTER';
+    badge.classList.toggle('def',!POSTER_CUSTOM[slug]);
+    const rb=card.querySelector('[data-reset]');
+    if(rb){rb.disabled=!POSTER_CUSTOM[slug];rb.style.opacity=POSTER_CUSTOM[slug]?'1':'.4';}
+  });
+  document.querySelectorAll('[data-up]').forEach(inp=>inp.onchange=()=>uploadPoster(inp.dataset.up,inp.files[0]));
+  document.querySelectorAll('[data-reset]').forEach(b=>b.onclick=()=>resetPoster(b.dataset.reset));
+}
+
+function compressImage(file){
+  return new Promise((resolve,reject)=>{
+    const img=new Image();
+    img.onload=()=>{
+      const maxW=1000, scale=Math.min(1,maxW/img.width);
+      const c=document.createElement('canvas');
+      c.width=Math.round(img.width*scale);c.height=Math.round(img.height*scale);
+      c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+      c.toBlob(b=>b?resolve(b):reject(new Error('compress failed')),'image/webp',0.82);
+    };
+    img.onerror=()=>reject(new Error('bad image'));
+    img.src=URL.createObjectURL(file);
+  });
+}
+
+async function uploadPoster(slug,file){
+  if(!file)return;
+  try{
+    toast('Compressing…');
+    const blob=await compressImage(file);
+    const dataUrl=await new Promise((res,rej)=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.onerror=rej;fr.readAsDataURL(blob);});
+    const r=await fetch('/api/poster',{method:'POST',headers:authHeaders(true),body:JSON.stringify({event:slug,image:dataUrl})});
+    if(r.ok){toast('Poster updated — live now');POSTER_CUSTOM[slug]=true;loadPosters();}
+    else{const d=await r.json().catch(()=>({}));toast(d.error||'Upload failed');}
+  }catch(e){toast('Upload failed');}
+}
+
+async function resetPoster(slug){
+  if(!confirm('Remove the custom poster for this event and go back to the original?'))return;
+  try{
+    const r=await fetch('/api/poster?event='+slug,{method:'DELETE',headers:authHeaders(false)});
+    if(r.ok){toast('Poster reset');POSTER_CUSTOM[slug]=false;loadPosters();}
+    else toast('Failed');
+  }catch(e){toast('Failed');}
+}
+
+// ---------- coordinators ----------
+async function loadCoords(){
+  try{
+    const r=await fetch('/api/coordinators',{headers:{Authorization:'Bearer '+TOKEN}});
+    const d=await r.json();
+    COORDS=d.coordinators||[];
+  }catch(e){COORDS=[];}
+  renderCoords();
+}
+
+function renderCoords(){
+  const w=isWrite();
+  const teams=[...new Set(COORDS.map(c=>c.team))];
+  $('cList').innerHTML=teams.map(team=>{
+    const members=COORDS.filter(c=>c.team===team);
+    return `<div class="cgroup"><h3>${esc(team)}</h3>`+members.map(c=>`
+      <div class="glass crow">
+        <div class="who"><b>${esc(c.name)}</b><span>${esc([c.event,c.cls].filter(Boolean).join(' · ')||'—')}</span></div>
+        <input type="tel" placeholder="Phone number" value="${esc(c.phone||'')}" data-phone="${c.id}" ${w?'':'disabled'}>
+        ${w?`<button class="mini" data-save-phone="${c.id}">Save</button>
+        <button class="mini danger" data-del-coord="${c.id}">Remove</button>`:''}
+      </div>`).join('')+`</div>`;
+  }).join('')||'<div class="empty">No coordinators yet.</div>';
+  document.querySelectorAll('[data-save-phone]').forEach(b=>b.onclick=async()=>{
+    const id=b.dataset.savePhone;
+    const phone=document.querySelector(`[data-phone="${id}"]`).value.trim();
+    const c=COORDS.find(x=>x.id===id);if(!c)return;
+    try{
+      const r=await fetch('/api/coordinators',{method:'POST',headers:authHeaders(true),body:JSON.stringify({...c,phone})});
+      if(r.ok){toast('Number saved — live on the Contact page');loadCoords();}
+      else toast('Failed');
+    }catch(e){toast('Failed');}
+  });
+  document.querySelectorAll('[data-del-coord]').forEach(b=>b.onclick=async()=>{
+    const c=COORDS.find(x=>x.id===b.dataset.delCoord);if(!c)return;
+    if(!confirm('Remove '+c.name+' from the team list?'))return;
+    try{
+      const r=await fetch('/api/coordinators?id='+c.id,{method:'DELETE',headers:authHeaders(false)});
+      if(r.ok){toast('Removed');loadCoords();}
+      else toast('Failed');
+    }catch(e){toast('Failed');}
+  });
+}
+
+$('addBtn').onclick=async()=>{
+  const name=$('nName').value.trim();
+  if(!name){toast('Enter a name');return;}
+  const body={name,team:$('nTeam').value,event:$('nEvent').value,cls:$('nCls').value.trim(),phone:$('nPhone').value.trim()};
+  try{
+    const r=await fetch('/api/coordinators',{method:'POST',headers:authHeaders(true),body:JSON.stringify(body)});
+    if(r.ok){toast('Coordinator added');$('nName').value='';$('nCls').value='';$('nPhone').value='';loadCoords();}
+    else toast('Failed');
+  }catch(e){toast('Failed');}
+};
+
+// ---------- events admin ----------
+function evRegCount(slug,name){return REGS.filter(x=>x.eventSlug===slug||x.event===name).length;}
+
+function renderEventsAdmin(){
+  const w=isWrite();
+  $('addEventForm').classList.toggle('hidden',!w);
+  $('evAdminList').innerHTML=EVENTS_DB.map((e,i)=>{
+    const n=evRegCount(e.slug,e.name);
+    return `<div class="glass crow">
+      <div class="who"><b>${esc(e.name)}</b><span>${esc(e.tagline||'')} · 1st ${fmt(e.prize1)} / 2nd ${fmt(e.prize2)} · Team ${e.teamMin}–${e.teamMax} · <span data-count="${e.slug}">${n} reg${n===1?'':'s'}</span></span></div>
+      <label class="mut" style="display:flex;gap:6px;align-items:center"><input type="checkbox" data-vis="${e.slug}" ${e.visible?'checked':''} ${w?'':'disabled'}> Visible</label>
+      <label class="mut" style="display:flex;gap:6px;align-items:center"><input type="checkbox" data-open="${e.slug}" ${e.regOpen?'checked':''} ${w?'':'disabled'}> Reg open</label>
+      ${w?`<button class="mini" data-ev-up="${e.slug}" ${i===0?'disabled style="opacity:.4"':''}>Up</button>
+      <button class="mini" data-ev-down="${e.slug}" ${i===EVENTS_DB.length-1?'disabled style="opacity:.4"':''}>Down</button>
+      <button class="mini" data-ev-edit="${e.slug}">Edit</button>
+      <button class="mini danger" data-ev-del="${e.slug}">Delete</button>`:''}
+    </div>`;
+  }).join('')||'<div class="empty">No events yet.</div>';
+  document.querySelectorAll('[data-vis]').forEach(cb=>cb.onchange=()=>saveEvent({slug:cb.dataset.vis,visible:cb.checked}));
+  document.querySelectorAll('[data-open]').forEach(cb=>cb.onchange=()=>saveEvent({slug:cb.dataset.open,regOpen:cb.checked}));
+  document.querySelectorAll('[data-ev-up]').forEach(b=>b.onclick=()=>moveEvent(b.dataset.evUp,-1));
+  document.querySelectorAll('[data-ev-down]').forEach(b=>b.onclick=()=>moveEvent(b.dataset.evDown,1));
+  document.querySelectorAll('[data-ev-edit]').forEach(b=>b.onclick=()=>openEvEdit(b.dataset.evEdit));
+  document.querySelectorAll('[data-ev-del]').forEach(b=>b.onclick=()=>delEvent(b.dataset.evDel));
+}
+
+async function saveEvent(patch){
+  try{
+    const r=await fetch('/api/events',{method:'PATCH',headers:authHeaders(true),body:JSON.stringify(patch)});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok){toast(d.error||'Failed');return false;}
+    await ensureEvents(true);
+    renderEventsAdmin();
+    render();
+    return true;
+  }catch(e){toast('Failed');return false;}
+}
+
+async function moveEvent(slug,dir){
+  const i=EVENTS_DB.findIndex(e=>e.slug===slug);
+  const j=i+dir;
+  if(i<0||j<0||j>=EVENTS_DB.length)return;
+  const a=EVENTS_DB[i], b=EVENTS_DB[j];
+  const oa=a.order, ob=b.order;
+  // swap orders (give distinct values even if they were equal)
+  await saveEvent({slug:a.slug,order:ob});
+  await saveEvent({slug:b.slug,order:oa===ob?oa+1:oa});
+  toast('Order updated');
+}
+
+function openEvEdit(slug){
+  const e=EVENTS_DB.find(x=>x.slug===slug);
+  if(!e)return;
+  EDIT_EV=slug;
+  $('evEName').value=e.name||'';$('evETag').value=e.tagline||'';$('evEAbout').value=e.about||'';
+  $('evEP1').value=e.prize1;$('evEP2').value=e.prize2;
+  $('evEMin').value=e.teamMin;$('evEMax').value=e.teamMax;
+  $('evEDur').value=e.duration||'';$('evEWhen').value=e.when||'';$('evEWhere').value=e.where||'';
+  $('evEHow').value=(e.how||[]).join('\n');$('evERules').value=(e.rules||[]).join('\n');$('evEReqs').value=(e.reqs||[]).join('\n');
+  $('evEOrd').value=e.order||99;$('evEVis').checked=!!e.visible;$('evEOpen').checked=!!e.regOpen;
+  $('modal-ev').classList.add('show');
+}
+$('modalEvCancel').onclick=()=>{$('modal-ev').classList.remove('show');EDIT_EV=null;};
+$('modal-ev').addEventListener('click',e=>{if(e.target===$('modal-ev')){$('modal-ev').classList.remove('show');EDIT_EV=null;}});
+$('modalEvSave').onclick=async()=>{
+  if(!EDIT_EV)return;
+  const lines=id=>$(id).value.split('\n').map(s=>s.trim()).filter(Boolean);
+  const body={slug:EDIT_EV,name:$('evEName').value.trim(),tagline:$('evETag').value.trim(),about:$('evEAbout').value.trim(),
+    prize1:parseInt($('evEP1').value,10)||0,prize2:parseInt($('evEP2').value,10)||0,
+    teamMin:parseInt($('evEMin').value,10)||1,teamMax:parseInt($('evEMax').value,10)||1,
+    duration:$('evEDur').value.trim(),when:$('evEWhen').value.trim(),where:$('evEWhere').value.trim(),
+    how:lines('evEHow'),rules:lines('evERules'),reqs:lines('evEReqs'),
+    order:parseInt($('evEOrd').value,10)||99,visible:$('evEVis').checked,regOpen:$('evEOpen').checked};
+  if(!body.name){toast('Enter a name');return;}
+  if(await saveEvent(body)){$('modal-ev').classList.remove('show');EDIT_EV=null;toast('Event saved — live now');}
+};
+
+$('evAddBtn').onclick=async()=>{
+  const name=$('evName').value.trim();
+  if(!name){toast('Enter a name');return;}
+  const body={name,tagline:$('evTag').value.trim(),
+    prize1:parseInt($('evP1').value,10)||0,prize2:parseInt($('evP2').value,10)||0,
+    teamMin:parseInt($('evMin').value,10)||1,teamMax:parseInt($('evMax').value,10)||1,
+    duration:$('evDur').value.trim(),order:parseInt($('evOrd').value,10)||99,
+    about:'',how:[],rules:[],reqs:[],visible:true,regOpen:true};
+  try{
+    const r=await fetch('/api/events',{method:'POST',headers:authHeaders(true),body:JSON.stringify(body)});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok){toast(d.error||'Failed');return;}
+    await ensureEvents(true);
+    renderEventsAdmin();render();
+    ['evName','evTag','evP1','evP2','evMin','evMax','evDur','evOrd'].forEach(id=>{$(id).value='';});
+    toast('Event added — now tap Edit to fill in the details');
+  }catch(e){toast('Failed');}
+};
+
+async function delEvent(slug){
+  const e=EVENTS_DB.find(x=>x.slug===slug);
+  if(!e)return;
+  const n=evRegCount(e.slug,e.name);
+  if(n>0){toast('This event has '+n+' registration(s). Hide it instead of deleting.');return;}
+  if(!confirm('Delete the event "'+e.name+'"? This cannot be undone.'))return;
+  try{
+    const r=await fetch('/api/events?slug='+slug,{method:'DELETE',headers:authHeaders(false)});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok){toast(d.error||'Failed');return;}
+    await ensureEvents(true);
+    renderEventsAdmin();render();
+    toast('Event deleted');
+  }catch(e){toast('Failed');}
+}
 
 // CSV export
 $('csvBtn').onclick=()=>{
@@ -280,14 +805,14 @@ $('installBtn').onclick=doInstall;$('installBtn2').onclick=doInstall;
 // auto-login
 if(TOKEN&&ROLE)showDash();
 
-// live sync: refresh every 15s when dashboard visible
+// live sync: refresh every 5s when dashboard visible
 setInterval(()=>{
   if(!$('dash').classList.contains('hidden') && !document.hidden){
     load();
     const lp=$('livePill');
     lp.style.opacity='.5';setTimeout(()=>lp.style.opacity='1',400);
   }
-},15000);
+},5000);
 </script>
 </body>
 </html>

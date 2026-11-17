@@ -21,7 +21,7 @@
       "source": "/gallery"
     },
     {
-      "destination": "/register-:event.html",
+      "destination": "/register.html?event=:event",
       "source": "/registration/:event"
     },
     {

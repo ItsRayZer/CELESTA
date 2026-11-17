@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Register | Celesta 2K26</title>
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="CELESTA 2K26">
+<meta property="og:title" content="CELESTA 2K26 — Inter-School Tech Fest">
+<meta property="og:description" content="20 November 2026 · Mar Augusthinose College, Ramapuram · 5 events · ₹17,250 in prizes. Presented by NEXUS.">
+<meta property="og:image" content="https://celesta-fest.vercel.app/assets/og-share.jpg">
+<meta property="og:url" content="https://celesta-fest.vercel.app/about">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="CELESTA 2K26 — Inter-School Tech Fest">
+<meta name="twitter:description" content="20 November 2026 · 5 events · ₹17,250 in prizes.">
+<meta name="twitter:image" content="https://celesta-fest.vercel.app/assets/og-share.jpg">
+<meta name="description" content="Register for an event at Celesta 2K26 — inter-school tech fest by NEXUS, Mar Augusthinose College, Ramapuram.">
+<link rel="icon" type="image/png" href="/assets/logo.webp">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=Marcellus&display=swap">
+<link rel="stylesheet" href="/styles.css?v=39">
+<style>#pill{display:none!important}</style>
+<style>html{background:#060608}body{background:#060608}</style>
+</head>
+<body class="reg-page">
+
+<div id="loader" aria-hidden="true">
+  <img src="/assets/wordmark-white.webp" alt="">
+  <div class="l-line"><i></i></div>
+</div>
+
+<nav id="pill" aria-label="Site menu">
+  <div class="p-count" aria-hidden="true"></div>
+  <div class="p-menu">
+    <a href="/about">About</a>
+    <a href="/events">Events</a>
+    <a href="/gallery">Gallery</a>
+    <a href="/contact">Contact</a>
+  </div>
+</nav>
+
+<div class="rg-blobs" aria-hidden="true"><i></i><i></i><i></i></div>
+<main class="reg-wrap" id="reg-app">
+  <div style="padding:60px 0;text-align:center;color:#86868b" id="reg-loading">Loading event…</div>
+</main>
+
+<footer>
+  <div class="f-nexus"><img src="/assets/nexus-logo-dark.webp" alt="NEXUS logo" loading="lazy"><span>NEXUS · Computer Applications Department Association</span></div>
+  <div>Mar Augusthinose College, Ramapuram</div>
+  <div class="f-line" id="f-line">Five events. One day. One campus.</div>
+</footer>
+
+<script src="/app.js?v=30" defer></script>
+<script>
+(function(){
+  var app=document.getElementById('reg-app');
+  var params=new URLSearchParams(location.search);
+  var slug=(params.get('event')||'').toLowerCase().trim();
+  // Also support /registration/<slug> if the server kept the path instead of the query.
+  if(!slug){
+    var parts=location.pathname.split('/').filter(Boolean);
+    if(parts[0]==='registration'&&parts[1]) slug=parts[1].toLowerCase();
+  }
+  function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+  function fmt(n){return '₹'+Number(n||0).toLocaleString('en-IN');}
+  function teamLabel(e){return e.teamMin===e.teamMax?e.teamMin+' member'+(e.teamMin>1?'s':''):e.teamMin+'–'+e.teamMax+' members';}
+  function showMsg(title,body,back){
+    app.innerHTML='<div style="padding:60px 0;text-align:center">'
+      +'<h1 style="font-size:26px;margin-bottom:10px">'+esc(title)+'</h1>'
+      +'<p style="color:#86868b;line-height:1.6;max-width:420px;margin:0 auto 22px">'+esc(body)+'</p>'
+      +(back?'<a class="gz-btn" href="/events" style="display:inline-block">See all events</a>':'<button class="gz-btn" onclick="location.reload()">Try again</button>')
+      +'</div>';
+  }
+  function acc(title,items,cls){
+    if(!items||!items.length)return '';
+    return '<details class="rd-acc"><summary>'+esc(title)+'</summary><ul class="rd-list '+cls+'">'
+      +items.map(function(t){return '<li>'+esc(t)+'</li>';}).join('')+'</ul></details>';
+  }
+  function render(e,totalEvents){
+    document.title='Register — '+e.name+' | Celesta 2K26';
+    var fl=document.getElementById('f-line');
+    if(fl&&totalEvents)fl.textContent=(totalEvents===1?'One event':({1:'One',2:'Two',3:'Three',4:'Four',5:'Five',6:'Six',7:'Seven',8:'Eight'}[totalEvents]||totalEvents)+' events')+'. One day. One campus.';
+    var num=String(e.order||1).padStart(2,'0');
+    var opts='';
+    for(var n=e.teamMin;n<=e.teamMax;n++)opts+='<option value="'+n+'">'+n+'</option>';
+    var closed=!e.regOpen;
+    app.innerHTML=
+      '<div class="rg-bar"><a class="glass-back" href="/events" aria-label="Back to events"><svg width="11" height="18" viewBox="0 0 11 18" fill="none" aria-hidden="true"><path d="M9.5 1.5 2 9l7.5 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Events</span></a></div>'
+      +'<header class="rg-head"><span class="rg-chip">'+num+' · Inter-School</span><h1>'+esc(e.name)+'</h1><p class="rg-tag">'+esc(e.tagline||'')+'</p>'
+      +'<div class="rg-prizes"><span>1st '+fmt(e.prize1)+'</span><span>2nd '+fmt(e.prize2)+'</span></div></header>'
+      +(closed
+        ?'<div class="ok-msg show" role="status"><h3>Registrations closed</h3><p>Registrations for <strong>'+esc(e.name)+'</strong> are closed. Check the Events page for the other events.</p></div>'
+        :'<form id="reg-form-dyn" class="rg-form" data-event="'+esc(e.name)+'" data-slug="'+esc(e.slug)+'" data-min="'+e.teamMin+'" data-max="'+e.teamMax+'" novalidate>'
+        +'<div class="rg-group">'
+        +'<div class="field" id="f-name"><label for="in-name">Name</label><input id="in-name" type="text" autocomplete="name" placeholder="Team leader"><div class="err">Enter your full name.</div></div>'
+        +'<div class="field" id="f-school"><label for="in-school">School</label><input id="in-school" type="text" autocomplete="organization" placeholder="Your school"><div class="err">Enter your school name.</div></div>'
+        +'<div class="field" id="f-phone"><label for="in-phone">Phone</label><input id="in-phone" type="tel" inputmode="numeric" autocomplete="tel" maxlength="10" placeholder="10-digit mobile"><div class="err">Enter a valid 10-digit mobile number.</div></div>'
+        +'<div class="field" id="f-email"><label for="in-email">Email</label><input id="in-email" type="email" autocomplete="email" placeholder="you@example.com"><div class="err">Enter a valid email address.</div></div>'
+        +'</div><div class="rg-group">'
+        +'<div class="field" id="f-team"><label for="in-team">Team size</label><select id="in-team">'+opts+'</select><div class="err">Choose your team size.</div></div>'
+        +'<div class="field" id="f-teamname"><label for="in-teamname">Team name</label><input id="in-teamname" type="text" placeholder="Optional"></div>'
+        +'<div class="field" id="f-members" hidden><label for="in-members">Members</label><textarea id="in-members" placeholder="Other members, one per line"></textarea><div class="err" id="err-members">Add the names of your other team members.</div></div>'
+        +'</div><div class="rg-group">'
+        +'<div class="field check" id="f-agree"><label for="in-agree">I confirm these details are correct and every member will carry a valid school ID card on 20 November 2026.</label><input id="in-agree" type="checkbox"></div>'
+        +'</div>'
+        +'<button class="rg-submit" type="submit">Register for '+esc(e.name)+'</button>'
+        +'<p class="reg-note">Your registration is saved with the organizers. Confirmation and payment details will be announced soon.</p>'
+        +'<div class="ok-msg" id="ok-msg" role="status"></div>'
+        +'</form>')
+      +'<div class="rd-below"><p class="rd-about">'+esc(e.about||'')+'</p>'
+      +'<div class="ww-card">'
+      +'<div class="ww-row"><span class="ww-k">When</span><span>'+esc(e.when||'')+'</span></div>'
+      +'<div class="ww-row"><span class="ww-k">Where</span><span>'+esc(e.where||'')+'</span></div>'
+      +'<div class="ww-row"><span class="ww-k">Team</span><span>'+esc(teamLabel(e))+'</span></div>'
+      +'<div class="ww-row"><span class="ww-k">Duration</span><span>'+esc(e.duration||'')+'</span></div>'
+      +'</div>'
+      +acc('How it works',e.how,'num')
+      +acc('Rules',e.rules,'dot')
+      +acc('Requirements',e.reqs,'dot')
+      +'</div>';
+    if(!closed)bindForm(e);
+  }
+  function bindForm(e){
+    var form=document.getElementById('reg-form-dyn');
+    var teamSel=document.getElementById('in-team'), mem=document.getElementById('f-members');
+    function syncMembers(){
+      if(!teamSel||!mem)return;
+      var n=parseInt(teamSel.value,10)||1;
+      mem.hidden=n<2;
+      var lab=mem.querySelector('label');
+      if(lab)lab.textContent=n<2?'Other team members':'Other team members ('+(n-1)+' more)';
+    }
+    if(teamSel){teamSel.addEventListener('change',syncMembers);syncMembers();}
+    form.addEventListener('input',function(ev){
+      var f=ev.target.closest&&ev.target.closest('.field');
+      if(f)f.classList.remove('invalid');
+    });
+    form.addEventListener('submit',async function(ev){
+      ev.preventDefault();
+      var ok=true, first=null;
+      function mark(id,good){
+        var f=document.getElementById('f-'+id);
+        if(f)f.classList.toggle('invalid',!good);
+        if(!good){ok=false;if(!first)first=f;}
+      }
+      function val(id){var el=document.getElementById('in-'+id);return el?el.value.trim():'';}
+      var name=val('name'), school=val('school'), phone=val('phone').replace(/\s+/g,''), email=val('email'),
+          team=parseInt(val('team'),10), teamname=val('teamname'), members=val('members');
+      var list=members.split(/[\n,]+/).map(function(s){return s.trim();}).filter(Boolean);
+      mark('name',name.length>=2);
+      mark('school',school.length>=2);
+      mark('phone',/^[6-9]\d{9}$/.test(phone));
+      mark('email',/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email));
+      mark('team',team>=e.teamMin&&team<=e.teamMax);
+      if(team>1)mark('members',list.length>=team-1);
+      var agree=document.getElementById('in-agree');
+      if(agree)mark('agree',agree.checked);
+      if(!ok){if(first&&first.scrollIntoView)first.scrollIntoView({behavior:'smooth',block:'center'});return;}
+      var btn=form.querySelector('.rg-submit');
+      btn.disabled=true;btn.textContent='Registering…';
+      var payload={event:e.slug,name:name,school:school,phone:phone,email:email,team:team,teamName:teamname,members:list};
+      try{localStorage.setItem('celesta_reg_'+Date.now(),JSON.stringify(Object.assign({at:new Date().toISOString()},payload)));}catch(err){}
+      try{
+        var r=await fetch('/api/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+        var d=await r.json().catch(function(){return {};});
+        if(!r.ok)throw new Error(d.error||'Registration failed');
+        var box=document.getElementById('ok-msg');
+        if(box){
+          box.innerHTML='<h3>Registered</h3><p><strong>'+esc(e.name)+'</strong><br>'
+            +(teamname?esc(teamname)+' · ':'')+esc(name)+' · '+esc(school)+' · Team of '+esc(team)+'</p>'
+            +'<p class="reg-note">Saved with the organizers. Carry a valid ID card on 20 November 2026 and report by 9:30 AM. The organizers will announce confirmation and payment details soon — please keep a screenshot.</p>';
+          box.classList.add('show');
+          box.scrollIntoView({behavior:'smooth',block:'center'});
+        }
+        form.reset();syncMembers();
+      }catch(err){
+        var box2=document.getElementById('ok-msg');
+        if(box2){
+          box2.innerHTML='<h3>Could not register</h3><p>'+esc(err.message||'Something went wrong. Please try again.')+'</p>';
+          box2.classList.add('show');
+          box2.scrollIntoView({behavior:'smooth',block:'center'});
+        }
+      }finally{
+        btn.disabled=false;btn.textContent='Register for '+e.name;
+      }
+    });
+  }
+  if(!slug){showMsg('No event selected','Pick an event from the Events page to register.',true);return;}
+  fetch('/api/events').then(function(r){return r.json();}).then(function(d){
+    var list=(d.events||[]);
+    var e=list.find(function(x){return x.slug===slug;});
+    if(!e){showMsg('Event not available','This event does not exist or is no longer listed. See the events that are open.',true);return;}
+    if(!e.visible){showMsg('Event not available','This event is no longer listed. See the events that are open.',true);return;}
+    render(e,list.filter(function(x){return x.visible;}).length);
+  }).catch(function(){
+    showMsg('Could not load this event','Check your connection and try again.',false);
+  });
+})();
+</script>
+</body>
+</html>

@@ -95,5 +95,21 @@
 </footer>
 
 <script src="/app.js?v=30" defer></script>
+<script>
+// Coordinator phone numbers, live from the admin. Names stay as printed in the HTML;
+// if a number was added in the admin, it appears under the matching name.
+fetch('/api/coordinators').then(function(r){return r.json();}).then(function(d){
+  (d.coordinators||[]).forEach(function(c){
+    if(!c.phone)return;
+    document.querySelectorAll('.tm-grid b').forEach(function(b){
+      if(b.textContent.trim()===c.name && !b.parentElement.querySelector('.c-phone[data-for="'+c.name+'"]')){
+        var s=document.createElement('small');
+        s.className='c-phone';s.setAttribute('data-for',c.name);s.textContent=c.phone;
+        b.after(s);
+      }
+    });
+  });
+}).catch(function(){});
+</script>
 </body>
 </html>

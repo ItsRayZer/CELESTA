@@ -35,8 +35,27 @@ export default async function handler(req, res) {
       const rec = JSON.parse(raw);
       if (typeof paid === 'boolean') rec.paid = paid;
       if (typeof amount === 'number') rec.amount = amount;
+      // full edit: name, school, phone, email, team size, team name, members
+      for (const k of ['name', 'school', 'phone', 'email', 'teamName']) {
+        if (typeof req.body[k] === 'string') rec[k] = req.body[k].trim();
+      }
+      if (typeof req.body.team === 'number') rec.team = req.body.team;
+      if (Array.isArray(req.body.members)) rec.members = req.body.members.map(String);
       await redis.hset('celesta:regs', { [id]: JSON.stringify(rec) });
       return res.status(200).json({ ok: true, reg: rec });
+    } catch (e) {
+      return res.status(500).json({ error: 'Storage unavailable' });
+    }
+  }
+
+  if (req.method === 'DELETE') {
+    if (role !== 'write') return res.status(403).json({ error: 'Write access required' });
+    const { id } = req.body || {};
+    if (!id) return res.status(400).json({ error: 'Missing id' });
+    try {
+      await redis.hdel('celesta:regs', id);
+      await redis.zrem('celesta:reglist', id);
+      return res.status(200).json({ ok: true });
     } catch (e) {
       return res.status(500).json({ error: 'Storage unavailable' });
     }
