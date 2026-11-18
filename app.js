@@ -1,7 +1,8 @@
 /* Celesta 2K26 static site — loader, countdown, pill morph, reveals, parallax, registration.
-   NOTE: registration forms save to the visitor's browser localStorage only.
-   The real registration backend lives on the CELESTA web artifact; this static
-   mirror is honest about local-only storage. */
+   LIVE FLOW: the dynamic form in register.html POSTs to /api/register (Upstash Redis)
+   and reports the real result. The #reg-form handler below is LEGACY: it served the
+   static register-*.html backup pages (now redirected to /registration/:event) and
+   still writes a localStorage copy. Do not 'fix' it into the live path. */
 (function () {
   "use strict";
 

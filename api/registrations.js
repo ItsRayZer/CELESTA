@@ -6,8 +6,9 @@ const redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL,
   token: process.env.UPSTASH_REDIS_REST_TOKEN,
 });
-import { verify, parseVal } from './admin-login.js';
+import { verify, parseVal, normPhone, validPhone, regMarkerKeys, MARKER_TTL } from './admin-login.js';
 import { appendLog } from './activity-log.js';
+import { loadEvents } from './events.js';
 
 export default async function handler(req, res) {
   const token = (req.headers.authorization || '').replace('Bearer ', '');
@@ -54,6 +55,64 @@ export default async function handler(req, res) {
       const raw = await redis.hget('celesta:regs', id);
       const rec = parseVal(raw);
       if (!rec) return res.status(404).json({ error: 'Not found' });
+      // --- Validate the edit the same way /api/register validates a submit ---
+      // (an admin typo must not write a negative amount, a bad phone, or a
+      // team size the event doesn't allow).
+      if (amount !== undefined && (typeof amount !== 'number' || !Number.isFinite(amount) || amount < 0)) {
+        return res.status(400).json({ error: 'Amount must be a number of ₹0 or more' });
+      }
+      if (paid !== undefined && typeof paid !== 'boolean') {
+        return res.status(400).json({ error: 'Paid must be true or false' });
+      }
+      const caps = { name: 100, school: 150, email: 254, teamName: 80 };
+      for (const k of Object.keys(caps)) {
+        if (typeof req.body[k] === 'string' && req.body[k].trim().length > caps[k]) {
+          return res.status(400).json({ error: k + ' is too long' });
+        }
+      }
+      if (typeof req.body.email === 'string' && req.body.email.trim()
+          && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(req.body.email.trim())) {
+        return res.status(400).json({ error: 'Enter a valid email address' });
+      }
+      let newPhone = null;
+      if (typeof req.body.phone === 'string') {
+        newPhone = normPhone(req.body.phone);
+        if (!validPhone(newPhone)) return res.status(400).json({ error: 'Enter a valid 10-digit mobile number' });
+      }
+      // The event's team limits (falls back to the record's own values if the
+      // event was since deleted).
+      let ev = null;
+      try {
+        const events = await loadEvents();
+        ev = events.find(e => e.slug === rec.eventSlug || e.name === rec.event) || null;
+      } catch { ev = null; }
+      const teamMin = ev ? ev.teamMin : 1, teamMax = ev ? ev.teamMax : 20;
+      if (req.body.team !== undefined && (!Number.isInteger(req.body.team) || req.body.team < teamMin || req.body.team > teamMax)) {
+        return res.status(400).json({ error: 'Team size must be ' + teamMin + '–' + teamMax + ' for ' + (ev ? ev.name : rec.event) });
+      }
+      if (Array.isArray(req.body.members)) {
+        if (req.body.members.length > teamMax || req.body.members.some(m => String(m).length > 100)) {
+          return res.status(400).json({ error: 'Member names are too long or there are too many members' });
+        }
+      }
+      // Duplicate phone/email on edit (same event, different registration).
+      const newEmail = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : null;
+      if (newPhone || newEmail) {
+        try {
+          const all = await redis.hgetall('celesta:regs');
+          if (all) for (const [k, v] of Object.entries(all)) {
+            if (k === id) continue;
+            const r = parseVal(v);
+            if (!r || (r.eventSlug !== rec.eventSlug && r.event !== rec.event)) continue;
+            if (newPhone && normPhone(r.phone) === newPhone) {
+              return res.status(409).json({ error: 'This phone number is already registered for ' + rec.event });
+            }
+            if (newEmail && r.email && String(r.email).trim().toLowerCase() === newEmail) {
+              return res.status(409).json({ error: 'This email is already registered for ' + rec.event });
+            }
+          }
+        } catch { /* duplicate check unavailable — continue */ }
+      }
       const before = {};
       for (const k of ['paid', 'amount', 'name', 'school', 'phone', 'email', 'teamName', 'team', 'members']) before[k] = rec[k];
       if (typeof paid === 'boolean') rec.paid = paid;
@@ -62,8 +121,20 @@ export default async function handler(req, res) {
       for (const k of ['name', 'school', 'phone', 'email', 'teamName']) {
         if (typeof req.body[k] === 'string') rec[k] = req.body[k].trim();
       }
+      if (newPhone) rec.phone = newPhone;
       if (typeof req.body.team === 'number') rec.team = req.body.team;
       if (Array.isArray(req.body.members)) rec.members = req.body.members.map(String);
+      // Keep the uniqueness markers in step with an edited phone/email.
+      if (newPhone || newEmail) {
+        try {
+          const oldMk = regMarkerKeys(rec.eventSlug || rec.event, normPhone(before.phone), before.email);
+          if (oldMk.phone) await redis.del(oldMk.phone);
+          if (oldMk.email) await redis.del(oldMk.email);
+          const mk = regMarkerKeys(rec.eventSlug || rec.event, normPhone(rec.phone), rec.email);
+          if (mk.phone) await redis.set(mk.phone, id, { nx: true, ex: MARKER_TTL });
+          if (mk.email) await redis.set(mk.email, id, { nx: true, ex: MARKER_TTL });
+        } catch { /* markers are a backstop; the record is already saved */ }
+      }
       await redis.hset('celesta:regs', { [id]: JSON.stringify(rec) });
       // Log only what actually changed, with the old values for undo.
       const changed = {};
@@ -99,6 +170,13 @@ export default async function handler(req, res) {
       const rec = parseVal(await redis.hget('celesta:regs', id));
       await redis.hdel('celesta:regs', id);
       await redis.zrem('celesta:reglist', id);
+      if (rec) {
+        try {
+          const mk = regMarkerKeys(rec.eventSlug || rec.event, normPhone(rec.phone), rec.email);
+          if (mk.phone) await redis.del(mk.phone);
+          if (mk.email) await redis.del(mk.email);
+        } catch { /* markers expire on their own; the record is already gone */ }
+      }
       if (rec) {
         await appendLog({
           actor: 'write', action: 'Registration deleted',

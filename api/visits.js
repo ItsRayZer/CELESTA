@@ -13,10 +13,19 @@ function todayStr(){ return new Date().toISOString().slice(0,10); }
 
 export default async function handler(req, res) {
   const day = todayStr();
+  if (req.method !== 'GET' && req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   try {
     if (req.method === 'POST') {
-      const ref = (req.headers.referer || req.headers.origin || '');
-      const fromSite = ref.includes('celesta-fest.vercel.app') || ref.includes('vercel.app') || ref.includes('localhost');
+      // Exact-host match: the old substring check let ANY *.vercel.app (or a
+      // URL merely containing the string) inflate the counter.
+      let fromSite = false;
+      try {
+        const ref = (req.headers.referer || req.headers.origin || '');
+        if (ref) {
+          const host = new URL(ref).hostname;
+          fromSite = host === 'celesta-fest.vercel.app' || host === 'localhost';
+        }
+      } catch { fromSite = false; }
       if (fromSite) {
         await redis.incr('celesta:visits:total');
         await redis.hincrby('celesta:visits:daily', day, 1);

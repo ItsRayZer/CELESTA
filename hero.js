@@ -108,7 +108,7 @@
       gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
       var lc = gl.getAttribLocation(pr, "p"); gl.enableVertexAttribArray(lc); gl.vertexAttribPointer(lc, 2, gl.FLOAT, false, 0, 0);
       gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-      ["assets/hero-coder.webp", "assets/hero-wizard.webp"].forEach(function (src, i) {
+      ["/assets/hero-coder.webp", "/assets/hero-wizard.webp"].forEach(function (src, i) {
         var im = new Image();
         im.onload = function () {
           if (!gl) return;

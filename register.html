@@ -9,7 +9,7 @@
 <meta property="og:title" content="CELESTA 2K26 — Inter-School Tech Fest">
 <meta property="og:description" content="20 November 2026 · Mar Augusthinose College, Ramapuram · 5 events · ₹17,250 in prizes. Presented by NEXUS.">
 <meta property="og:image" content="https://celesta-fest.vercel.app/assets/og-share.jpg">
-<meta property="og:url" content="https://celesta-fest.vercel.app/about">
+<meta property="og:url" content="https://celesta-fest.vercel.app/events">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="CELESTA 2K26 — Inter-School Tech Fest">
 <meta name="twitter:description" content="20 November 2026 · 5 events · ₹17,250 in prizes.">
@@ -19,7 +19,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=Marcellus&display=swap">
-<link rel="stylesheet" href="/styles.css?v=39">
+<link rel="stylesheet" href="/styles.css?v=49">
 <style>#pill{display:none!important}</style>
 <style>html{background:#060608}body{background:#060608}.hp{position:absolute!important;left:-9999px!important;top:auto;width:1px;height:1px;overflow:hidden}</style>
 </head>
@@ -51,7 +51,7 @@
   <div class="f-line" id="f-line">Five events. One day. One campus.</div>
 </footer>
 
-<script src="/app.js?v=31" defer></script>
+<script src="/app.js?v=32" defer></script>
 <script>
 (function(){
   var app=document.getElementById('reg-app');
@@ -93,14 +93,14 @@
         ?'<div class="ok-msg show" role="status"><h3>Registrations closed</h3><p>Registrations for <strong>'+esc(e.name)+'</strong> are closed. Check the Events page for the other events.</p></div>'
         :'<form id="reg-form-dyn" class="rg-form" data-event="'+esc(e.name)+'" data-slug="'+esc(e.slug)+'" data-min="'+e.teamMin+'" data-max="'+e.teamMax+'" novalidate>'
         +'<div class="rg-group">'
-        +'<div class="field" id="f-name"><label for="in-name">Name</label><input id="in-name" type="text" autocomplete="name" placeholder="Team leader"><div class="err">Enter your full name.</div></div>'
-        +'<div class="field" id="f-school"><label for="in-school">School</label><input id="in-school" type="text" autocomplete="organization" placeholder="Your school"><div class="err">Enter your school name.</div></div>'
+        +'<div class="field" id="f-name"><label for="in-name">Name</label><input id="in-name" type="text" autocomplete="name" placeholder="Team leader" maxlength="100"><div class="err">Enter your full name.</div></div>'
+        +'<div class="field" id="f-school"><label for="in-school">School</label><input id="in-school" type="text" autocomplete="organization" placeholder="Your school" maxlength="150"><div class="err">Enter your school name.</div></div>'
         +'<div class="field" id="f-phone"><label for="in-phone">Phone</label><input id="in-phone" type="tel" inputmode="numeric" autocomplete="tel" maxlength="10" placeholder="10-digit mobile"><div class="err">Enter a valid 10-digit mobile number.</div></div>'
-        +'<div class="field" id="f-email"><label for="in-email">Email</label><input id="in-email" type="email" autocomplete="email" placeholder="you@example.com"><div class="err">Enter a valid email address.</div></div>'
+        +'<div class="field" id="f-email"><label for="in-email">Email</label><input id="in-email" type="email" autocomplete="email" placeholder="you@example.com" maxlength="254"><div class="err">Enter a valid email address.</div></div>'
         +'<div class="field hp" aria-hidden="true"><label for="in-website">Website</label><input id="in-website" type="text" autocomplete="off" tabindex="-1"></div>'
         +'</div><div class="rg-group">'
         +'<div class="field" id="f-team"><label for="in-team">Team size</label><select id="in-team">'+opts+'</select><div class="err">Choose your team size.</div></div>'
-        +'<div class="field" id="f-teamname"><label for="in-teamname">Team name</label><input id="in-teamname" type="text" placeholder="Optional"></div>'
+        +'<div class="field" id="f-teamname"><label for="in-teamname">Team name</label><input id="in-teamname" type="text" placeholder="Optional" maxlength="80"></div>'
         +'<div class="field" id="f-members" hidden><label for="in-members">Members</label><textarea id="in-members" placeholder="Other members, one per line"></textarea><div class="err" id="err-members">Add the names of your other team members.</div></div>'
         +'</div><div class="rg-group">'
         +'<div class="field check" id="f-agree"><label for="in-agree">I confirm these details are correct and every member will carry a valid school ID card on 20 November 2026.</label><input id="in-agree" type="checkbox"></div>'
@@ -150,7 +150,7 @@
       function val(id){var el=document.getElementById('in-'+id);return el?el.value.trim():'';}
       var name=val('name'), school=val('school'), phone=val('phone').replace(/\s+/g,''), email=val('email'),
           team=parseInt(val('team'),10), teamname=val('teamname'), members=val('members');
-      var list=members.split(/[\n,]+/).map(function(s){return s.trim();}).filter(Boolean);
+      var list=members.split(/\n+/).map(function(s){return s.trim();}).filter(Boolean);
       mark('name',name.length>=2);
       mark('school',school.length>=2);
       mark('phone',/^[6-9]\d{9}$/.test(phone));

@@ -67,8 +67,10 @@ export default async function handler(req, res) {
   if (req.method === 'POST') {
     const c = req.body || {};
     if (!c.name || !c.team) return res.status(400).json({ error: 'Name and team are required' });
+    const id = c.id ? String(c.id).trim() : ('c' + Date.now().toString(36));
+    if (!/^[A-Za-z0-9-]+$/.test(id)) return res.status(400).json({ error: 'Invalid coordinator id' });
     const rec = {
-      id: c.id || ('c' + Date.now().toString(36)),
+      id,
       name: String(c.name).trim(),
       team: String(c.team).trim(),
       event: String(c.event || '').trim(),

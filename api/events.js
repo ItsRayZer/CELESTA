@@ -275,9 +275,14 @@ export default async function handler(req, res) {
     res.setHeader('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300');
     try {
       const events = await loadEvents();
-      return res.status(200).json({ events });
+      // Unauthenticated callers see listed events only; a logged-in admin
+      // (read or write token) sees hidden ones too, for the admin UI.
+      const token = (req.headers.authorization || '').replace('Bearer ', '');
+      const role = token ? verify(token) : null;
+      const list = role ? events : events.filter(e => e.visible);
+      return res.status(200).json({ events: list });
     } catch (e) {
-      return res.status(200).json({ events: DEFAULT_EVENTS });
+      return res.status(200).json({ events: DEFAULT_EVENTS.filter(e => e.visible) });
     }
   }
 
@@ -288,7 +293,7 @@ export default async function handler(req, res) {
     try {
       const events = await loadEvents();
       let slug = slugify(req.body && req.body.name);
-      if (events.some(e => e.slug === slug)) slug = slug + '-' + Date.now().toString(36);
+      if (events.some(e => e.slug === slug)) slug = slug + '-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
       const e = cleanEvent(req.body || {}, null);
       e.slug = slug;
       await redis.hset('celesta:events', { [slug]: JSON.stringify(e) });

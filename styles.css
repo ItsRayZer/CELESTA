@@ -1178,3 +1178,6 @@ body.dark-page .gz-tag--light{background:#111;color:#fff}
 .tm-grid .gz-info-card b{margin-top:8px;font-size:16px}
 .tm-grid .gz-info-card b:first-of-type{margin-top:0}
 .tm-grid .gz-info-card small{margin-top:1px}
+
+.c-phone{display:block;margin-top:2px;font-size:14px;font-weight:600;color:#141412}
+.addr{color:#555;font-size:14px;margin-top:4px}

@@ -16,7 +16,7 @@
 // Deliberately NOT fingerprinted: battery, network speed, WebGL extension list
 // (Brave randomises it per session) — they change constantly and would fake new devices.
 import { Redis } from '@upstash/redis';
-import { verify, parseVal } from './admin-login.js';
+import { verify, parseVal, regMarkerKeys, normPhone, MARKER_TTL } from './admin-login.js';
 
 const redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL,
@@ -47,16 +47,22 @@ function parseDevice(ua) {
 export function clientInfo(req) {
   const h = (req && req.headers) || {};
   const dec = (v) => { try { return v ? decodeURIComponent(String(v)) : null; } catch { return String(v); } };
-  const xf = String(h['x-forwarded-for'] || '').split(',')[0].trim();
-  const ip = xf || String(h['x-real-ip'] || '') || null;
+  // Trust only what the platform sets: x-real-ip, else the LAST X-Forwarded-For
+  // entry (Vercel appends the real client IP; the first entry is spoofable).
+  const real = String(h['x-real-ip'] || '').trim();
+  const xff = String(h['x-forwarded-for'] || '').split(',').map(x => x.trim()).filter(Boolean);
+  const ip = real || (xff.length ? xff[xff.length - 1] : null);
   const ua = String(h['user-agent'] || '') || null;
   const country = h['x-vercel-ip-country'] ? String(h['x-vercel-ip-country']) : null;
   const city = h['x-vercel-ip-city'] ? decodeURIComponent(String(h['x-vercel-ip-city'])) : null;
   const fp = h['x-device-fp'] ? String(h['x-device-fp']).slice(0, 32) : null;
   const fpjs = h['x-device-fpjs'] ? String(h['x-device-fpjs']).slice(0, 32) : null;
-  const model = dec(h['x-device-model']);
-  const gpu = dec(h['x-device-gpu']);
-  const info = dec(h['x-device-info']);
+  // Client-asserted fields are capped like ua/fp: a hostile client must not be
+  // able to grow log entries without bound.
+  const cap = (v, n) => { const d = dec(v); return d ? d.slice(0, n) : null; };
+  const model = cap(h['x-device-model'], 200);
+  const gpu = cap(h['x-device-gpu'], 200);
+  const info = cap(h['x-device-info'], 500);
   return { ip, ua, country, city, device: parseDevice(ua), fp, fpjs, model, gpu, info };
 }
 
@@ -122,8 +128,17 @@ async function applyUndo(u) {
     if (u.kind === 'reg-update') {
       const rec = parseVal(await redis.hget('celesta:regs', u.id));
       if (!rec) return { ok: false, error: 'Registration no longer exists' };
+      const oldMk = regMarkerKeys(rec.eventSlug || rec.event, normPhone(rec.phone), rec.email);
       Object.assign(rec, u.before || {});
       await redis.hset('celesta:regs', { [u.id]: JSON.stringify(rec) });
+      // Markers follow the restored values: drop the current ones, claim the old ones.
+      try {
+        if (oldMk.phone) await redis.del(oldMk.phone);
+        if (oldMk.email) await redis.del(oldMk.email);
+        const mk = regMarkerKeys(rec.eventSlug || rec.event, normPhone(rec.phone), rec.email);
+        if (mk.phone) await redis.set(mk.phone, u.id, { nx: true, ex: MARKER_TTL });
+        if (mk.email) await redis.set(mk.email, u.id, { nx: true, ex: MARKER_TTL });
+      } catch { /* markers are a backstop; the record is already restored */ }
       return { ok: true, message: 'Registration restored to its previous values' };
     }
     if (u.kind === 'reg-add') {
@@ -132,6 +147,11 @@ async function applyUndo(u) {
       if (exists) return { ok: false, error: 'Registration already exists' };
       await redis.hset('celesta:regs', { [rec.id]: JSON.stringify(rec) });
       await redis.zadd('celesta:reglist', { score: Date.parse(rec.at) || Date.now(), member: rec.id });
+      try {
+        const mk = regMarkerKeys(rec.eventSlug || rec.event, normPhone(rec.phone), rec.email);
+        if (mk.phone) await redis.set(mk.phone, rec.id, { nx: true, ex: MARKER_TTL });
+        if (mk.email) await redis.set(mk.email, rec.id, { nx: true, ex: MARKER_TTL });
+      } catch { /* markers are a backstop; the record is already restored */ }
       return { ok: true, message: 'Registration restored' };
     }
     if (u.kind === 'event-delete') {
@@ -194,9 +214,14 @@ async function applyUndo(u) {
       return { ok: true, message: 'Coordinator restored to its previous values' };
     }
     if (u.kind === 'poster-restore') {
-      if (u.prev) await redis.hset('celesta:posters', { [u.slug]: u.prev });
+      let prev = u.prev || null; // legacy entries carried the poster inline
+      if (!prev && u.prevKey) {
+        prev = await redis.get('celesta:poster-prev:' + u.prevKey) || null;
+      }
+      if (prev) await redis.hset('celesta:posters', { [u.slug]: prev });
       else await redis.hdel('celesta:posters', u.slug);
-      return { ok: true, message: u.prev ? 'Previous poster restored' : 'Poster reset to the original' };
+      if (u.prevKey) { try { await redis.del('celesta:poster-prev:' + u.prevKey); } catch {} }
+      return { ok: true, message: prev ? 'Previous poster restored' : 'Poster reset to the original' };
     }
     return { ok: false, error: 'Unknown undo type' };
   } catch {

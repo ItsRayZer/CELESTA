@@ -15,6 +15,8 @@
 // a bad phone, a duplicate, or the rate limit reject a submit.
 import { Redis } from '@upstash/redis';
 import { loadEvents } from './events.js';
+import { normPhone, validPhone, regMarkerKeys, MARKER_TTL } from './admin-login.js';
+export { normPhone, validPhone, regMarkerKeys, MARKER_TTL } from './admin-login.js';
 
 const redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL,
@@ -27,21 +29,18 @@ const redis = new Redis({
 const RL_LIMIT = 20;
 const RL_WINDOW = 600;   // per 10 minutes
 
+// Client IP: trust only what the platform sets. Vercel overwrites x-real-ip
+// with the connecting IP and appends it as the LAST entry of X-Forwarded-For.
+// The FIRST XFF entry is client-supplied and spoofable, so never use [0].
 function clientIp(req) {
   const h = (req && req.headers) || {};
-  return String(h['x-forwarded-for'] || '').split(',')[0].trim() || String(h['x-real-ip'] || '') || 'unknown';
+  const real = String(h['x-real-ip'] || '').trim();
+  if (real) return real;
+  const parts = String(h['x-forwarded-for'] || '').split(',').map(s => s.trim()).filter(Boolean);
+  return parts.length ? parts[parts.length - 1] : 'unknown';
 }
 
-function normPhone(p) {
-  let d = String(p || '').replace(/\D/g, '');
-  if (d.length === 12 && d.startsWith('91')) d = d.slice(2);
-  if (d.length === 11 && d.startsWith('0')) d = d.slice(1);
-  return d;
-}
 
-function validPhone(d) {
-  return /^[6-9]\d{9}$/.test(d);
-}
 
 // Junk-text detector: repeated chars, no vowel, digits in a name, too short.
 // Used for flagging only — a real name that trips it still registers.
@@ -84,14 +83,16 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
-  // Rate limit first (cheap, stops floods before any other work).
-  // Fail open: if Redis is down here, the main write below will fail anyway.
-  try {
-    const key = 'celesta:rl:' + clientIp(req);
-    const n = await redis.incr(key);
-    if (n === 1) await redis.expire(key, RL_WINDOW);
-    if (n > RL_LIMIT) return res.status(429).json({ error: 'Too many registrations from this device. Try again in a few minutes.' });
-  } catch { /* rate limit unavailable — continue */ }
+  // Length caps: a real name/school is never thousands of characters.
+  // Without these, a bot can store a multi-KB blob per registration and
+  // bloat the admin list. (Client inputs carry matching maxlengths.)
+  if (String(name).length > 100 || String(school).length > 150
+      || String(email || '').length > 254 || String(teamName || '').length > 80) {
+    return res.status(400).json({ error: 'A field is too long — please shorten it and try again.' });
+  }
+  if (Array.isArray(members) && (members.length > 20 || members.some(m => String(m).length > 100))) {
+    return res.status(400).json({ error: 'Member names are too long or there are too many members.' });
+  }
 
   // Validate the event against the database (falls back to the built-in list if storage is down).
   let ev = null;
@@ -105,9 +106,16 @@ export default async function handler(req, res) {
   if (!ev.visible) return res.status(403).json({ error: 'This event is no longer listed' });
   if (!ev.regOpen) return res.status(403).json({ error: 'Registrations are closed for this event' });
 
-  const teamSize = Number(team) || 1;
-  if (teamSize < ev.teamMin || teamSize > ev.teamMax) {
+  const teamSize = Number(team);
+  if (!Number.isInteger(teamSize) || teamSize < ev.teamMin || teamSize > ev.teamMax) {
     return res.status(400).json({ error: 'Team size for ' + ev.name + ' must be ' + ev.teamMin + '–' + ev.teamMax });
+  }
+  // members are the OTHER team members: teamSize - 1 names expected, at most teamMax.
+  if (Array.isArray(members) && members.length > ev.teamMax) {
+    return res.status(400).json({ error: 'Too many team members for ' + ev.name });
+  }
+  if (teamSize > 1 && (!Array.isArray(members) || members.filter(m => String(m || '').trim()).length < teamSize - 1)) {
+    return res.status(400).json({ error: 'Add the other team members for a team of ' + teamSize });
   }
 
   const phoneNorm = normPhone(phone);
@@ -135,6 +143,19 @@ export default async function handler(req, res) {
     }
   } catch { /* duplicate check unavailable — continue, storage write will still run */ }
 
+  // Rate limit AFTER validation: invalid requests don't burn quota, and a
+  // flood of junk still gets stopped before the write. Fail open: if Redis is
+  // down here, the main write below will fail anyway.
+  try {
+    const key = 'celesta:rl:' + clientIp(req);
+    const n = await redis.incr(key);
+    if (n === 1) {
+      try { await redis.expire(key, RL_WINDOW); }
+      catch { try { await redis.del(key); } catch {} } // never leave a key with no TTL
+    }
+    if (n > RL_LIMIT) return res.status(429).json({ error: 'Too many registrations from this device. Try again in a few minutes.' });
+  } catch { /* rate limit unavailable — continue */ }
+
   // Soft flags for the admin (never blocks a real student).
   const reasons = [];
   if (junkText(name)) reasons.push('name looks off');
@@ -158,11 +179,32 @@ export default async function handler(req, res) {
     risk: { level: riskLevelFor(reasons), reasons, at: new Date().toISOString() },
   };
 
+  // Atomic uniqueness claim: SET NX so two concurrent submissions with the
+  // same phone/email for this event cannot both write (the scan above is the
+  // backstop for rows created before markers existed).
+  const mk = regMarkerKeys(ev.slug, phoneNorm, emailNorm);
+  try {
+    if (mk.phone) {
+      const ok = await redis.set(mk.phone, id, { nx: true, ex: MARKER_TTL });
+      if (!ok) return res.status(409).json({ error: 'This phone number is already registered for ' + ev.name });
+    }
+    if (mk.email) {
+      const ok = await redis.set(mk.email, id, { nx: true, ex: MARKER_TTL });
+      if (!ok) {
+        if (mk.phone) try { await redis.del(mk.phone); } catch {}
+        return res.status(409).json({ error: 'This email is already registered for ' + ev.name });
+      }
+    }
+  } catch { /* marker store unavailable — fall through to the scan-checked write */ }
+
   try {
     await redis.hset('celesta:regs', { [id]: JSON.stringify(record) });
     await redis.zadd('celesta:reglist', { score: Date.now(), member: id });
     return res.status(200).json({ ok: true, id });
   } catch (e) {
-    return res.status(500).json({ error: 'Storage unavailable: ' + e.message });
+    // Roll the markers back so a failed write doesn't block the student.
+    if (mk.phone) try { await redis.del(mk.phone); } catch {}
+    if (mk.email) try { await redis.del(mk.email); } catch {}
+    return res.status(500).json({ error: 'Storage unavailable' });
   }
 }

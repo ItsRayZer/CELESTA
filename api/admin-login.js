@@ -10,7 +10,10 @@ const redis = new Redis({
   token: process.env.UPSTASH_REDIS_REST_TOKEN,
 });
 
-const SECRET = process.env.ADMIN_SECRET || 'celesta-admin-fallback-secret-change-me';
+const SECRET = process.env.ADMIN_SECRET || '';
+// SECURITY: no fallback secret. If ADMIN_SECRET is unset, verify() refuses
+// every token and the login handler answers 500 — a publicly-known default
+// secret would let anyone forge a write token (the repo is public).
 const LOCK_AFTER = 5;     // wrong attempts
 const LOCK_WINDOW = 900;  // 15 minutes
 
@@ -22,11 +25,12 @@ function sign(role) {
 }
 
 export function verify(token) {
-  if (!token) return null;
+  if (!token || !SECRET) return null;
   const parts = token.split('.');
   if (parts.length !== 3) return null;
   const [role, exp, sig] = parts;
   if (!['read', 'write'].includes(role)) return null;
+  if (!/^\d+$/.test(exp)) return null; // non-numeric expiry must not pass
   if (Date.now() > parseInt(exp, 10)) return null;
   const expected = createHmac('sha256', SECRET).update(role + '.' + exp).digest('hex').slice(0, 32);
   if (sig !== expected) return null;
@@ -36,6 +40,27 @@ export function verify(token) {
 // Parse a value read from Redis. The Upstash client auto-parses JSON strings
 // into objects, so a stored record may come back as an object already —
 // calling JSON.parse on an object throws, which emptied every list.
+// --- Registration helpers shared by register.js, registrations.js, activity-log.js ---
+// Phone normalisation: strip +91 / leading 0, keep 10 digits.
+export function normPhone(p) {
+  let d = String(p || '').replace(/\D/g, '');
+  if (d.startsWith('91') && d.length === 12) d = d.slice(2);
+  if (d.startsWith('0') && d.length === 11) d = d.slice(1);
+  return d;
+}
+export function validPhone(p) { return /^[6-9]\d{9}$/.test(String(p || '')); }
+
+// Uniqueness markers: SET NX claims so two concurrent submissions with the
+// same phone/email for the same event cannot both write (the hgetall scan in
+// register.js is the backstop for rows created before markers existed).
+export function regMarkerKeys(slug, phoneNorm, emailNorm) {
+  return {
+    phone: phoneNorm ? 'celesta:reg:phone:' + slug + ':' + phoneNorm : null,
+    email: emailNorm ? 'celesta:reg:email:' + slug + ':' + String(emailNorm).trim().toLowerCase() : null,
+  };
+}
+export const MARKER_TTL = 30 * 24 * 3600; // 30 days: bounds damage from a stale marker
+
 export function parseVal(v) {
   if (v == null) return null;
   if (typeof v === 'object') return v;
@@ -49,7 +74,7 @@ export default async function handler(req, res) {
   const readPw = process.env.ADMIN_READ_PW;
   const writePw = process.env.ADMIN_WRITE_PW;
 
-  if (!readPw || !writePw) {
+  if (!readPw || !writePw || !process.env.ADMIN_SECRET) {
     return res.status(500).json({ error: 'Admin passwords not configured in Vercel env vars' });
   }
 
@@ -75,7 +100,10 @@ export default async function handler(req, res) {
   // Wrong password: count it toward the lockout.
   try {
     const n = await redis.incr(failKey);
-    if (n === 1) await redis.expire(failKey, LOCK_WINDOW);
+    if (n === 1) {
+      try { await redis.expire(failKey, LOCK_WINDOW); }
+      catch { try { await redis.del(failKey); } catch {} } // never leave a key with no TTL
+    }
   } catch { /* ignore */ }
   // Log failed attempts, but at most one per IP every 5 minutes so a flood
   // of wrong passwords can't flush real entries out of the capped log.
