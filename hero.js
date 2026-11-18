@@ -1,4 +1,4 @@
-/* Celesta 2K26 — hero: stars + coder ⇄ NEXUS guardian WebGL morph.
+/* SPARK 2K26 — hero: stars + coder ⇄ NEXUS guardian WebGL morph.
    Scene flips every 6s on its own and again as you scroll through the hero. */
 (function () {
   "use strict";

@@ -1,7 +1,7 @@
 {
-  "name": "CELESTA Admin",
-  "short_name": "CELESTA Admin",
-  "description": "CELESTA 2K26 admin dashboard",
+  "name": "SPARK Admin",
+  "short_name": "SPARK Admin",
+  "description": "SPARK 2K26 admin dashboard",
   "start_url": "/admin",
   "display": "standalone",
   "background_color": "#0a0a0f",

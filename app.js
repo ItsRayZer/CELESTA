@@ -1,4 +1,4 @@
-/* Celesta 2K26 static site — loader, countdown, pill morph, reveals, parallax, registration.
+/* SPARK 2K26 static site — loader, countdown, pill morph, reveals, parallax, registration.
    LIVE FLOW: the dynamic form in register.html POSTs to /api/register (Upstash Redis)
    and reports the real result. The #reg-form handler below is LEGACY: it served the
    static register-*.html backup pages (now redirected to /registration/:event) and
@@ -188,7 +188,7 @@
         if (first && first.scrollIntoView) first.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "center" });
         return;
       }
-      var ev = form.getAttribute("data-event") || "Celesta 2K26";
+      var ev = form.getAttribute("data-event") || "SPARK 2K26";
       var payload = {
         event: ev, name: name, school: school, phone: phone, email: email,
         team: team, teamName: teamname, members: list

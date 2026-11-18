@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
-<title>Admin — CELESTA 2K26</title>
+<title>Admin — SPARK 2K26</title>
 <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f2f2f5">
 <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#040405">
 <link rel="manifest" href="/manifest.json">
@@ -195,7 +195,7 @@ tbody tr.flash{animation:flash 2.4s ease}
 <!-- LOGIN -->
 <div id="login">
   <div class="glass login-card">
-    <div class="mark">CELESTA 2K26</div>
+    <div class="mark">SPARK 2K26</div>
     <h1>Admin</h1>
     <p>Enter your password to continue.</p>
     <input type="password" id="pw" placeholder="Password" autocomplete="current-password">
@@ -214,7 +214,7 @@ tbody tr.flash{animation:flash 2.4s ease}
 <div id="dash" class="hidden">
 <div class="wrap">
   <div class="topbar">
-    <div class="ttl">CELESTA Admin<small id="roleSub">DASHBOARD</small></div>
+    <div class="ttl">SPARK Admin<small id="roleSub">DASHBOARD</small></div>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <button class="iconbtn" id="topBack" aria-label="Back to overview">← Back</button>
       <button class="iconbtn" id="topMenu" aria-label="Open menu">☰ Menu</button>
@@ -332,7 +332,7 @@ tbody tr.flash{animation:flash 2.4s ease}
 </nav>
 <div class="scrim" id="scrim"></div>
 <nav class="drawer" id="drawer">
-  <div class="dr-brand">CELESTA<small>ADMIN · 2K26</small></div>
+  <div class="dr-brand">SPARK<small>ADMIN · 2K26</small></div>
   <a class="dr-link" data-tab="coords"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.2 3.4-5 6.5-5s5.7 1.8 6.5 5"/><circle cx="17" cy="9" r="2.5"/><path d="M16.5 15.5c2.4.4 4.2 1.9 4.8 4"/></svg>Coordinators</a>
   <a class="dr-link hidden" id="logLink" data-tab="log"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Activity Log</a>
   <a class="dr-link" id="menuSite"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4L10 14M9 5H5a1 1 0 0 0-1 1v13a1 1 0 0 0 1 1h13a1 1 0 0 0 1-1v-4"/></svg>View live site</a>
@@ -441,7 +441,7 @@ function canvasHash(){
     const c=document.createElement('canvas');c.width=200;c.height=60;
     const x=c.getContext('2d');
     x.fillStyle='#f60';x.fillRect(0,0,200,60);
-    x.fillStyle='#06f';x.font='16px Arial';x.fillText('CELESTA 2K26',10,25);
+    x.fillStyle='#06f';x.font='16px Arial';x.fillText('SPARK 2K26',10,25);
     x.strokeStyle='#0a0';x.beginPath();x.arc(170,30,15,0,7);x.stroke();
     x.fillStyle='rgba(255,255,255,.6)';x.fillRect(60,35,80,10);
     return cyrb53(c.toDataURL()).slice(0,8);
@@ -639,7 +639,7 @@ async function load(reset=true){
     if(fresh.length&&SEEN_READY){
       const msg=fresh.length===1?('New registration: '+fresh[0].name+' — '+fresh[0].event):(fresh.length+' new registrations');
       toast(msg);
-      if('Notification' in window&&Notification.permission==='granted'){try{new Notification('CELESTA — new registration',{body:msg});}catch(e){}}
+      if('Notification' in window&&Notification.permission==='granted'){try{new Notification('SPARK — new registration',{body:msg});}catch(e){}}
     }
     SEEN_READY=true;
   }catch(e){toast('Failed to load');}
@@ -1085,7 +1085,7 @@ $('csvBtn').onclick=async()=>{
     const csv=rows.map(r=>r.map(cell).join(',')).join('\n');
     const a=document.createElement('a');
     a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
-    a.download='celesta-registrations.csv';a.click();
+    a.download='spark-registrations.csv';a.click();
     toast('CSV downloaded ('+all.length+' registrations)');
   }catch(e){toast('CSV failed');}
 };
@@ -1111,10 +1111,10 @@ $('backupBtn').onclick=async()=>{
       const ld=await lr.json();
       logEntries=ld.entries||[];
     }catch(e){/* read role has no log access — backup skips it */}
-    const data={exportedAt:new Date().toISOString(),site:'CELESTA 2K26',registrations:all,events:EVENTS_DB,coordinators:COORDS,activityLog:logEntries};
+    const data={exportedAt:new Date().toISOString(),site:'SPARK 2K26',registrations:all,events:EVENTS_DB,coordinators:COORDS,activityLog:logEntries};
     const a=document.createElement('a');
     a.href=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));
-    a.download='celesta-backup-'+new Date().toISOString().slice(0,10)+'.json';a.click();
+    a.download='spark-backup-'+new Date().toISOString().slice(0,10)+'.json';a.click();
     toast('Backup downloaded ('+all.length+' registrations)');
   }catch(e){toast('Backup failed');}
 };
