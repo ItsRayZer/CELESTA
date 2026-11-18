@@ -31,8 +31,8 @@
     }
   }
 
-  /* ---------- Countdown to 20 Nov 2026, 10:00 AM IST ---------- */
-  var TARGET = new Date("2026-11-20T10:00:00+05:30").getTime();
+  /* ---------- Countdown to 27 Nov 2026, 10:00 AM IST ---------- */
+  var TARGET = new Date("2026-11-27T10:00:00+05:30").getTime();
   function pad(n) { return (n < 10 ? "0" : "") + n; }
   var cd = { d: document.getElementById("cd-d"), h: document.getElementById("cd-h"),
              m: document.getElementById("cd-m"), s: document.getElementById("cd-s") };
@@ -207,7 +207,7 @@
       if (box) {
         box.innerHTML = "<h3>Registration noted</h3><p><strong>" + esc(ev) + "</strong><br>" +
           (teamname ? esc(teamname) + " · " : "") + esc(name) + " · " + esc(school) + " · Team of " + esc(team) + "</p>" +
-          "<p class='reg-note'>Saved on this device only (static site demo). Carry a valid ID card on 20 November 2026 and report by 9:30 AM. The organizers will announce confirmation and payment details soon — please keep a screenshot.</p>";
+          "<p class='reg-note'>Saved on this device only (static site demo). Carry a valid ID card on 27 November 2026 and report by 9:30 AM. The organizers will announce confirmation and payment details soon — please keep a screenshot.</p>";
         box.classList.add("show");
         box.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "center" });
       }

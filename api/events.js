@@ -22,7 +22,7 @@ export const DEFAULT_EVENTS = [
     "teamMin": 2,
     "teamMax": 3,
     "duration": "≈ 90 minutes",
-    "when": "Fri, 20 Nov 2026 · 10 AM",
+    "when": "Fri, 27 Nov 2026 · 10 AM",
     "where": "Mar Augusthinose College, Ramapuram",
     "how": [
       "Round 1 — Written prelims. A written paper for all teams. The top teams move on.",
@@ -56,7 +56,7 @@ export const DEFAULT_EVENTS = [
     "teamMin": 3,
     "teamMax": 5,
     "duration": "≈ 2 hours",
-    "when": "Fri, 20 Nov 2026 · 10 AM",
+    "when": "Fri, 27 Nov 2026 · 10 AM",
     "where": "Mar Augusthinose College, Ramapuram",
     "how": [
       "Start. Every team gets its first clue at the same time from the registration desk.",
@@ -92,7 +92,7 @@ export const DEFAULT_EVENTS = [
     "teamMin": 1,
     "teamMax": 2,
     "duration": "≈ 60 minutes",
-    "when": "Fri, 20 Nov 2026 · 10 AM",
+    "when": "Fri, 27 Nov 2026 · 10 AM",
     "where": "Mar Augusthinose College, Ramapuram",
     "how": [
       "Round 1 — Prompt challenge. Solve the given tasks with the fewest and best prompts.",
@@ -126,7 +126,7 @@ export const DEFAULT_EVENTS = [
     "teamMin": 2,
     "teamMax": 4,
     "duration": "≈ 7 minutes per team",
-    "when": "Fri, 20 Nov 2026 · 10 AM",
+    "when": "Fri, 27 Nov 2026 · 10 AM",
     "where": "Mar Augusthinose College, Ramapuram",
     "how": [
       "Pitch. 5 minutes to present your idea with slides.",
@@ -161,7 +161,7 @@ export const DEFAULT_EVENTS = [
     "teamMin": 1,
     "teamMax": 4,
     "duration": "≈ 2 hours",
-    "when": "Fri, 20 Nov 2026 · 10 AM",
+    "when": "Fri, 27 Nov 2026 · 10 AM",
     "where": "Mar Augusthinose College, Ramapuram",
     "how": [
       "Theme. The theme is announced at the start of the event.",
@@ -219,6 +219,7 @@ export async function loadEvents() {
 const STALE_FIXES = [
   ['Valid college ID card', 'Valid school ID card'],
   ['outscore every other college', 'outscore every other school'],
+  ['Fri, 20 Nov 2026', 'Fri, 27 Nov 2026'],
 ];
 function normalizeEvent(e) {
   let changed = false;
@@ -228,7 +229,7 @@ function normalizeEvent(e) {
     if (v !== s) changed = true;
     return v;
   };
-  for (const k of ['about', 'tagline']) {
+  for (const k of ['about', 'tagline', 'when']) {
     if (typeof e[k] === 'string') e[k] = fixText(e[k]);
   }
   for (const k of ['how', 'rules', 'reqs']) {
@@ -256,7 +257,7 @@ function cleanEvent(body, existing) {
   e.teamMin = Math.max(1, Math.round(num('teamMin', 1)));
   e.teamMax = Math.max(e.teamMin, Math.round(num('teamMax', e.teamMin)));
   e.duration = str('duration');
-  e.when = str('when', 'Fri, 20 Nov 2026 \u00b7 10 AM');
+  e.when = str('when', 'Fri, 27 Nov 2026 \u00b7 10 AM');
   e.where = str('where', 'Mar Augusthinose College, Ramapuram');
   e.how = arr('how');
   e.rules = arr('rules');
