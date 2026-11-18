@@ -23,7 +23,7 @@ export default async function handler(req, res) {
         const ref = (req.headers.referer || req.headers.origin || '');
         if (ref) {
           const host = new URL(ref).hostname;
-          fromSite = host === 'celesta-fest.vercel.app' || host === 'localhost';
+          fromSite = host === 'celesta-fest.vercel.app' || host === 'celesta.maraugusthinosecollege.org' || host === 'localhost';
         }
       } catch { fromSite = false; }
       if (fromSite) {
