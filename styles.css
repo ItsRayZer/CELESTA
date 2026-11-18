@@ -31,7 +31,7 @@ a{color:inherit}
 @keyframes lFade{to{opacity:1}}
 @keyframes lBar{to{transform:scaleX(1)}}
 /* ---------- Fixed bottom pill ---------- */
-#pill{--ink:#f4f1ea;--mut:#a9a49a;--gold:#d9a94f;--line:rgba(255,255,255,.14);--glass:rgba(14,15,20,.9);position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:100;
+#pill{--ink:#f4f1ea;--mut:#a9a49a;--gold:#d9a94f;--line:rgba(255,255,255,.14);--glass:rgba(14,15,20,.9);position:fixed;left:50%;bottom:calc(18px + var(--pill-lift,0px) + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:100;
   background:var(--glass);backdrop-filter:blur(18px) saturate(1.4);-webkit-backdrop-filter:blur(18px) saturate(1.4);
   border:1px solid var(--line);border-radius:999px;padding:10px 22px;
   display:flex;align-items:center;gap:18px;box-shadow:0 8px 32px rgba(0,0,0,.5);
@@ -1179,5 +1179,5 @@ body.dark-page .gz-tag--light{background:#111;color:#fff}
 .tm-grid .gz-info-card b:first-of-type{margin-top:0}
 .tm-grid .gz-info-card small{margin-top:1px}
 
-.c-phone{display:block;margin-top:2px;font-size:14px;font-weight:600;color:#141412}
+.c-phone{display:block;margin-top:2px;font-size:14px;font-weight:600;color:#141412;text-decoration:none}
 .addr{color:#555;font-size:14px;margin-top:4px}

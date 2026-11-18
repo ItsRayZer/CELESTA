@@ -229,3 +229,20 @@
         if (href === cleanPath) a.classList.add("on");
   });
 })();
+
+// ---------- pill lift: keep the pinned bottom pill above the Android browser toolbar ----------
+// Same idea as the admin dock: the visual viewport shrinks by the browser
+// toolbar height, so lift the pill by exactly the bottom occlusion. Uses
+// offsetTop + height so a top URL bar shrinking the viewport does not
+// over-lift the pill.
+(function(){
+  var pill=document.getElementById('pill'); if(!pill)return;
+  function lift(){
+    var l=0;
+    if(window.visualViewport){ l=Math.max(0,Math.round(window.innerHeight-(window.visualViewport.offsetTop+window.visualViewport.height))); }
+    pill.style.setProperty('--pill-lift',l+'px');
+  }
+  if(window.visualViewport){ window.visualViewport.addEventListener('resize',lift); window.visualViewport.addEventListener('scroll',lift); }
+  window.addEventListener('resize',lift);
+  lift();
+})();

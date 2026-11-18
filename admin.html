@@ -131,7 +131,7 @@ tbody tr.flash{animation:flash 2.4s ease}
 .abtn.go{background:var(--goldbtn);color:#000;border-color:var(--goldbtn);font-weight:700}
 .empty{text-align:center;padding:56px 20px;color:var(--mut);font-size:14px}
 .hidden{display:none!important}
-.toast{position:fixed;bottom:96px;z-index:200;left:50%;transform:translateX(-50%) translateY(160px);background:var(--toastbg);backdrop-filter:blur(20px);border:1px solid var(--stroke);color:var(--txt);font-weight:600;font-size:14px;padding:14px 28px;border-radius:99px;transition:transform .35s cubic-bezier(.2,.9,.3,1.2);z-index:99;box-shadow:var(--shadow)}
+.toast{position:fixed;bottom:96px;z-index:200;left:50%;transform:translateX(-50%) translateY(160px);background:var(--toastbg);backdrop-filter:blur(20px);border:1px solid var(--stroke);color:var(--txt);font-weight:600;font-size:14px;padding:14px 28px;border-radius:99px;transition:transform .35s cubic-bezier(.2,.9,.3,1.2);box-shadow:var(--shadow)}
 .toast.show{transform:translateX(-50%) translateY(0)}
 /* posters */
 .evposter{flex:none;display:flex;flex-direction:column;gap:3px;align-items:center}
@@ -206,6 +206,7 @@ tbody tr.flash{animation:flash 2.4s ease}
       <span class="gold">Coordinators</span> use the read-only password — view registrations, no changes.<br>
       <span class="gold">Teachers, admins and Aben</span> use the full-access password — view, edit, mark paid, delete, change posters and coordinator numbers.
     </div>
+    <a href="/" style="display:inline-block;margin-top:18px;font-size:13px;color:var(--mut);text-decoration:none">← Back to site</a>
   </div>
 </div>
 
@@ -408,7 +409,7 @@ let EDIT_EV=null;
 async function ensureEvents(force){
   if(EVENTS_DB.length&&!force)return EVENTS_DB;
   try{
-    const r=await fetch('/api/events',{cache:'no-store'});
+    const r=await fetch('/api/events',{headers:{Authorization:'Bearer '+TOKEN},cache:'no-store'});
     const d=await r.json();
     EVENTS_DB=(d.events||[]).sort((a,b)=>(a.order||99)-(b.order||99));
   }catch(e){EVENTS_DB=[];}
@@ -568,7 +569,7 @@ $('topMenu').onclick=()=>openDrawer(true);
 function liftDock(){
   var d=$('dock'); if(!d) return;
   var lift=0;
-  if(window.visualViewport){ lift=Math.max(0,Math.round(window.innerHeight-window.visualViewport.height)); }
+  if(window.visualViewport){ lift=Math.max(0,Math.round(window.innerHeight-(window.visualViewport.offsetTop+window.visualViewport.height))); }
   d.style.setProperty('--dock-lift',lift+'px');
 }
 if(window.visualViewport){ window.visualViewport.addEventListener('resize',liftDock); window.visualViewport.addEventListener('scroll',liftDock); }
@@ -627,7 +628,7 @@ async function load(reset=true){
   }
   try{
     const r=await fetch('/api/registrations?limit='+REG_PAGE+'&offset='+REG_OFFSET,{headers:{Authorization:'Bearer '+TOKEN},cache:'no-store'});
-    if(r.status===401){localStorage.clear();location.reload();return;}
+    if(r.status===401){localStorage.removeItem('celesta_admin_tok');localStorage.removeItem('celesta_admin_role');location.reload();return;}
     const d=await r.json();
     const fresh=(d.regs||[]).filter(x=>!SEEN.has(x.id));
     if(reset)REGS=d.regs||[];else REGS=REGS.concat(d.regs||[]);
@@ -724,7 +725,8 @@ async function togglePay(id,wasPaid){
   if(!wasPaid){
     const v=prompt('Payment amount (₹):','');
     if(v===null)return;
-    amount=parseInt(v,10)||0;
+    amount=parseInt(v,10);
+    if(!amount||amount<=0){toast('Enter a valid amount above ₹0');return;}
   }
   // Optimistic: show the change instantly, undo it if the server says no.
   const x=REGS.find(r=>r.id===id);
@@ -743,7 +745,7 @@ async function togglePay(id,wasPaid){
 async function delReg(id){
   const x=REGS.find(r=>r.id===id);
   if(!x)return;
-  if(!confirm('Delete registration of '+x.name+' ('+x.event+')? This cannot be undone.'))return;
+  if(!confirm('Delete registration of '+x.name+' ('+x.event+')? You can undo this from the Activity Log.'))return;
   try{
     const r=await fetch('/api/registrations',{method:'DELETE',headers:authHeaders(true),body:JSON.stringify({id})});
     if(r.ok){toast('Registration deleted');load();}
@@ -1061,15 +1063,31 @@ async function delEvent(slug){
   }catch(e){toast('Failed');}
 }
 
-// CSV export
-$('csvBtn').onclick=()=>{
-  const rows=[['ID','Event','Name','School','Phone','Email','Team Size','Team Name','Members','Paid','Amount','Registered At']];
-  REGS.forEach(x=>rows.push([x.id,x.event,x.name,x.school,x.phone,x.email||'',x.team,x.teamName||'',(x.members||[]).join('; '),x.paid?'YES':'NO',x.amount||0,x.at]));
-  const csv=rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
-  a.download='celesta-registrations.csv';a.click();
-  toast('CSV downloaded');
+// CSV export: all registrations (paged like the backup), never just the
+// loaded page. Fields starting with =, +, -, @, tab or CR are prefixed
+// with a single quote so Excel/Sheets cannot run them as formulas.
+$('csvBtn').onclick=async()=>{
+  toast('Preparing CSV…');
+  try{
+    const all=[];
+    let offset=0,total=1;
+    while(all.length<total){
+      const r=await fetch('/api/registrations?limit=200&offset='+offset,{headers:{Authorization:'Bearer '+TOKEN},cache:'no-store'});
+      const d=await r.json();
+      total=d.total||0;
+      (d.regs||[]).forEach(x=>all.push(x));
+      offset=all.length;
+      if(!(d.regs||[]).length)break;
+    }
+    const rows=[['ID','Event','Name','School','Phone','Email','Team Size','Team Name','Members','Paid','Amount','Registered At']];
+    all.forEach(x=>rows.push([x.id,x.event,x.name,x.school,x.phone,x.email||'',x.team,x.teamName||'',(x.members||[]).join('; '),x.paid?'YES':'NO',x.amount||0,x.at]));
+    const cell=c=>{let s=String(c);if(/^[=+\-@\t\r]/.test(s))s="'"+s;return '"'+s.replace(/"/g,'""')+'"';};
+    const csv=rows.map(r=>r.map(cell).join(',')).join('\n');
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+    a.download='celesta-registrations.csv';a.click();
+    toast('CSV downloaded ('+all.length+' registrations)');
+  }catch(e){toast('CSV failed');}
 };
 
 // Full backup: every registration (all pages), events, coordinators and the

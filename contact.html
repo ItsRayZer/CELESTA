@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Contact — Celesta 2K26</title>
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="CELESTA 2K26">
@@ -103,8 +103,8 @@ fetch('/api/coordinators').then(function(r){return r.json();}).then(function(d){
     if(!c.phone)return;
     document.querySelectorAll('.tm-grid b').forEach(function(b){
       if(b.textContent.trim()===c.name && !b.parentElement.querySelector('.c-phone[data-for="'+c.name+'"]')){
-        var s=document.createElement('small');
-        s.className='c-phone';s.setAttribute('data-for',c.name);s.textContent=c.phone;
+        var s=document.createElement('a');
+        s.className='c-phone';s.setAttribute('data-for',c.name);s.href='tel:'+String(c.phone).replace(/\D/g,'');s.textContent=c.phone;
         b.after(s);
       }
     });

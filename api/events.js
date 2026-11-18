@@ -273,6 +273,7 @@ export default async function handler(req, res) {
     // 60s server cache + stale-while-revalidate keeps it fast without
     // ever showing a stale event for long.
     res.setHeader('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300');
+    res.setHeader('Vary', 'Authorization');
     try {
       const events = await loadEvents();
       // Unauthenticated callers see listed events only; a logged-in admin

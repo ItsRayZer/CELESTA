@@ -1,7 +1,7 @@
 // POST /api/admin-login — verify password, return role token
 // Lockout: 5 wrong passwords from one IP → 15 minutes blocked (429).
 // The counter lives in Redis; a Redis failure never blocks a real login.
-import { createHmac } from 'crypto';
+import { createHmac, timingSafeEqual } from 'crypto';
 import { Redis } from '@upstash/redis';
 import { appendLog, recentEntries, clientInfo } from './activity-log.js';
 
@@ -33,7 +33,7 @@ export function verify(token) {
   if (!/^\d+$/.test(exp)) return null; // non-numeric expiry must not pass
   if (Date.now() > parseInt(exp, 10)) return null;
   const expected = createHmac('sha256', SECRET).update(role + '.' + exp).digest('hex').slice(0, 32);
-  if (sig !== expected) return null;
+  if (sig.length !== expected.length || !timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
   return role;
 }
 

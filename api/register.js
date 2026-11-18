@@ -6,7 +6,7 @@
 //    and are rejected outright with a generic error (no reason given).
 //  - timing: the form records when it was opened; a submit in under 2
 //    seconds is too fast for a human and gets flagged.
-//  - per-IP rate limit: 20 registrations per 10 minutes (spam flood guard)
+//  - per-IP rate limit: 100 registrations per 10 minutes (spam flood guard)
 //  - phone must be a valid Indian 10-digit mobile (after +91 / leading 0)
 //  - same phone or email already registered for the same event → duplicate
 //  - gibberish / junk names, schools and emails are FLAGGED, not blocked:
@@ -23,10 +23,10 @@ const redis = new Redis({
   token: process.env.UPSTASH_REDIS_REST_TOKEN,
 });
 
-// 20 per 10 min per IP: still stops a flood from one device, but a whole
+// 100 per 10 min per IP: still stops a flood from one device, but a whole
 // venue on shared Wi-Fi (one public IP) can register normally. Duplicates
 // are already blocked per phone+event, and junk is flagged for review.
-const RL_LIMIT = 20;
+const RL_LIMIT = 100;
 const RL_WINDOW = 600;   // per 10 minutes
 
 // Client IP: trust only what the platform sets. Vercel overwrites x-real-ip

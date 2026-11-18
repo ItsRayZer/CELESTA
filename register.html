@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Register | Celesta 2K26</title>
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="CELESTA 2K26">
@@ -95,8 +95,8 @@
         +'<div class="rg-group">'
         +'<div class="field" id="f-name"><label for="in-name">Name</label><input id="in-name" type="text" autocomplete="name" placeholder="Team leader" maxlength="100"><div class="err">Enter your full name.</div></div>'
         +'<div class="field" id="f-school"><label for="in-school">School</label><input id="in-school" type="text" autocomplete="organization" placeholder="Your school" maxlength="150"><div class="err">Enter your school name.</div></div>'
-        +'<div class="field" id="f-phone"><label for="in-phone">Phone</label><input id="in-phone" type="tel" inputmode="numeric" autocomplete="tel" maxlength="10" placeholder="10-digit mobile"><div class="err">Enter a valid 10-digit mobile number.</div></div>'
-        +'<div class="field" id="f-email"><label for="in-email">Email</label><input id="in-email" type="email" autocomplete="email" placeholder="you@example.com" maxlength="254"><div class="err">Enter a valid email address.</div></div>'
+        +'<div class="field" id="f-phone"><label for="in-phone">Phone</label><input id="in-phone" type="tel" inputmode="numeric" autocomplete="tel" maxlength="13" placeholder="10-digit mobile"><div class="err">Enter a valid 10-digit mobile number.</div></div>'
+        +'<div class="field" id="f-email"><label for="in-email">Email (optional)</label><input id="in-email" type="email" autocomplete="email" placeholder="you@example.com" maxlength="254"><div class="err">Enter a valid email address.</div></div>'
         +'<div class="field hp" aria-hidden="true"><label for="in-website">Website</label><input id="in-website" type="text" autocomplete="off" tabindex="-1"></div>'
         +'</div><div class="rg-group">'
         +'<div class="field" id="f-team"><label for="in-team">Team size</label><select id="in-team">'+opts+'</select><div class="err">Choose your team size.</div></div>'
@@ -148,13 +148,15 @@
         if(!good){ok=false;if(!first)first=f;}
       }
       function val(id){var el=document.getElementById('in-'+id);return el?el.value.trim():'';}
-      var name=val('name'), school=val('school'), phone=val('phone').replace(/\s+/g,''), email=val('email'),
+      var name=val('name'), school=val('school'), phone=val('phone').replace(/\D/g,''), email=val('email'),
           team=parseInt(val('team'),10), teamname=val('teamname'), members=val('members');
+      if(phone.length===12&&phone.slice(0,2)==='91')phone=phone.slice(2);
+      else if(phone.length===11&&phone.charAt(0)==='0')phone=phone.slice(1);
       var list=members.split(/\n+/).map(function(s){return s.trim();}).filter(Boolean);
       mark('name',name.length>=2);
       mark('school',school.length>=2);
       mark('phone',/^[6-9]\d{9}$/.test(phone));
-      mark('email',/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email));
+      mark('email',!email||/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email));
       mark('team',team>=e.teamMin&&team<=e.teamMax);
       if(team>1)mark('members',list.length>=team-1);
       var agree=document.getElementById('in-agree');
