@@ -34,10 +34,6 @@ const DEFAULTS = [
   { id: 'sc-3', name: 'Abhinavu Babu', team: 'Student Coordinators', event: 'Treasure Hunt', cls: '3rd BCA A', phone: '' },
   { id: 'sc-4', name: 'Aadhil Kabeer', team: 'Student Coordinators', event: 'Treasure Hunt', cls: '2nd BCA A', phone: '' },
   { id: 'sc-5', name: 'Adithya Rajagopal', team: 'Student Coordinators', event: 'Prompting', cls: '3rd BCA A', phone: '' },
-  { id: 'sc-6', name: 'Vedhajith', team: 'Student Coordinators', event: 'Idea Presentation', cls: '3rd BCA B', phone: '' },
-  { id: 'sc-7', name: 'Navaneeth', team: 'Student Coordinators', event: 'Idea Presentation', cls: '3rd BCA B', phone: '' },
-  { id: 'sc-8', name: 'Agnivesh Santhosh', team: 'Student Coordinators', event: 'Reels Competition', cls: '3rd BCA A', phone: '' },
-  { id: 'sc-9', name: 'Daniel', team: 'Student Coordinators', event: 'Reels Competition', cls: '3rd BCA A', phone: '' },
 ];
 
 async function ensureSeeded() {
@@ -54,7 +50,16 @@ export default async function handler(req, res) {
     try {
       await ensureSeeded();
       const vals = await redis.hvals('celesta:coordinators');
-      const list = (vals || []).map(v => parseVal(v)).filter(Boolean);
+      let list = (vals || []).map(v => parseVal(v)).filter(Boolean);
+      // One-time cleanup: drop the student coordinators of the two events the
+      // NEXUS leader removed (18 Nov 2026). After the first run they are gone,
+      // so this never writes again.
+      const REMOVED_COORDS = new Set(['sc-6', 'sc-7', 'sc-8', 'sc-9']);
+      const stale = list.filter(c => REMOVED_COORDS.has(c.id));
+      if (stale.length) {
+        await redis.hdel('celesta:coordinators', ...stale.map(c => c.id));
+        list = list.filter(c => !REMOVED_COORDS.has(c.id));
+      }
       return res.status(200).json({ coordinators: list });
     } catch (e) {
       return res.status(200).json({ coordinators: DEFAULTS });

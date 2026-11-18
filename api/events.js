@@ -148,7 +148,7 @@ export const DEFAULT_EVENTS = [
       "Any prototype or demo you want to show (optional)."
     ],
     "order": 4,
-    "visible": true,
+    "visible": false,
     "regOpen": true
   },
   {
@@ -185,7 +185,7 @@ export const DEFAULT_EVENTS = [
       "A pen drive or a way to share the final file."
     ],
     "order": 5,
-    "visible": true,
+    "visible": false,
     "regOpen": true
   }
 ];
@@ -205,6 +205,9 @@ export async function loadEvents() {
   // first run nothing is stale anymore, so this never writes again.
   let dirty = false;
   for (const e of list) if (normalizeEvent(e)) dirty = true;
+  for (const e of list) {
+    if (HIDDEN_SLUGS.has(e.slug) && e.visible !== false) { e.visible = false; dirty = true; }
+  }
   if (dirty) {
     const obj = {};
     list.forEach(e => { obj[e.slug] = JSON.stringify(e); });
@@ -216,6 +219,11 @@ export async function loadEvents() {
 // Rewrites wording left over from the inter-college version. Returns true if
 // anything changed. The venue name ("Mar Augusthinose College") is correct
 // and is never touched.
+
+// Events the NEXUS leader removed (18 Nov 2026): hidden from the public site
+// and from registration, but kept in storage so the admin can still see them
+// and restore them later if needed.
+const HIDDEN_SLUGS = new Set(['idea-presentation', 'reels-competition']);
 const STALE_FIXES = [
   ['Valid college ID card', 'Valid school ID card'],
   ['outscore every other college', 'outscore every other school'],
