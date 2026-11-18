@@ -27,21 +27,20 @@ export default async function handler(req, res) {
         const vals = await redis.hmget('celesta:regs', ...ids);
         regs = Object.values(vals || {}).map(v => parseVal(v)).filter(Boolean);
       }
-      let paidCount = 0, paidAmount = 0, unchecked = 0;
+      let paidCount = 0, paidAmount = 0;
       const byEvent = {};
       try {
         const all = await redis.hgetall('celesta:regs');
         if (all) for (const v of Object.values(all)) {
           const r = parseVal(v);
           if (!r) continue;
-          if (!r.ai) unchecked++;
           const k = r.eventSlug || r.event;
           const b = byEvent[k] || (byEvent[k] = { n: 0, paid: 0, amount: 0 });
           b.n++;
           if (r.paid) { paidCount++; paidAmount += Number(r.amount || 0); b.paid++; b.amount += Number(r.amount || 0); }
         }
       } catch { /* totals stay 0 on a read failure */ }
-      return res.status(200).json({ regs, role, total, paidCount, paidAmount, byEvent, unchecked });
+      return res.status(200).json({ regs, role, total, paidCount, paidAmount, byEvent });
     } catch (e) {
       return res.status(500).json({ error: 'Storage unavailable' });
     }

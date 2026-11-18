@@ -248,9 +248,7 @@ tbody tr.flash{animation:flash 2.4s ease}
       <input id="q" placeholder="Search name, school, phone...">
       <select id="fEv"><option value="">All events</option></select>
       <select id="fPay"><option value="">All payments</option><option value="paid">Paid</option><option value="unpaid">Unpaid</option></select>
-      <select id="fRisk"><option value="">All checks</option><option value="ok">Check: OK</option><option value="review">Check: Review</option><option value="suspicious">Check: Suspicious</option></select>
-      <button class="mini hidden" id="aiCheckBtn">Run AI check</button>
-      <span class="mut" id="aiCheckStatus"></span>
+      <select id="fRisk"><option value="">Bot check: All</option><option value="ok">Looks human</option><option value="review">Check</option><option value="suspicious">Bot</option></select>
     </div>
 
     <div class="glass twrap">
@@ -397,7 +395,7 @@ tbody tr.flash{animation:flash 2.4s ease}
 const $=id=>document.getElementById(id);
 let TOKEN=localStorage.getItem('celesta_admin_tok')||'', ROLE=localStorage.getItem('celesta_admin_role')||'';
 let REGS=[], FILTER_EV='', SEEN=new Set(), COORDS=[], POSTER_CUSTOM={}, SEEN_READY=false, LOG_UNDONE=new Set();
-let REG_TOTAL=0, REG_PAID_N=0, REG_PAID_AMT=0, REG_OFFSET=0, REG_HAS_MORE=false, POSTER_V=0, EVENT_COUNTS={}, REG_UNCHECKED=0;
+let REG_TOTAL=0, REG_PAID_N=0, REG_PAID_AMT=0, REG_OFFSET=0, REG_HAS_MORE=false, POSTER_V=0, EVENT_COUNTS={};
 const REG_PAGE=200;
 let EDIT_ID=null;
 
@@ -585,7 +583,6 @@ async function showDash(){
   $('roleSub').textContent=w?'FULL ACCESS':'READ ONLY';
   $('addForm').classList.toggle('hidden',!w);
   $('logLink').classList.toggle('hidden',!w);
-  $('aiCheckBtn').classList.toggle('hidden',!w);
   collectFingerprint();
   await ensureEvents();
   const sel=$('fEv');sel.innerHTML='<option value="">All events</option>';
@@ -595,11 +592,11 @@ async function showDash(){
   setInterval(()=>{if(!$('dash').classList.contains('hidden')&&!document.hidden&&navigator.onLine)load();},30000);
 }
 
-// The AI verdict: the async checker writes x.ai = {level, reason, at}.
-// Display level is the AI verdict when present, else the instant rule check.
-function riskLevel(x){if(x.ai&&x.ai.level)return x.ai.level;if(x.risk&&x.risk.level)return x.risk.level;return 'ok';}
+// Bot check: the server writes x.risk = {level, reasons, at} on every
+// registration (honeypot + timing + junk rules). ok = looks human,
+// review = check it, suspicious = looks like a bot.
+function riskLevel(x){if(x.risk&&x.risk.level)return x.risk.level;return 'ok';}
 function riskWhy(x){
-  if(x.ai&&x.ai.reason)return 'AI: '+x.ai.reason;
   if(x.risk&&x.risk.reasons&&x.risk.reasons.length)return x.risk.reasons.join(', ');
   return '';
 }
@@ -616,7 +613,7 @@ async function load(reset=true){
     const fresh=(d.regs||[]).filter(x=>!SEEN.has(x.id));
     if(reset)REGS=d.regs||[];else REGS=REGS.concat(d.regs||[]);
     REG_TOTAL=d.total||REGS.length;REG_PAID_N=d.paidCount||0;REG_PAID_AMT=d.paidAmount||0;
-    EVENT_COUNTS=d.byEvent||{};REG_UNCHECKED=d.unchecked||0;
+    EVENT_COUNTS=d.byEvent||{};
     REG_OFFSET=REGS.length;REG_HAS_MORE=REGS.length<REG_TOTAL;
     render();
     if(fresh.length&&SEEN_READY){
@@ -657,7 +654,6 @@ function render(){
   $('sAmt').textContent=fmt(REG_PAID_AMT);
   $('sPend').textContent=REG_TOTAL-REG_PAID_N;
   $('loadMoreBtn').classList.toggle('hidden',!REG_HAS_MORE);
-  $('aiCheckStatus').textContent=REG_UNCHECKED?REG_UNCHECKED+' unchecked':'';
   // keep the reg counts on the Events tab fresh without rebuilding the list
   document.querySelectorAll('[data-count]').forEach(el=>{
     const e=EVENTS_DB.find(x=>x.slug===el.dataset.count);
@@ -687,7 +683,7 @@ function render(){
   $('rows').innerHTML=list.map(x=>{
     const isNew=!SEEN.has(x.id);SEEN.add(x.id);
     const lvl=riskLevel(x), why=riskWhy(x);
-    const badge=lvl==='ok'?'':lvl==='review'?'<br><span class="risk risk-review">REVIEW</span>':'<br><span class="risk risk-bad">SUSPICIOUS</span>';
+    const badge=lvl==='ok'?'':lvl==='review'?'<br><span class="risk risk-review">CHECK</span>':'<br><span class="risk risk-bad">BOT</span>';
     const whyLine=(lvl!=='ok'&&why)?'<br><span class="mut">'+esc(why)+'</span>':'';
     return `<tr class="${isNew?'flash':''}">
     <td><b>${esc(x.name)}</b><br><span class="mut">${esc(x.school)}</span>${x.teamName?'<br><span class="mut">'+esc(x.teamName)+'</span>':''}${badge}${whyLine}</td>
@@ -724,22 +720,6 @@ async function togglePay(id,wasPaid){
     else{undo();toast('Failed');}
   }catch(e){undo();toast('Failed');}
 }
-
-// On-demand AI check: up to 5 unchecked registrations per tap (kept small
-// so the check finishes inside one serverless call). Advisory only.
-$('aiCheckBtn').onclick=async()=>{
-  const b=$('aiCheckBtn');b.disabled=true;b.textContent='Checking…';
-  try{
-    const r=await fetch('/api/ai-check',{method:'POST',headers:authHeaders(true),body:'{}'});
-    const d=await r.json().catch(()=>({}));
-    if(!r.ok){toast(d.error||'AI check failed');}
-    else{
-      toast(d.checked?('AI checked '+d.checked+' · '+d.suspicious+' suspicious'+(d.remaining?' · '+d.remaining+' left — tap again':'')):'Nothing unchecked');
-      load();
-    }
-  }catch(e){toast('AI check failed');}
-  b.disabled=false;b.textContent='Run AI check';
-};
 
 async function delReg(id){
   const x=REGS.find(r=>r.id===id);

@@ -21,7 +21,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=Marcellus&display=swap">
 <link rel="stylesheet" href="/styles.css?v=39">
 <style>#pill{display:none!important}</style>
-<style>html{background:#060608}body{background:#060608}</style>
+<style>html{background:#060608}body{background:#060608}.hp{position:absolute!important;left:-9999px!important;top:auto;width:1px;height:1px;overflow:hidden}</style>
 </head>
 <body class="reg-page">
 
@@ -97,6 +97,7 @@
         +'<div class="field" id="f-school"><label for="in-school">School</label><input id="in-school" type="text" autocomplete="organization" placeholder="Your school"><div class="err">Enter your school name.</div></div>'
         +'<div class="field" id="f-phone"><label for="in-phone">Phone</label><input id="in-phone" type="tel" inputmode="numeric" autocomplete="tel" maxlength="10" placeholder="10-digit mobile"><div class="err">Enter a valid 10-digit mobile number.</div></div>'
         +'<div class="field" id="f-email"><label for="in-email">Email</label><input id="in-email" type="email" autocomplete="email" placeholder="you@example.com"><div class="err">Enter a valid email address.</div></div>'
+        +'<div class="field hp" aria-hidden="true"><label for="in-website">Website</label><input id="in-website" type="text" autocomplete="off" tabindex="-1"></div>'
         +'</div><div class="rg-group">'
         +'<div class="field" id="f-team"><label for="in-team">Team size</label><select id="in-team">'+opts+'</select><div class="err">Choose your team size.</div></div>'
         +'<div class="field" id="f-teamname"><label for="in-teamname">Team name</label><input id="in-teamname" type="text" placeholder="Optional"></div>'
@@ -123,6 +124,8 @@
   }
   function bindForm(e){
     var form=document.getElementById('reg-form-dyn');
+    // Bot check: when the form opened. A submit under 2s is flagged server-side.
+    var startedAt=Date.now();
     var teamSel=document.getElementById('in-team'), mem=document.getElementById('f-members');
     function syncMembers(){
       if(!teamSel||!mem)return;
@@ -159,7 +162,7 @@
       if(!ok){if(first&&first.scrollIntoView)first.scrollIntoView({behavior:'smooth',block:'center'});return;}
       var btn=form.querySelector('.rg-submit');
       btn.disabled=true;btn.textContent='Registering…';
-      var payload={event:e.slug,name:name,school:school,phone:phone,email:email,team:team,teamName:teamname,members:list};
+      var payload={event:e.slug,name:name,school:school,phone:phone,email:email,team:team,teamName:teamname,members:list,website:val('website'),startedAt:startedAt};
       try{localStorage.setItem('celesta_reg_'+Date.now(),JSON.stringify(Object.assign({at:new Date().toISOString()},payload)));}catch(err){}
       try{
         var r=await fetch('/api/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});

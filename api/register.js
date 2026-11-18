@@ -1,14 +1,18 @@
 // POST /api/register — save a new registration (Upstash Redis direct)
 // Validates against the events database: the event must exist, be visible,
 // have registrations open, and the team size must fit its limits.
-// Instant checks (no AI, no extra latency on the submit path):
-//  - per-IP rate limit: 5 registrations per 10 minutes (spam flood guard)
+// BOT CHECK (runs on every submit, no extra latency, nothing to install):
+//  - honeypot: a hidden "website" field humans never see; bots fill it
+//    and are rejected outright with a generic error (no reason given).
+//  - timing: the form records when it was opened; a submit in under 2
+//    seconds is too fast for a human and gets flagged.
+//  - per-IP rate limit: 20 registrations per 10 minutes (spam flood guard)
 //  - phone must be a valid Indian 10-digit mobile (after +91 / leading 0)
 //  - same phone or email already registered for the same event → duplicate
 //  - gibberish / junk names, schools and emails are FLAGGED, not blocked:
-//    the student still registers, the admin sees a REVIEW badge.
-// The AI check (Nemotron) runs separately, after the fact, and writes its
-// verdict into the record's `ai` field — it never slows the form down.
+//    the student still registers, the admin sees a CHECK or BOT badge.
+// Flagged records never block a real student — only a filled honeypot,
+// a bad phone, a duplicate, or the rate limit reject a submit.
 import { Redis } from '@upstash/redis';
 import { loadEvents } from './events.js';
 
@@ -58,10 +62,23 @@ function junkText(s) {
 
 const JUNK_SCHOOLS = new Set(['test', 'abc', 'xyz', 'asdf', 'demo', 'test school', 'abc school', 'school', 'college', 'na', 'n/a', '-', '...', 'xxx']);
 
+// Bot-check level from the flag count: 0 = ok, 1-2 = review (check it),
+// 3+ = suspicious (looks like a bot). Exported so it can be unit-tested.
+export function riskLevelFor(reasons) {
+  const n = Array.isArray(reasons) ? reasons.length : 0;
+  return n >= 3 ? 'suspicious' : n ? 'review' : 'ok';
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { event, name, school, phone, email, team, teamName, members } = req.body || {};
+  const { event, name, school, phone, email, team, teamName, members, website, startedAt } = req.body || {};
+
+  // Honeypot FIRST: the "website" field is hidden from humans. A bot that
+  // fills it is rejected with a generic error — no reason is ever given.
+  if (website && String(website).trim()) {
+    return res.status(400).json({ error: 'Registration failed. Please try again.' });
+  }
 
   if (!event || !name || !school || !phone) {
     return res.status(400).json({ error: 'Missing required fields' });
@@ -126,14 +143,19 @@ export default async function handler(req, res) {
   if (emailNorm && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailNorm)) reasons.push('email looks off');
   if (Array.isArray(members) && members.some(m => junkText(m))) reasons.push('member name looks off');
   if (teamName && junkText(teamName)) reasons.push('team name looks off');
+  // Timing: a submit in under 2 seconds is too fast for a human. A missing
+  // timestamp means the request didn't come from the form at all.
+  // (A negative elapsed is just clock skew between phone and server.)
+  const started = Number(startedAt);
+  if (!started || isNaN(started)) reasons.push('no form timing');
+  else { const elapsed = Date.now() - started; if (elapsed >= 0 && elapsed < 2000) reasons.push('submitted too fast'); }
 
   const id = 'reg_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   const record = {
     id, event: ev.name, eventSlug: ev.slug, name, school, phone: phoneNorm, email: emailNorm, team: teamSize,
     teamName: teamName || '', members: members || [],
     paid: false, amount: 0, at: new Date().toISOString(),
-    risk: { level: reasons.length ? 'review' : 'ok', reasons, at: new Date().toISOString() },
-    ai: null,
+    risk: { level: riskLevelFor(reasons), reasons, at: new Date().toISOString() },
   };
 
   try {
