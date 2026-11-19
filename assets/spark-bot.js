@@ -1,4 +1,4 @@
-/* SPARK Bot v8 — Axo-style chat assistant for SPARK 2K26.
+/* SPARK Bot v9 — Axo-style chat assistant for SPARK 2K26.
    Header matches the Axofy Axo bot: big robot avatar on top, name + role,
    small language button + mute button only (no settings, no CC).
    Avatar: the SPARK robot head in its own natural shape, no circle, no
@@ -20,7 +20,7 @@
    Loaded on every page except the home page. */
 (function(){
 "use strict";
-var AVATAR="/assets/spark-bot-avatar.webp";
+var AVATAR="/assets/spark-bot-avatar.webp?v=2";
 var NAME="SPARK Bot";
 var ROLE="SPARK Assistant";
 
@@ -287,7 +287,7 @@ function pop(){
 
 /* ---------- CSS (Axo-style header, bubbles, chips) ---------- */
 var CSS=[
-".sparkbot-fab{position:fixed;right:16px;bottom:calc(96px + env(safe-area-inset-bottom));z-index:101;width:64px;height:44px;border:0;border-radius:0;background-color:transparent;background-image:url("+AVATAR+");background-size:contain;background-repeat:no-repeat;background-position:center;cursor:pointer;padding:0;filter:drop-shadow(0 6px 16px rgba(0,0,0,.45));transition:transform .25s cubic-bezier(.2,.8,.2,1)}",
+".sparkbot-fab{position:fixed;right:16px;bottom:calc(96px + env(safe-area-inset-bottom));z-index:101;width:76px;height:52px;border:0;border-radius:0;background-color:transparent;background-image:url("+AVATAR+");background-size:contain;background-repeat:no-repeat;background-position:center;cursor:pointer;padding:0;filter:drop-shadow(0 6px 16px rgba(0,0,0,.45));transition:transform .25s cubic-bezier(.2,.8,.2,1)}",
 ".sparkbot-fab:active{transform:scale(.92)}",
 ".sparkbot-fab .sparkbot-dot{position:absolute;top:0;right:0;width:12px;height:12px;border-radius:50%;background:#22c55e;border:2px solid #fff}",
 ".sparkbot-panel{position:fixed;left:50%;transform:translate(calc(-50% + var(--dx,0px)),calc(100% + 80px + var(--dy,0px)));bottom:0;width:min(420px,calc(100% - 16px));max-height:min(600px,calc(100dvh - 40px));z-index:102;display:flex;flex-direction:column;background:#141417;border:1px solid rgba(255,255,255,.14);border-radius:22px 22px 0 0;box-shadow:0 -12px 48px rgba(0,0,0,.5);overflow:visible;transition:transform .38s cubic-bezier(.2,.8,.2,1)}",
