@@ -1,4 +1,4 @@
-/* SPARK Bot v7 — Axo-style chat assistant for SPARK 2K26.
+/* SPARK Bot v8 — Axo-style chat assistant for SPARK 2K26.
    Header matches the Axofy Axo bot: big robot avatar on top, name + role,
    small language button + mute button only (no settings, no CC).
    Avatar: the SPARK robot head in its own natural shape, no circle, no
@@ -10,8 +10,13 @@
    BOTH English and Manglish keywords in either language.
    Sound: when sound is on, the bot READS its reply aloud (text-to-speech);
    the mute button turns voice off. Client-side only, no server.
-   Keyboard: the panel is pinned by `top` to the visual viewport's bottom
-   edge, so it sits flush above the keyboard with no gap.
+   Keyboard: the pages use interactive-widget=resizes-content, so the layout
+   viewport shrinks when the on-screen keyboard opens and the panel
+   (bottom:0) sits flush above it with no gap. No JS coordinate math.
+   Drag: the panel moves freely in any direction by its header (grab the
+   hero). Slow drag follows the finger 1:1 on the GPU transform. A fast
+   flick down closes it, a fast flick up snaps it tall. Transform-only, so
+   it cannot slow the site down.
    Loaded on every page except the home page. */
 (function(){
 "use strict";
@@ -285,9 +290,12 @@ var CSS=[
 ".sparkbot-fab{position:fixed;right:16px;bottom:calc(96px + env(safe-area-inset-bottom));z-index:101;width:64px;height:44px;border:0;border-radius:0;background-color:transparent;background-image:url("+AVATAR+");background-size:contain;background-repeat:no-repeat;background-position:center;cursor:pointer;padding:0;filter:drop-shadow(0 6px 16px rgba(0,0,0,.45));transition:transform .25s cubic-bezier(.2,.8,.2,1)}",
 ".sparkbot-fab:active{transform:scale(.92)}",
 ".sparkbot-fab .sparkbot-dot{position:absolute;top:0;right:0;width:12px;height:12px;border-radius:50%;background:#22c55e;border:2px solid #fff}",
-".sparkbot-panel{position:fixed;left:50%;transform:translate(-50%,calc(100% + 80px));bottom:0;width:min(420px,calc(100% - 16px));max-height:min(600px,calc(100dvh - 40px));z-index:102;display:flex;flex-direction:column;background:#141417;border:1px solid rgba(255,255,255,.14);border-radius:22px 22px 0 0;box-shadow:0 -12px 48px rgba(0,0,0,.5);overflow:visible;transition:transform .38s cubic-bezier(.2,.8,.2,1)}",
-".sparkbot-panel.open{transform:translate(-50%,0)}",
-".sparkbot-hero{position:relative;flex:none;padding:48px 14px 0;text-align:center}",
+".sparkbot-panel{position:fixed;left:50%;transform:translate(calc(-50% + var(--dx,0px)),calc(100% + 80px + var(--dy,0px)));bottom:0;width:min(420px,calc(100% - 16px));max-height:min(600px,calc(100dvh - 40px));z-index:102;display:flex;flex-direction:column;background:#141417;border:1px solid rgba(255,255,255,.14);border-radius:22px 22px 0 0;box-shadow:0 -12px 48px rgba(0,0,0,.5);overflow:visible;transition:transform .38s cubic-bezier(.2,.8,.2,1)}",
+".sparkbot-panel.open{transform:translate(calc(-50% + var(--dx,0px)),var(--dy,0px))}",
+".sparkbot-panel.dragging{transition:none;will-change:transform}",
+".sparkbot-hero{position:relative;flex:none;padding:48px 14px 0;text-align:center;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}",
+".sparkbot-hero.dragging{cursor:grabbing}",
+".sparkbot-grip{width:38px;height:4px;border-radius:99px;background:rgba(255,255,255,.28);margin:0 auto 10px}",
 ".sparkbot-av{position:absolute;top:-41px;left:50%;transform:translateX(-50%);width:120px;height:83px;border:0;border-radius:0;background-color:transparent;background-image:url("+AVATAR+");background-size:contain;background-repeat:no-repeat;background-position:center;filter:drop-shadow(0 8px 20px rgba(0,0,0,.5))}",
 ".sparkbot-hero b{display:block;color:#fff;font:800 21px/1.2 -apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif;letter-spacing:.01em}",
 ".sparkbot-hero span{display:block;color:rgba(255,255,255,.65);font:500 13.5px/1.4 -apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif;margin-top:4px}",
@@ -321,7 +329,7 @@ var CSS=[
 ".sparkbot-input input::placeholder{color:rgba(255,255,255,.45)}",
 ".sparkbot-input button{width:44px;height:44px;flex:none;border-radius:50%;border:0;background:#ff5c00;color:#fff;font-size:18px;cursor:pointer}",
 ".sparkbot-input button:active{transform:scale(.92)}",
-"@media (min-width:720px){.sparkbot-panel{left:auto;right:16px;transform:translateY(calc(100% + 80px));bottom:calc(164px + env(safe-area-inset-bottom));border-radius:22px}.sparkbot-panel.open{transform:none}}"
+"@media (min-width:720px){.sparkbot-panel{left:auto;right:16px;transform:translate(var(--dx,0px),calc(100% + 80px + var(--dy,0px)));bottom:calc(164px + env(safe-area-inset-bottom));border-radius:22px}.sparkbot-panel.open{transform:translate(var(--dx,0px),var(--dy,0px))}}"
 ].join("\n");
 
 /* ---------- Build DOM ---------- */
@@ -337,7 +345,7 @@ function build(){
   var panel=document.createElement("div");
   panel.className="sparkbot-panel"; panel.setAttribute("role","dialog"); panel.setAttribute("aria-label","SPARK Bot chat");
   panel.innerHTML=
-    '<div class="sparkbot-hero"><span class="sparkbot-av"></span>'
+    '<div class="sparkbot-hero"><div class="sparkbot-grip"></div><span class="sparkbot-av"></span>'
     +'<b>'+NAME+'</b><span><i></i>'+ROLE+'</span>'
     +'<div class="sparkbot-ctl"><button class="sparkbot-lang" id="sparkbotLang">'+GLOBE+'<span id="sparkbotLangName">English</span><span class="chev">&#9662;</span></button>'
     +'<button class="sparkbot-mute" id="sparkbotMute" aria-label="Toggle sound"></button></div>'
@@ -421,28 +429,88 @@ function build(){
   function close(){
     panel.classList.remove("open");
     panel.style.top=""; panel.style.bottom=""; panel.style.maxHeight="";
+    panel.style.setProperty("--dx","0px"); panel.style.setProperty("--dy","0px");
     try{ window.speechSynthesis.cancel(); }catch(e){}
   }
 
-  /* Pin the panel's bottom edge to the visual viewport's bottom edge, so it
-     sits flush above the on-screen keyboard with no gap. The visual
-     viewport's bottom (offsetTop + height) is the keyboard's top edge, and
-     it moves as the keyboard opens and closes. Positioning by `top` from
-     that edge is exact; offsetting `bottom` by a computed keyboard height
-     over-lifts when the page is scrolled, which left the gap. */
+  /* Keyboard: the pages use interactive-widget=resizes-content, so the
+     layout viewport shrinks when the on-screen keyboard opens and the panel
+     (bottom:0) sits flush above it with no gap. No JS coordinate math.
+     syncPanel only keeps the latest message in view when the viewport
+     moves. The CSS max-height uses 100dvh, which shrinks with the
+     keyboard, so the panel always fits. */
   var vv=window.visualViewport;
   function syncPanel(){
-    if(!vv||!panel.classList.contains("open")) return;
-    var h=panel.offsetHeight||0;
-    if(h<=0) return;
-    var visBottom=vv.offsetTop+vv.height;
-    panel.style.top=Math.max(0, visBottom-h)+"px";
-    panel.style.bottom="auto";
-    panel.style.maxHeight="min(600px, calc("+vv.height+"px - 24px))";
+    if(!panel.classList.contains("open")) return;
     msgs.scrollTop=msgs.scrollHeight;
   }
   if(vv){ vv.addEventListener("resize", syncPanel); vv.addEventListener("scroll", syncPanel); }
+  window.addEventListener("resize", syncPanel);
   input.addEventListener("focus", function(){ setTimeout(syncPanel, 60); setTimeout(syncPanel, 300); setTimeout(syncPanel, 600); });
+
+  /* Drag: the panel moves freely in any direction by its header. Slow drag
+     follows the finger 1:1 on the GPU transform (no layout work, so it
+     cannot slow the site). A fast flick down closes it, a fast flick up
+     snaps it tall. Buttons inside the header are not drag handles. */
+  var hero=panel.querySelector(".sparkbot-hero");
+  var drag=null, rafPending=false;
+  function queueDrag(){
+    if(rafPending) return;
+    rafPending=true;
+    requestAnimationFrame(function(){
+      rafPending=false;
+      if(!drag) return;
+      panel.style.setProperty("--dx", drag.dx+"px");
+      panel.style.setProperty("--dy", drag.dy+"px");
+    });
+  }
+  hero.addEventListener("pointerdown", function(e){
+    if(!panel.classList.contains("open")) return;
+    if(e.target.closest("button")) return;
+    var r=panel.getBoundingClientRect();
+    drag={x0:e.clientX, y0:e.clientY,
+      dx0:parseFloat(panel.style.getPropertyValue("--dx"))||0,
+      dy0:parseFloat(panel.style.getPropertyValue("--dy"))||0,
+      dx:0, dy:0, lastX:e.clientX, lastY:e.clientY,
+      lastT:performance.now(), velY:0, rect:r};
+    drag.dx=drag.dx0; drag.dy=drag.dy0;
+    panel.classList.add("dragging");
+    hero.classList.add("dragging");
+    try{ hero.setPointerCapture(e.pointerId); }catch(err){}
+  });
+  hero.addEventListener("pointermove", function(e){
+    if(!drag) return;
+    var dx=drag.dx0+(e.clientX-drag.x0);
+    var dy=drag.dy0+(e.clientY-drag.y0);
+    var r=drag.rect, vw=window.innerWidth, vh=window.innerHeight;
+    var minDy=8-r.top;
+    var maxDy=vh-60-r.top;
+    var minDx=-(r.left+r.width-90);
+    var maxDx=vw-90-r.left;
+    dx=Math.max(minDx, Math.min(maxDx, dx));
+    dy=Math.max(minDy, Math.min(maxDy, dy));
+    drag.dx=dx; drag.dy=dy;
+    var now=performance.now(), dt=now-drag.lastT;
+    if(dt>0){ drag.velY=(e.clientY-drag.lastY)/dt; drag.lastX=e.clientX; drag.lastY=e.clientY; drag.lastT=now; }
+    queueDrag();
+  });
+  function endDrag(){
+    if(!drag) return;
+    var d=drag; drag=null;
+    panel.classList.remove("dragging");
+    hero.classList.remove("dragging");
+    if(d.velY>0.55 || d.dy>160){ close(); return; }
+    if(d.velY<-0.55){
+      var r=panel.getBoundingClientRect();
+      var targetDy=d.dy+(16-r.top);
+      panel.style.setProperty("--dx", d.dx+"px");
+      panel.style.setProperty("--dy", targetDy+"px");
+      panel.style.maxHeight=Math.min(600, window.innerHeight-32)+"px";
+      return;
+    }
+  }
+  hero.addEventListener("pointerup", endDrag);
+  hero.addEventListener("pointercancel", endDrag);
 
   fab.addEventListener("click", function(){ panel.classList.contains("open")?close():open(); });
   closeBtn.addEventListener("click", close);
