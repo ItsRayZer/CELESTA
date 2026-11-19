@@ -17,25 +17,51 @@ const redis = new Redis({
 const RELAY_URL = 'https://gptopen.vercel.app/api/relay';
 const RELAY_TIMEOUT_MS = 25000;
 
-// Per-IP rate limit: 20 requests per 10 minutes (in-memory sliding
-// window, same pattern as the relay — per serverless instance).
-const RATE_WINDOW_MS = 10 * 60 * 1000;
+// Abuse protection (all in Redis, so it holds across every serverless
+// instance — the old in-memory per-IP limit did not):
+// 1. Origin/Referer allowlist — the endpoint only answers calls that
+//    come from the fest site itself. Direct curl/script calls are 403.
+// 2. Per-IP rate limit: 20 requests per 10 minutes.
+// 3. Daily global cap: 1000 AI calls per day. Past that, 429. This is
+//    the real token guard: even a distributed attack cannot drain the
+//    relay beyond 1000 calls/day. The bot falls back to its local
+//    answers, so students still get a reply.
+// Rate-limit and cap checks fail OPEN when Redis is down, so a Redis
+// outage never kills the bot; the relay's own 60/10min limit is the
+// backstop then.
+const RATE_WINDOW_S = 10 * 60;
 const RATE_MAX = 20;
-const ipHits = {};
-function clientIp(req) {
-  const real = req.headers['x-real-ip'] || req.headers['X-Real-Ip'] || '';
-  if (real) return String(real).trim();
-  const fwd = req.headers['x-forwarded-for'] || req.headers['X-Forwarded-For'] || '';
-  const parts = String(fwd).split(',').map(s => s.trim()).filter(Boolean);
-  if (parts.length) return parts[parts.length - 1];
-  return (req.socket && req.socket.remoteAddress) || 'unknown';
+const DAILY_MAX = 1000;
+
+const ALLOWED_HOSTS = new Set([
+  'spark-fest.vercel.app',
+  'celesta-fest.vercel.app',
+  'spark.maraugusthinosecollege.org',
+  'celesta.maraugusthinosecollege.org',
+  'localhost',
+  '127.0.0.1',
+]);
+function originAllowed(req) {
+  const val = String(req.headers['origin'] || req.headers['referer'] || '').trim();
+  if (!val) return false;
+  try { return ALLOWED_HOSTS.has(new URL(val).hostname); } catch { return false; }
 }
-function rateLimited(ip) {
-  const now = Date.now();
-  const arr = (ipHits[ip] = (ipHits[ip] || []).filter(t => now - t < RATE_WINDOW_MS));
-  if (arr.length >= RATE_MAX) return true;
-  arr.push(now);
-  return false;
+async function redisRateLimited(ip) {
+  try {
+    const key = 'celesta:sparkchat:rl:' + ip;
+    const n = await redis.incr(key);
+    if (n === 1) await redis.expire(key, RATE_WINDOW_S);
+    return n > RATE_MAX;
+  } catch { return false; }
+}
+async function dailyCapHit() {
+  try {
+    const day = new Date().toISOString().slice(0, 10);
+    const key = 'celesta:sparkchat:daily:' + day;
+    const n = await redis.incr(key);
+    if (n === 1) await redis.expire(key, 24 * 60 * 60);
+    return n > DAILY_MAX;
+  } catch { return false; }
 }
 
 // Key contacts (from the official poster). Always in the prompt, even
@@ -178,10 +204,20 @@ async function askRelay(systemPrompt, question) {
   finally { clearTimeout(timer); }
 }
 
+function clientIp(req) {
+  const real = req.headers['x-real-ip'] || req.headers['X-Real-Ip'] || '';
+  if (real) return String(real).trim();
+  const fwd = req.headers['x-forwarded-for'] || req.headers['X-Forwarded-For'] || '';
+  const parts = String(fwd).split(',').map(s => s.trim()).filter(Boolean);
+  if (parts.length) return parts[parts.length - 1];
+  return (req.socket && req.socket.remoteAddress) || 'unknown';
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  if (!originAllowed(req)) return res.status(403).json({ error: 'forbidden' });
   const ip = clientIp(req);
-  if (rateLimited(ip)) return res.status(429).json({ error: 'rate_limited' });
+  if (await redisRateLimited(ip)) return res.status(429).json({ error: 'rate_limited' });
 
   const body = typeof req.body === 'string'
     ? (() => { try { return JSON.parse(req.body || '{}'); } catch { return {}; } })()
@@ -191,6 +227,10 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'invalid_question' });
   }
   const lang = body.lang === 'ml' ? 'ml' : 'en';
+
+  // Daily global cap, counted only on validated questions that are
+  // about to call the relay.
+  if (await dailyCapHit()) return res.status(429).json({ error: 'daily_cap' });
 
   let events;
   try {
