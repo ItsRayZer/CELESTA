@@ -1,9 +1,9 @@
-/* SPARK Bot v16 — Axo-style chat assistant for SPARK 2K26.
-   v16: the keyword matcher still answers what it knows (score >= 3).
+/* SPARK Bot v17 — Axo-style chat assistant for SPARK 2K26.
+   v17: the keyword matcher still answers what it knows (score >= 3).
    Anything else goes to /api/spark-chat, which asks the GptOpen relay
    with a facts-only prompt built from the live events + coordinators.
    Header matches the Axofy Axo bot: big robot avatar on top, name + role,
-   small language button + mute button only (no settings, no CC).
+   small language button only (M / E, no settings, no CC).
    Avatar: the SPARK robot head in its own natural shape, no circle, no
    border, no background. The head image is a tight transparent cutout, so
    the head itself is the button and the header mark.
@@ -11,8 +11,8 @@
    avatar never peeks out at the bottom of the page.
    Languages: English (default) + Malayalam (Manglish). The matcher understands
    BOTH English and Manglish keywords in either language.
-   Sound: when sound is on, the bot READS its reply aloud (text-to-speech);
-   the mute button turns voice off. Client-side only, no server.
+   Sound: the bot READS its reply aloud (text-to-speech).
+   Client-side only, no server. No mute button (owner: language only).
    Keyboard: the pages use interactive-widget=resizes-content, so the layout
    viewport shrinks when the on-screen keyboard opens and the panel
    (bottom:0) sits flush above it with no gap. No JS coordinate math.
@@ -236,8 +236,6 @@ var PH={ en:"Ask about SPARK...", ml:"SPARK ne kurichu chodikkuka..." };
 /* ---------- State ---------- */
 var lang="en";
 try{ var saved=localStorage.getItem("sparkbot_lang"); if(saved==="ml"||saved==="en") lang=saved; }catch(e){}
-var muted=false;
-try{ muted=localStorage.getItem("sparkbot_mute")==="1"; }catch(e){}
 
 /* ---------- Matching (English + Manglish, either language) ---------- */
 function norm(s){ return (" "+s.toLowerCase().replace(/[^a-z0-9 ]/g," ").replace(/\s+/g," ").trim()+" "); }
@@ -267,7 +265,6 @@ function answerFor(q){
 /* ---------- Voice: read the bot's reply aloud (text-to-speech) ---------- */
 function stripHtml(s){ return s.replace(/<br\s*\/?>/gi,". ").replace(/<[^>]+>/g,"").replace(/&nbsp;/g," ").trim(); }
 function speak(html){
-  if(muted) return;
   if(!("speechSynthesis" in window)){ pop(); return; }
   try{
     window.speechSynthesis.cancel();
@@ -280,7 +277,6 @@ function speak(html){
 /* Tiny pop, only used when speech is unavailable. */
 var AC=null;
 function pop(){
-  if(muted) return;
   try{
     AC=AC||new (window.AudioContext||window.webkitAudioContext)();
     if(AC.state==="suspended") AC.resume();
@@ -308,9 +304,6 @@ var CSS=[
 ".sparkbot-ctl{position:absolute;top:10px;left:10px;display:flex;align-items:center;gap:6px;z-index:2}",
 ".sparkbot-lang{display:inline-flex;align-items:center;gap:5px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.07);color:#fff;font:600 12px/1 -apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif;padding:7px 10px;border-radius:99px;cursor:pointer}",
 ".sparkbot-lang svg{flex:none}",
-".sparkbot-lang .chev{font-size:9px;opacity:.7}",
-".sparkbot-mute{width:30px;height:30px;flex:none;border-radius:50%;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.07);color:#fff;cursor:pointer;display:grid;place-items:center}",
-".sparkbot-mute.off{color:rgba(255,255,255,.45)}",
 ".sparkbot-close{position:absolute;top:10px;right:10px;width:34px;height:34px;border-radius:50%;border:0;background:rgba(255,255,255,.1);color:#fff;font-size:17px;line-height:1;cursor:pointer;z-index:2}",
 ".sparkbot-msgs{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:2px;padding:14px 12px 8px;min-height:110px}",
 ".sparkbot-msg{max-width:80%;padding:9px 13px;border-radius:19px;font:500 15px/1.45 -apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif;white-space:pre-wrap;word-break:break-word;animation:sparkbotIn .3s cubic-bezier(.2,.8,.2,1)}",
@@ -348,8 +341,6 @@ var CSS=[
 
 /* ---------- Build DOM ---------- */
 var GLOBE='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.9 5.7 3.9 9S14.5 18.4 12 21c-2.5-2.6-3.9-5.7-3.9-9S9.5 5.6 12 3z"/></svg>';
-var SPK_ON='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5z" fill="currentColor" stroke="none"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>';
-var SPK_OFF='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5z" fill="currentColor" stroke="none"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>';
 var PHONE_SVG='<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.2.2 2.4.6 3.6.1.3 0 .7-.2 1l-2.3 2.2z"/></svg>';
 var CHAT_SVG='<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>';
 
@@ -363,8 +354,7 @@ function build(){
   panel.innerHTML=
     '<div class="sparkbot-hero"><span class="sparkbot-av"></span>'
     +'<b>'+NAME+'</b>'
-    +'<div class="sparkbot-ctl"><button class="sparkbot-lang" id="sparkbotLang">'+GLOBE+'<span id="sparkbotLangName">English</span><span class="chev">&#9662;</span></button>'
-    +'<button class="sparkbot-mute" id="sparkbotMute" aria-label="Toggle sound"></button></div>'
+    +'<div class="sparkbot-ctl"><button class="sparkbot-lang" id="sparkbotLang" aria-label="Switch language">'+GLOBE+'<span id="sparkbotLangName">E</span></button></div>'
     +'<button class="sparkbot-close" aria-label="Close chat">&times;</button></div>'
     +'<div class="sparkbot-msgs" id="sparkbotMsgs"></div>'
     +'<div class="sparkbot-chips" id="sparkbotChips"></div>'
@@ -378,10 +368,9 @@ function build(){
       closeBtn=panel.querySelector(".sparkbot-close"),
       langBtn=panel.querySelector("#sparkbotLang"),
       langName=panel.querySelector("#sparkbotLangName"),
-      muteBtn=panel.querySelector("#sparkbotMute"),
       greeted=false;
 
-  function langLabel(){ return lang==="ml"?"Malayalam":"English"; }
+  function langLabel(){ return lang==="ml"?"M":"E"; }
   function renderChips(){
     chipsBox.innerHTML="";
     var shown=0;
@@ -395,7 +384,6 @@ function build(){
     });
     chipsBox.style.display=shown?"":"none";
   }
-  function renderMute(){ muteBtn.innerHTML=muted?SPK_OFF:SPK_ON; muteBtn.classList.toggle("off", muted); }
   function applyLang(){
     langName.textContent=langLabel();
     input.placeholder=PH[lang];
@@ -505,13 +493,6 @@ function build(){
     var note=(lang==="ml")?"Malayalam il chodikkam. SPARK ne kurichu enthum chodikkuka.":"Switched to English. Ask me anything about SPARK.";
     addMsg(note, "a");
     speak(note);
-  });
-  muteBtn.addEventListener("click", function(){
-    muted=!muted;
-    try{ localStorage.setItem("sparkbot_mute", muted?"1":"0"); }catch(e){}
-    renderMute();
-    if(muted){ try{ window.speechSynthesis.cancel(); }catch(e){} }
-    else { speak(lang==="ml"?"Sound on aanu.":"Sound is on."); }
   });
   function open(){
     panel.classList.add("open");
@@ -629,7 +610,6 @@ function build(){
   input.addEventListener("keydown", function(e){ if(e.key==="Enter"){ e.preventDefault(); ask(input.value); } });
 
   applyLang();
-  renderMute();
 }
 
 if(document.readyState==="loading"){ document.addEventListener("DOMContentLoaded", build); }
