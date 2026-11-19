@@ -14,7 +14,7 @@
     var cw = c.clientWidth || window.innerWidth, ch = c.clientHeight || window.innerHeight;
     if(!force && cw === lw && Math.abs(ch - lh) < 120) return;
     lw = cw; lh = ch;
-    var d = Math.min(window.devicePixelRatio||1, 2),
+    var d = Math.min(window.devicePixelRatio||1, 1.5),
         w = c.width = Math.round(cw * d),
         h = c.height = Math.round(ch * d);
     x.clearRect(0,0,w,h);
@@ -161,9 +161,8 @@
       gsap.fromTo(card, { y:90, x:d*60, opacity:0 }, { y:0, x:0, opacity:1, ease:"power2.out",
         scrollTrigger:{ trigger:card, start:"top 95%", end:"top 55%", scrub:true } });
       var pass = { trigger:card, start:"top bottom", end:"bottom top", scrub:true };
-      var gimg = card.querySelector("img"), glbl = card.querySelector(".ah-glabel");
+      var gimg = card.querySelector("img");
       if(gimg && !gimg.classList.contains("tk-poster")) gsap.fromTo(gimg, { yPercent:-9 }, { yPercent:9, ease:"none", scrollTrigger:pass });
-      if(glbl) gsap.fromTo(glbl, { letterSpacing:"0.05em" }, { letterSpacing:"0.28em", ease:"none", scrollTrigger:pass });
     });
     return true;
   }
@@ -177,9 +176,8 @@
         gc.style.transform = "translate3d(" + ((1 - ge) * d * 60).toFixed(1) + "px," + ((1 - ge) * 90).toFixed(1) + "px,0)";
         gc.style.opacity = ge.toFixed(3);
         var pp = clamp((vh - gr.top) / (vh + gr.height), 0, 1);
-        var img = gc.querySelector("img"), lbl = gc.querySelector(".ah-glabel");
-        if(img) img.style.transform = "translate3d(0," + (-9 + 18 * pp).toFixed(2) + "%,0)";
-        if(lbl) lbl.style.letterSpacing = (0.05 + 0.23 * pp).toFixed(3) + "em";
+        var img = gc.querySelector("img");
+        if(img && !img.classList.contains("tk-poster")) img.style.transform = "translate3d(0," + (-9 + 18 * pp).toFixed(2) + "%,0)";
       }
     }
     var r2 = 0;

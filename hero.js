@@ -12,12 +12,12 @@
 
   /* ---------- Stars (dense, lots of black between) ---------- */
   function fxSize() {
-    var r = Math.min(window.devicePixelRatio || 1, 1.75);
+    var r = Math.min(window.devicePixelRatio || 1, 1.5);
     cx.width = Math.round(cx.clientWidth * r); cx.height = Math.round(cx.clientHeight * r);
     if (gl) gl.viewport(0, 0, cx.width, cx.height);
   }
   function size() {
-    var r = Math.min(window.devicePixelRatio || 1, 2);
+    var r = Math.min(window.devicePixelRatio || 1, 1.5);
     W = sky.clientWidth; H = sky.clientHeight;
     sky.width = W * r; sky.height = H * r; c.setTransform(r, 0, 0, r, 0, 0);
     var n = Math.round(Math.min(340, W * H / 1400)); st = [];

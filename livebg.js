@@ -66,9 +66,11 @@
     gl.uniform1f(uA, w / h);
   }
   var t0 = performance.now(), last = 0, raf = 0, vis = true, ready = false;
+  /* slow ambient background: 20fps is plenty on a phone, ~33fps elsewhere */
+  var frameMs = window.innerWidth < 720 ? 50 : 30;
   function draw(now) {
     raf = 0; if (!vis || !ready) return;
-    if (now - last > 30) { last = now; gl.uniform1f(uT, (now - t0) / 1000 + 20.); gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4); }
+    if (now - last > frameMs) { last = now; gl.uniform1f(uT, (now - t0) / 1000 + 20.); gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4); }
     if (!reduced) raf = requestAnimationFrame(draw);
   }
   function start() {

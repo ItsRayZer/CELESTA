@@ -12,7 +12,7 @@
   if(cvs && cvs.getContext){
     var ctx = cvs.getContext("2d"), W = 0, H = 0, motes = [], vis = false, raf = 0, t0 = performance.now();
     function sizeCanvas(){
-      var dpr = Math.min(window.devicePixelRatio || 1, 2);
+      var dpr = Math.min(window.devicePixelRatio || 1, 1.5);
       W = cvs.clientWidth || window.innerWidth;
       H = cvs.clientHeight || window.innerHeight;
       cvs.width = Math.round(W * dpr);
@@ -64,7 +64,8 @@
     }, { passive: true });
     if("IntersectionObserver" in window){
       new IntersectionObserver(function(es){
-        vis = es[0].isIntersecting && !document.hidden;
+        /* the purple theme hides this canvas (display:none) — skip the loop entirely then */
+        vis = es[0].isIntersecting && !document.hidden && cvs.offsetParent !== null;
         realm.classList.toggle("is-live", vis);
         if(vis && !raf && !reduced) raf = requestAnimationFrame(drawCanvas);
       }, { threshold: 0.02 }).observe(realm);
@@ -128,8 +129,8 @@
 
     if(words.length){
       gsap.fromTo(words,
-        { opacity: 0.12, y: 26, filter: "blur(3px)" },
-        { opacity: 1, y: 0, filter: "blur(0px)", ease: "none", stagger: 0.08,
+        { opacity: 0.12, y: 26 },
+        { opacity: 1, y: 0, ease: "none", stagger: 0.08,
           scrollTrigger: { trigger: p, start: "top 96%", end: "bottom 55%", scrub: 0.5 } }
       );
     }
