@@ -164,7 +164,20 @@ function build(){
     if(!greeted){ greeted=true; addMsg("Hey! I am the SPARK Bot. Ask me anything about SPARK 2K26 - events, prizes, registration, venue, or contacts.", "a"); }
     setTimeout(function(){ input.focus(); }, 380);
   }
-  function close(){ panel.classList.remove("open"); }
+  function close(){ panel.classList.remove("open"); panel.style.bottom=""; panel.style.maxHeight=""; }
+
+  /* Keep the panel above the on-screen keyboard: when the keyboard opens the
+     visual viewport shrinks, so lift the panel by the keyboard height. */
+  var vv=window.visualViewport;
+  function syncPanel(){
+    if(!vv||!panel.classList.contains("open")) return;
+    var kb=Math.max(0, window.innerHeight-vv.height);
+    panel.style.bottom=kb>0?kb+"px":"";
+    panel.style.maxHeight=kb>0?("min(560px, calc("+vv.height+"px - 24px))"):"";
+    msgs.scrollTop=msgs.scrollHeight;
+  }
+  if(vv){ vv.addEventListener("resize", syncPanel); vv.addEventListener("scroll", syncPanel); }
+  input.addEventListener("focus", function(){ setTimeout(syncPanel, 60); setTimeout(syncPanel, 300); });
   fab.addEventListener("click", function(){ panel.classList.contains("open")?close():open(); });
   closeBtn.addEventListener("click", close);
   sendBtn.addEventListener("click", function(){ ask(input.value); });
