@@ -1,0 +1,85 @@
+/* SPARK 2K26 — purple live theme (poster style) for every page except the first screen */
+:root{
+  --bg:#0a0418; --bg2:#12072a; --ink:#f4f1ea; --mut:#b9aed6; --gold:#e3b45a;
+  --line:rgba(190,150,255,.2); --glass:rgba(24,10,52,.55); --card:rgba(120,70,220,.12); --card2:rgba(30,12,66,.62);
+}
+html{background:#0a0418!important}
+body{background:transparent!important;color:var(--ink)}
+#livebg{position:fixed;left:0;top:0;width:100%;height:100%;z-index:-1;display:block;pointer-events:none}
+html.livebg-fb body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background:radial-gradient(ellipse 80% 40% at 30% 20%,rgba(150,70,255,.55),transparent 70%),radial-gradient(ellipse 70% 45% at 75% 75%,rgba(110,40,220,.5),transparent 70%),#0a0218;
+  animation:lbfb 14s ease-in-out infinite alternate}
+@keyframes lbfb{to{filter:hue-rotate(18deg) brightness(1.25);transform:scale(1.08)}}
+/* dark bands become transparent so the live bg shows through */
+.qt,.closing,.ah-gallery,.wb-campus-bridge{background:transparent}
+.ah-gallery{box-shadow:none;clip-path:none}
+/* hands (Age of Heroes) scene: live purple instead of black, with a pulsing bloom where the hands meet */
+.ah-hero{background:transparent}
+.ah-hero::before{content:"";position:absolute;left:50%;top:48%;width:120vmin;height:120vmin;transform:translate(-50%,-50%);z-index:0;pointer-events:none;
+  background:radial-gradient(circle,rgba(190,130,255,.5),rgba(110,40,230,.28) 35%,transparent 66%);animation:ahBloom 5.5s ease-in-out infinite alternate;mix-blend-mode:screen}
+@keyframes ahBloom{from{opacity:.55;transform:translate(-50%,-50%) scale(.9)}to{opacity:1;transform:translate(-50%,-50%) scale(1.12)}}
+@media(prefers-reduced-motion:reduce){.ah-hero::before{animation:none}}
+
+/* ===== page bodies: drop the old white / holographic backgrounds ===== */
+body.premium-page,body.light-page,body.reg-page,body.dark-page{background:transparent!important;background-image:none!important;animation:none!important;color:#f4f1ea}
+.aura,.rg-blobs{display:none!important}
+.premium-page{--ink:#f4f1ea;--mut:#c9bde6;--gold:#ffb347;--line:rgba(190,150,255,.28)}
+.light-page{--lp-ink:#f4f1ea;--lp-mut:#c9bde6}
+.dark-page{--ink:#f4f1ea;--mut:#c9bde6;--gold:#ffb347}
+
+/* ===== shared headline / cards (events, gallery, map, contact) ===== */
+.gz-head h1,body.dark-page .gz-head h1,body.premium-page .gz-head h1,.light-page .p-head h1{color:#fff!important}
+.gz-head p,body.dark-page .gz-head p,.light-page .p-head p{color:#d6cbf0!important}
+.gz-head p b{color:#fff!important}
+.gz-tag,.gz-tag--light,body.dark-page .gz-tag--light{background:rgba(18,6,44,.85);color:#fff;border:1px solid rgba(200,160,255,.4)}
+.gz-info-card,.gz-info-card--dark{background:rgba(24,8,58,.72)!important;border:2.5px solid rgba(200,160,255,.45)!important;box-shadow:4px 4px 0 #ff5c00!important;color:#f4f1ea;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.gz-info-card b,.gz-info-card--dark b{color:#fff!important}
+.gz-info-card small,.gz-info-card--dark small{color:#cfc4ea!important}
+.gz-pboard,.light-page .pboard,.pboard{background:rgba(24,8,58,.66)!important;border:2.5px solid rgba(200,160,255,.45)!important;box-shadow:5px 5px 0 #ff5c00!important;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.pboard-total,.pboard-row b,.light-page .pboard-row b{color:#fff!important}
+.pboard-row span,.pboard-note,.light-page .pboard-row span,.light-page .pboard-total{color:#cfc4ea!important}
+.light-page .pboard-row{border-top:1px solid rgba(190,150,255,.25)}
+.light-page .pboard-row.pboard-sum{background:rgba(8,2,24,.8)}
+.gz-note{color:#d6cbf0!important;border-color:rgba(190,150,255,.3)!important;background:rgba(24,8,58,.55)!important}
+.dark-page .gz-venue,.dark-page .gz-follow{background:rgba(24,8,58,.72)!important;border:2.5px solid rgba(200,160,255,.45)!important;box-shadow:5px 5px 0 #ff5c00!important;color:#f4f1ea}
+.dark-page .gz-venue p,.dark-page .gz-follow p,.dark-page .addr{color:#cfc4ea!important}
+.dark-page .map-wrap{border-color:rgba(200,160,255,.45)}
+.dark-page footer,.premium-page footer,.light-page footer{border-top-color:rgba(190,150,255,.25);color:#c9bde6}
+.dark-page .f-nexus,.premium-page .f-nexus,.light-page .f-nexus{color:#fff}
+.tm-h,.c-phone{color:#fff!important}
+.tm-sub{color:#cfc4ea!important}
+.light-page .ev-info>div{background:rgba(24,8,58,.72);border-color:rgba(200,160,255,.3);box-shadow:none}
+.light-page .ax-card{background:rgba(24,8,58,.8);border-color:rgba(200,160,255,.5);box-shadow:4px 4px 0 #ff5c00;color:#fff}
+.light-page .ax-card h3{color:#fff}
+.light-page .ax-img{border-bottom-color:rgba(200,160,255,.5)}
+.light-page .p-head .sec-tag{background:rgba(24,8,58,.8);border-color:rgba(200,160,255,.4);color:#fff}
+
+/* ===== registration pages ===== */
+.reg-page{--rg-ink:#f4f1ea;--rg-mut:#cfc4ea;--rg-fill:rgba(28,10,66,.66);--rg-line:rgba(190,150,255,.24)}
+.reg-page .field:focus-within{background:rgba(70,30,150,.65)}
+.reg-page .field input::placeholder,.reg-page .field textarea::placeholder{color:#9c8fc4}
+.reg-page .field select option{color:#111}
+.reg-page .rd-list.dot li::before{background:#fff}
+.reg-page .rd-acc summary::after,.reg-page .rd-acc[open] summary::after{border-color:#cfc4ea}
+.reg-page .ok-msg{background:rgba(16,70,44,.7);color:#c9f5d8}
+.reg-page .ok-msg .reg-note{color:#a9e0bd}
+
+/* ===== home page: the white "about" realm becomes part of the purple world ===== */
+.wb-realm{background:transparent!important;color:#f4f1ea}
+.wb-sky-transition{background:none!important;height:clamp(40px,8svh,80px)}
+.wb-cloud-layer,.wb-hatch-svg,.wb-clouds-upper,.wb-canvas,.wb-campus-mist-top{display:none!important}
+.wb-title{color:#fff}
+.wb-date{color:#d6cbf0}
+.wb-powered{color:#e2d9f5}
+.wb-powered small{color:#ffcf7a}
+.wb-manifesto{color:#fff;text-shadow:0 0 28px rgba(150,90,255,.45)}
+.wb-wordmark,.wb-nexus-logo{filter:invert(1)}
+.wb-art img{filter:invert(1);mix-blend-mode:screen;opacity:.9}
+.wb-nexus-box{background:rgba(24,8,58,.68)!important;border:1px solid rgba(200,160,255,.4)!important;box-shadow:0 20px 60px rgba(60,10,150,.35)!important;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.wb-nexus-tag{color:#ffcf7a}
+.wb-nexus-desc{color:#e6def8}
+.wb-nexus-desc strong,.wb-pillar b{color:#fff}
+.wb-pillars{border-top-color:rgba(200,160,255,.3)}
+.wb-pillar span{color:#cfc4ea}
+.f-nexus img{filter:none!important}
+.f-nexus img[src*="dark"]{filter:invert(1)!important}
