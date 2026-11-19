@@ -861,7 +861,7 @@ footer .f-nexus img{width:40px}
 .glass-back:active{transform:scale(.93)}
 .glass-back:focus-visible{outline:2px solid var(--rg-blue);outline-offset:3px}
 .rg-head{margin:4px 0 26px;animation:rgUp .7s cubic-bezier(.2,.8,.2,1) both}
-.rg-chip{display:inline-flex;align-items:center;height:28px;padding:0 13px;border-radius:99px;background:rgba(255,255,255,.75);border:1px solid var(--rg-line);font-size:12px;font-weight:600;letter-spacing:.02em;color:var(--rg-mut)}
+.rg-chip{display:inline-flex;align-items:center;height:28px;padding:0 13px;border-radius:99px;background:var(--rg-fill);border:1px solid var(--rg-line);font-size:12px;font-weight:700;letter-spacing:.02em;color:var(--rg-ink)}
 .reg-page .reg-wrap h1{font-family:inherit;font-weight:800;letter-spacing:-.04em;line-height:1.02;font-size:clamp(44px,13vw,60px);margin:16px 0 10px;color:var(--rg-ink)}
 .rg-tag{font-size:17px;line-height:1.4;color:var(--rg-mut);max-width:24em}
 .rg-prizes{display:flex;gap:8px;margin-top:18px;flex-wrap:wrap}
