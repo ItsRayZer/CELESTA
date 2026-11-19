@@ -7,19 +7,19 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="NEXUS SPARK 2K26">
 <meta property="og:title" content="SPARK 2K26 — Inter-School Tech Fest">
-<meta property="og:description" content="27 November 2026 · Mar Augusthinose College, Ramapuram · 3 events · ₹11,250 in prizes. Presented by NEXUS.">
+<meta property="og:description" content="27 November 2026 · Mar Augusthinose College, Ramapuram · 4 events · ₹14,250 in prizes. Presented by NEXUS.">
 <meta property="og:image" content="https://spark-fest.vercel.app/assets/og-share.jpg">
 <meta property="og:url" content="https://spark-fest.vercel.app/events">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="SPARK 2K26 — Inter-School Tech Fest">
-<meta name="twitter:description" content="27 November 2026 · 3 events · ₹11,250 in prizes.">
+<meta name="twitter:description" content="27 November 2026 · 4 events · ₹14,250 in prizes.">
 <meta name="twitter:image" content="https://spark-fest.vercel.app/assets/og-share.jpg">
 <meta name="description" content="Register for an event at SPARK 2K26 — inter-school tech fest by NEXUS, Mar Augusthinose College, Ramapuram.">
 <link rel="icon" type="image/png" href="/assets/logo.webp">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=Marcellus&display=swap">
-<link rel="stylesheet" href="/styles.css?v=49">
+<link rel="stylesheet" href="/styles.css?v=50">
 <link rel="stylesheet" href="/theme-purple.css?v=2">
 <style>#pill{display:none!important}</style>
 <style>html{background:#060608}body{background:#060608}.hp{position:absolute!important;left:-9999px!important;top:auto;width:1px;height:1px;overflow:hidden}</style>
@@ -49,7 +49,7 @@
 <footer>
   <div class="f-nexus"><img src="/assets/nexus-logo-dark.webp" alt="NEXUS logo" loading="lazy"><span>NEXUS · Computer Applications Department Association</span></div>
   <div>Mar Augusthinose College, Ramapuram</div>
-  <div class="f-line" id="f-line">Three events. One day. One campus.</div>
+  <div class="f-line" id="f-line">Four events. One day. One campus.</div>
 </footer>
 
 <script src="/app.js?v=32" defer></script>
@@ -78,7 +78,8 @@
     return '<details class="rd-acc"><summary>'+esc(title)+'</summary><ul class="rd-list '+cls+'">'
       +items.map(function(t){return '<li>'+esc(t)+'</li>';}).join('')+'</ul></details>';
   }
-  function render(e,totalEvents){
+  var FEST_CONTACT='Ananthu Anil 7510142466 \u00b7 Bista Mariya Jojo 9746446739';
+  function render(e,totalEvents,coordNames){
     document.title='Register — '+e.name+' | SPARK 2K26';
     var fl=document.getElementById('f-line');
     if(fl&&totalEvents)fl.textContent=(totalEvents===1?'One event':({1:'One',2:'Two',3:'Three',4:'Four',5:'Five',6:'Six',7:'Seven',8:'Eight'}[totalEvents]||totalEvents)+' events')+'. One day. One campus.';
@@ -89,7 +90,7 @@
     app.innerHTML=
       '<div class="rg-bar"><a class="glass-back" href="/events" aria-label="Back to events"><svg width="11" height="18" viewBox="0 0 11 18" fill="none" aria-hidden="true"><path d="M9.5 1.5 2 9l7.5 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Events</span></a></div>'
       +'<header class="rg-head"><span class="rg-chip">'+num+' · Inter-School</span><h1>'+esc(e.name)+'</h1><p class="rg-tag">'+esc(e.tagline||'')+'</p>'
-      +'<div class="rg-prizes"><span>1st '+fmt(e.prize1)+'</span><span>2nd '+fmt(e.prize2)+'</span></div></header>'
+      +'<div class="rg-prizes"><span>1st '+fmt(e.prize1)+'</span>'+(e.prize2?'<span>2nd '+fmt(e.prize2)+'</span>':'<span>Winner takes all</span>')+'</div></header>'
       +(closed
         ?'<div class="ok-msg show" role="status"><h3>Registrations closed</h3><p>Registrations for <strong>'+esc(e.name)+'</strong> are closed. Check the Events page for the other events.</p></div>'
         :'<form id="reg-form-dyn" class="rg-form" data-event="'+esc(e.name)+'" data-slug="'+esc(e.slug)+'" data-min="'+e.teamMin+'" data-max="'+e.teamMax+'" novalidate>'
@@ -116,6 +117,8 @@
       +'<div class="ww-row"><span class="ww-k">Where</span><span>'+esc(e.where||'')+'</span></div>'
       +'<div class="ww-row"><span class="ww-k">Team</span><span>'+esc(teamLabel(e))+'</span></div>'
       +'<div class="ww-row"><span class="ww-k">Duration</span><span>'+esc(e.duration||'')+'</span></div>'
+      +'<div class="ww-row"><span class="ww-k">Coordinators</span><span>'+esc(coordNames||'\u2014')+'</span></div>'
+      +'<div class="ww-row"><span class="ww-k">Contact</span><span>'+esc(FEST_CONTACT)+'</span></div>'
       +'</div>'
       +acc('How it works',e.how,'num')
       +acc('Rules',e.rules,'dot')
@@ -192,12 +195,17 @@
     });
   }
   if(!slug){showMsg('No event selected','Pick an event from the Events page to register.',true);return;}
-  fetch('/api/events').then(function(r){return r.json();}).then(function(d){
+  Promise.all([
+    fetch('/api/events').then(function(r){return r.json();}).catch(function(){return {events:[]};}),
+    fetch('/api/coordinators').then(function(r){return r.json();}).catch(function(){return {coordinators:[]};})
+  ]).then(function(res){
+    var d=res[0], c=res[1];
     var list=(d.events||[]);
     var e=list.find(function(x){return x.slug===slug;});
     if(!e){showMsg('Event not available','This event does not exist or is no longer listed. See the events that are open.',true);return;}
     if(!e.visible){showMsg('Event not available','This event is no longer listed. See the events that are open.',true);return;}
-    render(e,list.filter(function(x){return x.visible;}).length);
+    var names=(c.coordinators||[]).filter(function(x){return x.team==='Student Coordinators'&&x.event===e.name;}).map(function(x){return x.name;});
+    render(e,list.filter(function(x){return x.visible;}).length,names.join(', '));
   }).catch(function(){
     showMsg('Could not load this event','Check your connection and try again.',false);
   });

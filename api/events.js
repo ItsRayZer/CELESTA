@@ -42,7 +42,7 @@ export const DEFAULT_EVENTS = [
       "Open to school students only. One team per student, per event.",
       "Pen and a rough sheet (if you prefer your own)."
     ],
-    "order": 1,
+    "order": 3,
     "visible": true,
     "regOpen": true
   },
@@ -51,8 +51,8 @@ export const DEFAULT_EVENTS = [
     "name": "Treasure Hunt",
     "tagline": "Race across the campus solving clues to find the treasure.",
     "about": "Teams receive a first clue and race across the campus, solving riddles, puzzles and tech challenges that lead to the next checkpoint — and finally to the treasure.",
-    "prize1": 4000,
-    "prize2": 2000,
+    "prize1": 6000,
+    "prize2": 0,
     "teamMin": 3,
     "teamMax": 5,
     "duration": "≈ 2 hours",
@@ -78,7 +78,7 @@ export const DEFAULT_EVENTS = [
       "One smartphone per team (some clues need it).",
       "Comfortable footwear and a water bottle."
     ],
-    "order": 2,
+    "order": 4,
     "visible": true,
     "regOpen": true
   },
@@ -112,7 +112,7 @@ export const DEFAULT_EVENTS = [
       "A laptop or smartphone with internet (if you want to use your own device).",
       "A free account for the AI tool will be announced before the event."
     ],
-    "order": 3,
+    "order": 2,
     "visible": true,
     "regOpen": true
   },
@@ -147,7 +147,7 @@ export const DEFAULT_EVENTS = [
       "Your slides (PPT / PDF) on a pen drive, plus a backup copy by email.",
       "Any prototype or demo you want to show (optional)."
     ],
-    "order": 4,
+    "order": 5,
     "visible": false,
     "regOpen": true
   },
@@ -184,8 +184,8 @@ export const DEFAULT_EVENTS = [
       "A video-editing app installed on your device.",
       "A pen drive or a way to share the final file."
     ],
-    "order": 5,
-    "visible": false,
+    "order": 1,
+    "visible": true,
     "regOpen": true
   }
 ];
@@ -208,10 +208,24 @@ export async function loadEvents() {
   for (const e of list) {
     if (HIDDEN_SLUGS.has(e.slug) && e.visible !== false) { e.visible = false; dirty = true; }
   }
+  // Restore: Reels Competition is back on the public site (19 Nov 2026), so
+  // flip the stored copy to visible again. Runs the same way as the hide above.
+  for (const e of list) {
+    if (RESTORED_SLUGS.has(e.slug) && e.visible !== true) { e.visible = true; dirty = true; }
+  }
+  // Poster order (19 Nov 2026): the official SPARK poster lists the events
+  // as Reels, Prompting, Quiz, Treasure Hunt. Force the stored copy to match.
+  for (const e of list) {
+    if (POSTER_ORDER[e.slug] !== undefined && e.order !== POSTER_ORDER[e.slug]) { e.order = POSTER_ORDER[e.slug]; dirty = true; }
+    const pf = PRIZE_FIXES[e.slug];
+    if (pf && (e.prize1 !== pf.prize1 || e.prize2 !== pf.prize2)) { e.prize1 = pf.prize1; e.prize2 = pf.prize2; dirty = true; }
+  }
   if (dirty) {
     const obj = {};
     list.forEach(e => { obj[e.slug] = JSON.stringify(e); });
     await redis.hset('celesta:events', obj);
+    // The order migration above can change sort keys, so re-sort before return.
+    list.sort((a, b) => (a.order || 99) - (b.order || 99) || String(a.name).localeCompare(String(b.name)));
   }
   return list;
 }
@@ -222,8 +236,18 @@ export async function loadEvents() {
 
 // Events the NEXUS leader removed (18 Nov 2026): hidden from the public site
 // and from registration, but kept in storage so the admin can still see them
-// and restore them later if needed.
-const HIDDEN_SLUGS = new Set(['idea-presentation', 'reels-competition']);
+// and restore them later if needed. (Reels Competition was restored 19 Nov 2026.)
+const HIDDEN_SLUGS = new Set(['idea-presentation']);
+// Events restored by the NEXUS leader (19 Nov 2026): back on the public site
+// and registration. The stored copy is flipped to visible on first read.
+const RESTORED_SLUGS = new Set(['reels-competition']);
+// Poster order (19 Nov 2026): the official SPARK poster lists the events as
+// Reels Competition, Prompting, Quiz, Treasure Hunt. The stored copy is
+// forced to this order on read.
+const POSTER_ORDER = { 'reels-competition': 1, 'prompting': 2, 'quiz': 3, 'treasure-hunt': 4, 'idea-presentation': 5 };
+// Treasure Hunt is a single winner-takes-all prize (19 Nov 2026): 1st 6000,
+// no 2nd prize. The stored copy is forced to this on read.
+const PRIZE_FIXES = { 'treasure-hunt': { prize1: 6000, prize2: 0 } };
 const STALE_FIXES = [
   ['Valid college ID card', 'Valid school ID card'],
   ['outscore every other college', 'outscore every other school'],

@@ -325,6 +325,8 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--gold)}
 .ax-img img{width:100%;height:100%;object-fit:cover;display:block}
 .ax-card h3{font-size:17px;font-weight:500;padding:14px 14px 2px;line-height:1.25}
 .ax-meta{font-size:12.5px;color:var(--mut);padding:0 14px 16px}
+.ax-coord{font-size:12px;line-height:1.55;color:var(--mut);padding:0 14px 4px}
+.ax-coord b{color:var(--ink);font-weight:600}
 .ax-card:active{transform:scale(.98)}
 /* ---------- Venue map ---------- */
 .map-wrap{margin-top:22px;border:1px solid var(--line);border-radius:20px;overflow:hidden;box-shadow:0 12px 40px rgba(20,20,40,.12)}
@@ -749,6 +751,21 @@ textarea{min-height:92px;resize:vertical}
   object-position:center 22%;
   will-change:transform;
 }
+/* Campus video: same frame as the photo, no controls, fades in over the
+   image once it can play. Same parallax transform as the image (about.js). */
+.wb-campus-photo video{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  object-position:center 22%;
+  will-change:transform,opacity;
+  opacity:0;
+  transition:opacity 1.2s ease;
+  pointer-events:none;
+}
+.wb-campus-photo video.on{opacity:1;}
 /* Soft white cloud mist blending top of campus photo into the white section above */
 .wb-campus-mist-top{
   position:absolute;

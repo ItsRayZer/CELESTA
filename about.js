@@ -128,9 +128,9 @@
 
     if(words.length){
       gsap.fromTo(words,
-        { opacity: 0.12, y: 14, filter: "blur(3px)" },
-        { opacity: 1, y: 0, filter: "blur(0px)", ease: "none", stagger: 0.15,
-          scrollTrigger: { trigger: p, start: "top 88%", end: "bottom 35%", scrub: true } }
+        { opacity: 0.12, y: 26, filter: "blur(3px)" },
+        { opacity: 1, y: 0, filter: "blur(0px)", ease: "none", stagger: 0.08,
+          scrollTrigger: { trigger: p, start: "top 96%", end: "bottom 55%", scrub: 0.5 } }
       );
     }
 
@@ -163,6 +163,7 @@
     }
 
     var campImg = document.getElementById("wb-campus-img");
+    var campVid = document.getElementById("wb-campus-vid");
     if(campImg){
       gsap.fromTo(campImg,
         { yPercent: -7, scale: 1.1 },
@@ -170,8 +171,32 @@
           scrollTrigger: { trigger: "#college", start: "top bottom", end: "bottom top", scrub: true } }
       );
     }
+    if(campVid){
+      gsap.fromTo(campVid,
+        { yPercent: -7, scale: 1.1 },
+        { yPercent: 7, scale: 1.02, ease: "none",
+          scrollTrigger: { trigger: "#college", start: "top bottom", end: "bottom top", scrub: true } }
+      );
+    }
     return true;
   }
+
+  /* Campus video: fade in over the photo once it can play. No spinner, no
+     controls; the photo stays underneath until the video is ready, and if the
+     video fails the photo simply stays. */
+  function initCampusVideo(){
+    var vid = document.getElementById("wb-campus-vid");
+    if(!vid) return;
+    function show(){ vid.classList.add("on"); }
+    if(vid.readyState >= 3){ show(); return; }
+    vid.addEventListener("canplay", show, { once:true });
+    vid.addEventListener("error", function(){ vid.remove(); });
+    /* If the video is still not ready after a while, leave the photo; the
+       canplay listener above will fade it in whenever it does arrive. */
+    var p = vid.play ? vid.play() : null;
+    if(p && p.catch) p.catch(function(){ /* autoplay blocked; stays a photo */ });
+  }
+  initCampusVideo();
 
   function initNativeScrub(){
     if(initialized) return;
@@ -189,12 +214,12 @@
       var vh = window.innerHeight || 800;
       if(p && words.length){
         var pr = p.getBoundingClientRect();
-        var prog = clamp((vh * 0.84 - pr.top) / Math.max(1, pr.height + vh * 0.36), 0, 1);
+        var prog = clamp((vh * 0.96 - pr.top) / Math.max(1, pr.height + vh * 0.18), 0, 1);
         var n = words.length;
         for(var i = 0; i < n; i++){
-          var wp = clamp((prog * (n + 6) - i) / 6, 0, 1);
+          var wp = clamp((prog * (n + 4) - i) / 4, 0, 1);
           words[i].style.opacity = (0.16 + 0.84 * wp).toFixed(3);
-          words[i].style.transform = "translate3d(0," + ((1 - wp) * 8).toFixed(1) + "px,0)";
+          words[i].style.transform = "translate3d(0," + ((1 - wp) * 18).toFixed(1) + "px,0)";
         }
       }
       if(stage){
@@ -213,6 +238,8 @@
         var cr = colSec.getBoundingClientRect();
         var cp = clamp((vh - cr.top) / Math.max(1, vh + cr.height), 0, 1);
         campImg.style.transform = "translate3d(0," + (-7 + 14 * cp).toFixed(1) + "%,0) scale(1.08)";
+        var campVid = document.getElementById("wb-campus-vid");
+        if(campVid) campVid.style.transform = "translate3d(0," + (-7 + 14 * cp).toFixed(1) + "%,0) scale(1.08)";
       }
     }
     var rafS = 0;
