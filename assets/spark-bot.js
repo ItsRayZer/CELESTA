@@ -63,10 +63,10 @@ var KB=[
   mk:["prize","prizes","sammana","cash","kitum","kaanum","price"],
   a:"Total prize pool: <b>Rs.14,250</b>.<br>Reels Competition: Rs.2,000 + Rs.1,000<br>Prompting: Rs.1,500 + Rs.750<br>Quiz: Rs.2,000 + Rs.1,000<br>Treasure Hunt: <b>Rs.6,000, winner-takes-all</b>.",
   m:"Total prize pool: <b>Rs.14,250</b>.<br>Reels Competition: Rs.2,000 + Rs.1,000<br>Prompting: Rs.1,500 + Rs.750<br>Quiz: Rs.2,000 + Rs.1,000<br>Treasure Hunt: <b>Rs.6,000, winner-takes-all</b>." },
-{ k:["register","registration","sign up","signup","join","apply","how to register","enroll","participate","entry"],
-  mk:["register","eppadi","cheyyum","join","apply","participate","cheyyan","regist"],
-  a:"To register, go to the <b>Events</b> page, tap the event you want, and fill the form. You need your <b>school name and a valid school ID</b>. Registration is per event, and your team size must fit that event's limit.<br><a href=\"/events\">See all events</a>",
-  m:"Register cheyyan <b>Events</b> page il poyi event select cheythu form fill cheyyuka. <b>School name-um valid school ID-um</b> venam. Registration oru event nu vendiyanu, team size event nte limit il otta venam.<br><a href=\"/events\">See all events</a>" },
+{ k:["register","registration","sign up","signup","join","apply","how to register","enroll","participate","entry","book","booking","online","can book online","book online"],
+  mk:["register","eppadi","cheyyum","join","apply","participate","cheyyan","regist","book"],
+  a:"Yes, you can register <b>online</b> right here. Go to the <b>Events</b> page, tap the event you want, and fill the form. You need your <b>school name and a valid school ID</b>. Registration is <b>free, there is no payment</b> of any kind. Registration is per event, and your team size must fit that event's limit.<br><a href=\"/events\">See all events</a>",
+  m:"Yes, <b>online</b> aayi register cheyyam. <b>Events</b> page il poyi event select cheythu form fill cheyyuka. <b>School name-um valid school ID-um</b> venam. Registration <b>free aanu, payment onnum illa</b>. Registration oru event nu vendiyanu, team size event nte limit il otta venam.<br><a href=\"/events\">See all events</a>" },
 { k:["team","team size","members","how many","group"],
   mk:["team","members","ethra","per","aalu"],
   a:"Team sizes:<br>Reels Competition: 1-4 members<br>Prompting: 1-2 members<br>Quiz: 2-3 members<br>Treasure Hunt: 3-5 members",
@@ -328,7 +328,10 @@ var CSS=[
 ".sparkbot-chips::-webkit-scrollbar{display:none}",
 ".sparkbot-chip{flex:none;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:#fff;font:600 13px/1 -apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif;padding:9px 13px;border-radius:99px;cursor:pointer;white-space:nowrap}",
 ".sparkbot-chip:active{transform:scale(.96)}",
-".sparkbot-input{display:flex;gap:8px;padding:10px 12px calc(12px + env(safe-area-inset-bottom));border-top:1px solid rgba(255,255,255,.09);flex:none}",
+".sparkbot-input{display:flex;gap:8px;padding:10px 12px 8px;border-top:1px solid rgba(255,255,255,.09);flex:none}",
+".sparkbot-foot{flex:none;text-align:center;font:500 10px/1.4 -apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif;color:rgba(255,255,255,.42);padding:0 12px calc(8px + env(safe-area-inset-bottom))}",
+".sparkbot-foot a{color:rgba(255,255,255,.6);text-decoration:none}",
+".sparkbot-panel.kb .sparkbot-foot{display:none}",
 ".sparkbot-input input{flex:1;min-width:0;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.07);color:#fff;border-radius:99px;padding:11px 15px;font:500 15px/1.2 -apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif;outline:none}",
 ".sparkbot-input input::placeholder{color:rgba(255,255,255,.45)}",
 ".sparkbot-input button{width:44px;height:44px;flex:none;border-radius:50%;border:0;background:#ff5c00;color:#fff;font-size:18px;cursor:pointer}",
@@ -356,7 +359,8 @@ function build(){
     +'<button class="sparkbot-close" aria-label="Close chat">&times;</button></div>'
     +'<div class="sparkbot-msgs" id="sparkbotMsgs"></div>'
     +'<div class="sparkbot-chips" id="sparkbotChips"></div>'
-    +'<div class="sparkbot-input"><input id="sparkbotIn" type="text" placeholder="Ask about SPARK..." autocomplete="off" enterkeyhint="send"><button id="sparkbotSend" aria-label="Send">&#10148;</button></div>';
+    +'<div class="sparkbot-input"><input id="sparkbotIn" type="text" placeholder="Ask about SPARK..." autocomplete="off" enterkeyhint="send"><button id="sparkbotSend" aria-label="Send">&#10148;</button></div>'
+    +'<div class="sparkbot-foot">AI can make mistakes &middot; Powered by <a href="https://axofy.shop" target="_blank" rel="noopener">axofy.shop</a></div>';
   document.body.appendChild(fab); document.body.appendChild(panel);
   var msgs=panel.querySelector("#sparkbotMsgs"),
       chipsBox=panel.querySelector("#sparkbotChips"),
@@ -488,9 +492,21 @@ function build(){
     if(!panel.classList.contains("open")) return;
     msgs.scrollTop=msgs.scrollHeight;
   }
-  if(vv){ vv.addEventListener("resize", syncPanel); vv.addEventListener("scroll", syncPanel); }
+  /* Footer ("AI can make mistakes · Powered by axofy.shop") shows only
+     when the on-screen keyboard is closed. On touch devices the keyboard
+     opens on input focus; the viewport resize confirms it. On desktop
+     there is no keyboard, so focus alone never hides the footer. */
+  var isTouch=false;
+  try{ isTouch=('ontouchstart' in window)||navigator.maxTouchPoints>0; }catch(e){}
+  function syncKb(){
+    var shrunk=false;
+    try{ if(vv && vv.height < window.innerHeight - 120) shrunk=true; }catch(e){}
+    if(shrunk) panel.classList.add("kb"); else panel.classList.remove("kb");
+  }
+  if(vv){ vv.addEventListener("resize", syncPanel); vv.addEventListener("scroll", syncPanel); vv.addEventListener("resize", syncKb); }
   window.addEventListener("resize", syncPanel);
-  input.addEventListener("focus", function(){ setTimeout(syncPanel, 60); setTimeout(syncPanel, 300); setTimeout(syncPanel, 600); });
+  input.addEventListener("focus", function(){ if(isTouch) panel.classList.add("kb"); setTimeout(syncPanel, 60); setTimeout(syncPanel, 300); setTimeout(syncPanel, 600); setTimeout(syncKb, 350); });
+  input.addEventListener("blur", function(){ setTimeout(syncKb, 120); });
 
   /* FAB drag: ONLY the closed head moves, the open panel stays put. Drag
      the head anywhere on screen; a tap (no move) still opens the chat.
