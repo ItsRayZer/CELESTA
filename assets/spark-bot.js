@@ -1,8 +1,9 @@
-/* SPARK Bot v5 — Axo-style chat assistant for SPARK 2K26.
+/* SPARK Bot v6 — Axo-style chat assistant for SPARK 2K26.
    Header matches the Axofy Axo bot: big robot avatar on top, name + role,
    small language button + mute button only (no settings, no CC).
-   Avatar: the SPARK robot head, cropped tight and zoomed 150% in the
-   circle, so the head fills the whole ball with no dark background.
+   Avatar: the SPARK robot head in its own natural shape, no circle, no
+   border, no background. The head image is a tight transparent cutout, so
+   the head itself is the button and the header mark.
    The closed panel hides fully (translate 100% + 80px) so the header
    avatar never peeks out at the bottom of the page.
    Languages: English (default) + Malayalam (Manglish). The matcher understands
@@ -177,13 +178,13 @@ function pop(){
 
 /* ---------- CSS (Axo-style header, bubbles, chips) ---------- */
 var CSS=[
-".sparkbot-fab{position:fixed;right:16px;bottom:calc(96px + env(safe-area-inset-bottom));z-index:101;width:56px;height:56px;border-radius:50%;border:2px solid rgba(255,255,255,.85);background:#111;background-image:url("+AVATAR+");background-size:150%;background-position:center;box-shadow:0 8px 24px rgba(0,0,0,.4);cursor:pointer;padding:0;transition:transform .25s cubic-bezier(.2,.8,.2,1)}",
+".sparkbot-fab{position:fixed;right:16px;bottom:calc(96px + env(safe-area-inset-bottom));z-index:101;width:64px;height:44px;border:0;border-radius:0;background-color:transparent;background-image:url("+AVATAR+");background-size:contain;background-repeat:no-repeat;background-position:center;cursor:pointer;padding:0;filter:drop-shadow(0 6px 16px rgba(0,0,0,.45));transition:transform .25s cubic-bezier(.2,.8,.2,1)}",
 ".sparkbot-fab:active{transform:scale(.92)}",
-".sparkbot-fab .sparkbot-dot{position:absolute;top:2px;right:2px;width:12px;height:12px;border-radius:50%;background:#22c55e;border:2px solid #fff}",
+".sparkbot-fab .sparkbot-dot{position:absolute;top:0;right:0;width:12px;height:12px;border-radius:50%;background:#22c55e;border:2px solid #fff}",
 ".sparkbot-panel{position:fixed;left:50%;transform:translate(-50%,calc(100% + 80px));bottom:0;width:min(420px,calc(100% - 16px));max-height:min(600px,calc(100dvh - 40px));z-index:102;display:flex;flex-direction:column;background:#141417;border:1px solid rgba(255,255,255,.14);border-radius:22px 22px 0 0;box-shadow:0 -12px 48px rgba(0,0,0,.5);overflow:visible;transition:transform .38s cubic-bezier(.2,.8,.2,1)}",
 ".sparkbot-panel.open{transform:translate(-50%,0)}",
-".sparkbot-hero{position:relative;flex:none;padding:52px 14px 0;text-align:center}",
-".sparkbot-av{position:absolute;top:-48px;left:50%;transform:translateX(-50%);width:96px;height:96px;border-radius:50%;background-image:url("+AVATAR+");background-size:150%;background-position:center;border:3px solid #141417;box-shadow:0 8px 24px rgba(0,0,0,.5)}",
+".sparkbot-hero{position:relative;flex:none;padding:48px 14px 0;text-align:center}",
+".sparkbot-av{position:absolute;top:-41px;left:50%;transform:translateX(-50%);width:120px;height:83px;border:0;border-radius:0;background-color:transparent;background-image:url("+AVATAR+");background-size:contain;background-repeat:no-repeat;background-position:center;filter:drop-shadow(0 8px 20px rgba(0,0,0,.5))}",
 ".sparkbot-hero b{display:block;color:#fff;font:800 21px/1.2 -apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif;letter-spacing:.01em}",
 ".sparkbot-hero span{display:block;color:rgba(255,255,255,.65);font:500 13.5px/1.4 -apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif;margin-top:4px}",
 ".sparkbot-hero span i{display:inline-block;width:7px;height:7px;border-radius:50%;background:#3b82f6;margin-right:6px;font-style:normal}",
