@@ -165,7 +165,6 @@
       var btn=form.querySelector('.rg-submit');
       btn.disabled=true;btn.textContent='Registering…';
       var payload={event:e.slug,name:name,school:school,phone:phone,email:email,team:team,teamName:teamname,members:list,website:val('website'),startedAt:startedAt};
-      try{localStorage.setItem('celesta_reg_'+Date.now(),JSON.stringify(Object.assign({at:new Date().toISOString()},payload)));}catch(err){}
       try{
         var r=await fetch('/api/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
         var d=await r.json().catch(function(){return {};});

@@ -995,8 +995,13 @@ async function moveEvent(slug,dir){
   const a=EVENTS_DB[i], b=EVENTS_DB[j];
   const oa=a.order, ob=b.order;
   // swap orders (give distinct values even if they were equal)
-  await saveEvent({slug:a.slug,order:ob});
-  await saveEvent({slug:b.slug,order:oa===ob?oa+1:oa});
+  if(!await saveEvent({slug:a.slug,order:ob}))return;
+  if(!await saveEvent({slug:b.slug,order:oa===ob?oa+1:oa})){
+    // Second write failed: roll the first one back so the two events
+    // don't end up sharing one order value.
+    await saveEvent({slug:a.slug,order:oa});
+    return;
+  }
   toast('Order updated');
 }
 

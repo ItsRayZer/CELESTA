@@ -20,6 +20,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=Marcellus&display=swap">
 <link rel="stylesheet" href="/styles.css?v=49">
+<noscript><style>.reveal{opacity:1 !important;transform:none !important}</style></noscript>
 <style>html{background:#060608}body{background:#060608}</style>
 </head>
 <body class="dark-page">
@@ -100,7 +101,7 @@ fetch('/api/coordinators').then(function(r){return r.json();}).then(function(d){
   (d.coordinators||[]).forEach(function(c){
     if(!c.phone)return;
     document.querySelectorAll('.tm-grid b').forEach(function(b){
-      if(b.textContent.trim()===c.name && !b.parentElement.querySelector('.c-phone[data-for="'+c.name+'"]')){
+      if(b.textContent.trim()===c.name && !b.parentElement.querySelector('.c-phone[data-for="'+CSS.escape(c.name)+'"]')){
         var s=document.createElement('a');
         s.className='c-phone';s.setAttribute('data-for',c.name);s.href='tel:'+String(c.phone).replace(/\D/g,'');s.textContent=c.phone;
         b.after(s);

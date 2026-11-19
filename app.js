@@ -193,10 +193,6 @@
         event: ev, name: name, school: school, phone: phone, email: email,
         team: team, teamName: teamname, members: list
       };
-      try {
-        localStorage.setItem("celesta_reg_" + Date.now(), JSON.stringify(
-          Object.assign({ at: new Date().toISOString() }, payload)));
-      } catch (err) {}
       // send to server (non-blocking)
       try {
         fetch("/api/register", { method: "POST",
