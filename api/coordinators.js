@@ -29,13 +29,13 @@ const DEFAULTS = [
   { id: 'og-1', name: 'Basil Shiju', team: 'Open Games', event: '', cls: '', phone: '' },
   { id: 'og-2', name: 'Midhun', team: 'Open Games', event: '', cls: '', phone: '' },
   { id: 'og-3', name: 'Alphons Binoy', team: 'Open Games', event: '', cls: '', phone: '' },
-  { id: 'sc-1', name: 'Aleena', team: 'Student Coordinators', event: 'Quiz', cls: '3rd BCA A', phone: '' },
+  { id: 'sc-1', name: 'Aleena', team: 'Student Coordinators', event: 'Quiz', cls: '3rd BCA A', phone: '7306704199' },
   { id: 'sc-2', name: 'Niya', team: 'Student Coordinators', event: 'Quiz', cls: '3rd BCA B', phone: '' },
-  { id: 'sc-3', name: 'Abhinavu Babu', team: 'Student Coordinators', event: 'Treasure Hunt', cls: '3rd BCA A', phone: '' },
+  { id: 'sc-3', name: 'Abhinavu Babu', team: 'Student Coordinators', event: 'Treasure Hunt', cls: '3rd BCA A', phone: '8590792481' },
   { id: 'sc-4', name: 'Aadhil Kabeer', team: 'Student Coordinators', event: 'Treasure Hunt', cls: '2nd BCA A', phone: '' },
-  { id: 'sc-5', name: 'Adithya Rajagopal', team: 'Student Coordinators', event: 'Prompting', cls: '3rd BCA A', phone: '' },
-  { id: 'sc-8', name: 'Agnivesh Santhosh', team: 'Student Coordinators', event: 'Reels Competition', cls: '3rd BCA A', phone: '' },
-  { id: 'sc-9', name: 'Daniel', team: 'Student Coordinators', event: 'Reels Competition', cls: '3rd BCA A', phone: '' },
+  { id: 'sc-5', name: 'Adithya Rajagopal', team: 'Student Coordinators', event: 'Prompting', cls: '3rd BCA A', phone: '7902604501' },
+  { id: 'sc-8', name: 'Agnivesh Santhosh', team: 'Student Coordinators', event: 'Reels Competition', cls: '3rd BCA A', phone: '7012745327' },
+  { id: 'sc-9', name: 'Daniel', team: 'Student Coordinators', event: 'Reels Competition', cls: '3rd BCA A', phone: '8848929570' },
 ];
 
 async function ensureSeeded() {
@@ -72,6 +72,21 @@ export default async function handler(req, res) {
         missing.forEach(c => { obj[c.id] = JSON.stringify(c); });
         await redis.hset('celesta:coordinators', obj);
         list = list.concat(missing);
+      }
+      // Phones added 19 Nov 2026 (RayZer sent the numbers): fill them into
+      // the stored records that still have no phone. Only empty phones are
+      // touched, so an admin-set phone is never overwritten. Once filled,
+      // this never writes again.
+      const PHONE_FIXES = {
+        'sc-1': '7306704199', 'sc-3': '8590792481', 'sc-5': '7902604501',
+        'sc-8': '7012745327', 'sc-9': '8848929570',
+      };
+      const phoneMissing = list.filter(c => PHONE_FIXES[c.id] && !c.phone);
+      if (phoneMissing.length) {
+        const obj = {};
+        phoneMissing.forEach(c => { obj[c.id] = JSON.stringify({ ...c, phone: PHONE_FIXES[c.id] }); });
+        await redis.hset('celesta:coordinators', obj);
+        list = list.map(c => (PHONE_FIXES[c.id] && !c.phone) ? { ...c, phone: PHONE_FIXES[c.id] } : c);
       }
       return res.status(200).json({ coordinators: list });
     } catch (e) {
