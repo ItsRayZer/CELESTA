@@ -265,7 +265,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--gold)}
 .hx-fb{display:none;position:absolute;left:50%;bottom:19svh;width:min(66svh,100vw);height:auto;max-width:none;transform:translateX(-50%);opacity:0;transition:opacity 1.4s ease}
 .hx.nogl .hx-fx{display:none}.hx.nogl .hx-fb{display:block}
 .hx:not(.b) .hx-fb.a,.hx.b .hx-fb.k{opacity:1}
-.hx-shade{position:absolute;left:0;right:0;bottom:0;height:46svh;z-index:4;pointer-events:none;background:linear-gradient(180deg,transparent,rgba(1,2,7,.3) 45%,rgba(1,2,7,.68))}
+.hx-shade{position:absolute;left:0;right:0;bottom:0;height:46svh;z-index:4;pointer-events:none;background:linear-gradient(180deg,transparent,rgba(10,2,24,.5) 45%,#0a0218 85%,#0a0218)}
 /* --- hero text: one type system (serif for statements, spaced sans caps for labels), two clear zones --- */
 .hx{--hx-label:10.5px;--hx-track:.26em}
 .hx-top{position:relative;z-index:6;display:flex;flex-direction:column;align-items:center;gap:12px;padding:calc(env(safe-area-inset-top,0px) + 66px) 20px 0}
