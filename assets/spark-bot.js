@@ -1,14 +1,16 @@
-/* SPARK Bot v4 — Axo-style chat assistant for SPARK 2K26.
+/* SPARK Bot v5 — Axo-style chat assistant for SPARK 2K26.
    Header matches the Axofy Axo bot: big robot avatar on top, name + role,
    small language button + mute button only (no settings, no CC).
-   Avatar: our SPARK robot, head zoomed in, transparent, high-res.
+   Avatar: the SPARK robot head, cropped tight and zoomed 150% in the
+   circle, so the head fills the whole ball with no dark background.
+   The closed panel hides fully (translate 100% + 80px) so the header
+   avatar never peeks out at the bottom of the page.
    Languages: English (default) + Malayalam (Manglish). The matcher understands
-   BOTH English and Manglish keywords in either language, so a Malayalam
-   question like "SPARK eppozhanu?" gets the right answer.
+   BOTH English and Manglish keywords in either language.
    Sound: when sound is on, the bot READS its reply aloud (text-to-speech);
    the mute button turns voice off. Client-side only, no server.
-   Keyboard: the panel lifts by the exact keyboard height, accounting for
-   the visual viewport offset, so there is no gap between panel and keyboard.
+   Keyboard: the panel is pinned by `top` to the visual viewport's bottom
+   edge, so it sits flush above the keyboard with no gap.
    Loaded on every page except the home page. */
 (function(){
 "use strict";
@@ -175,13 +177,13 @@ function pop(){
 
 /* ---------- CSS (Axo-style header, bubbles, chips) ---------- */
 var CSS=[
-".sparkbot-fab{position:fixed;right:16px;bottom:calc(96px + env(safe-area-inset-bottom));z-index:101;width:56px;height:56px;border-radius:50%;border:2px solid rgba(255,255,255,.85);background:#111;background-image:url("+AVATAR+");background-size:cover;background-position:center;box-shadow:0 8px 24px rgba(0,0,0,.4);cursor:pointer;padding:0;transition:transform .25s cubic-bezier(.2,.8,.2,1)}",
+".sparkbot-fab{position:fixed;right:16px;bottom:calc(96px + env(safe-area-inset-bottom));z-index:101;width:56px;height:56px;border-radius:50%;border:2px solid rgba(255,255,255,.85);background:#111;background-image:url("+AVATAR+");background-size:150%;background-position:center;box-shadow:0 8px 24px rgba(0,0,0,.4);cursor:pointer;padding:0;transition:transform .25s cubic-bezier(.2,.8,.2,1)}",
 ".sparkbot-fab:active{transform:scale(.92)}",
 ".sparkbot-fab .sparkbot-dot{position:absolute;top:2px;right:2px;width:12px;height:12px;border-radius:50%;background:#22c55e;border:2px solid #fff}",
-".sparkbot-panel{position:fixed;left:50%;transform:translate(-50%,calc(100% + 24px));bottom:0;width:min(420px,calc(100% - 16px));max-height:min(600px,calc(100dvh - 40px));z-index:102;display:flex;flex-direction:column;background:#141417;border:1px solid rgba(255,255,255,.14);border-radius:22px 22px 0 0;box-shadow:0 -12px 48px rgba(0,0,0,.5);overflow:visible;transition:transform .38s cubic-bezier(.2,.8,.2,1)}",
+".sparkbot-panel{position:fixed;left:50%;transform:translate(-50%,calc(100% + 80px));bottom:0;width:min(420px,calc(100% - 16px));max-height:min(600px,calc(100dvh - 40px));z-index:102;display:flex;flex-direction:column;background:#141417;border:1px solid rgba(255,255,255,.14);border-radius:22px 22px 0 0;box-shadow:0 -12px 48px rgba(0,0,0,.5);overflow:visible;transition:transform .38s cubic-bezier(.2,.8,.2,1)}",
 ".sparkbot-panel.open{transform:translate(-50%,0)}",
 ".sparkbot-hero{position:relative;flex:none;padding:52px 14px 0;text-align:center}",
-".sparkbot-av{position:absolute;top:-48px;left:50%;transform:translateX(-50%);width:96px;height:96px;border-radius:50%;background-image:url("+AVATAR+");background-size:cover;background-position:center;border:3px solid #141417;box-shadow:0 8px 24px rgba(0,0,0,.5)}",
+".sparkbot-av{position:absolute;top:-48px;left:50%;transform:translateX(-50%);width:96px;height:96px;border-radius:50%;background-image:url("+AVATAR+");background-size:150%;background-position:center;border:3px solid #141417;box-shadow:0 8px 24px rgba(0,0,0,.5)}",
 ".sparkbot-hero b{display:block;color:#fff;font:800 21px/1.2 -apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif;letter-spacing:.01em}",
 ".sparkbot-hero span{display:block;color:rgba(255,255,255,.65);font:500 13.5px/1.4 -apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif;margin-top:4px}",
 ".sparkbot-hero span i{display:inline-block;width:7px;height:7px;border-radius:50%;background:#3b82f6;margin-right:6px;font-style:normal}",
@@ -214,7 +216,7 @@ var CSS=[
 ".sparkbot-input input::placeholder{color:rgba(255,255,255,.45)}",
 ".sparkbot-input button{width:44px;height:44px;flex:none;border-radius:50%;border:0;background:#ff5c00;color:#fff;font-size:18px;cursor:pointer}",
 ".sparkbot-input button:active{transform:scale(.92)}",
-"@media (min-width:720px){.sparkbot-panel{left:auto;right:16px;transform:translateY(calc(100% + 24px));bottom:calc(164px + env(safe-area-inset-bottom));border-radius:22px}.sparkbot-panel.open{transform:none}}"
+"@media (min-width:720px){.sparkbot-panel{left:auto;right:16px;transform:translateY(calc(100% + 80px));bottom:calc(164px + env(safe-area-inset-bottom));border-radius:22px}.sparkbot-panel.open{transform:none}}"
 ].join("\n");
 
 /* ---------- Build DOM ---------- */
@@ -307,28 +309,35 @@ function build(){
   function open(){
     panel.classList.add("open");
     if(!greeted){ greeted=true; var g=GREET[lang]; addMsg(g, "a"); speak(g); }
+    setTimeout(syncPanel, 60);
+    setTimeout(syncPanel, 400);
     setTimeout(function(){ input.focus(); }, 380);
   }
   function close(){
     panel.classList.remove("open");
-    panel.style.bottom=""; panel.style.maxHeight="";
+    panel.style.top=""; panel.style.bottom=""; panel.style.maxHeight="";
     try{ window.speechSynthesis.cancel(); }catch(e){}
   }
 
-  /* Keep the panel flush above the on-screen keyboard. The keyboard height is
-     the layout viewport minus the visual viewport's BOTTOM edge, so the
-     visual viewport's offsetTop must be included, otherwise the page scroll
-     that brings the input into view makes the lift too big and leaves a gap. */
+  /* Pin the panel's bottom edge to the visual viewport's bottom edge, so it
+     sits flush above the on-screen keyboard with no gap. The visual
+     viewport's bottom (offsetTop + height) is the keyboard's top edge, and
+     it moves as the keyboard opens and closes. Positioning by `top` from
+     that edge is exact; offsetting `bottom` by a computed keyboard height
+     over-lifts when the page is scrolled, which left the gap. */
   var vv=window.visualViewport;
   function syncPanel(){
     if(!vv||!panel.classList.contains("open")) return;
-    var kb=Math.max(0, window.innerHeight-(vv.offsetTop+vv.height));
-    panel.style.bottom=kb>0?kb+"px":"";
-    panel.style.maxHeight=kb>0?("min(600px, calc("+vv.height+"px - 24px))"):"";
+    var h=panel.offsetHeight||0;
+    if(h<=0) return;
+    var visBottom=vv.offsetTop+vv.height;
+    panel.style.top=Math.max(0, visBottom-h)+"px";
+    panel.style.bottom="auto";
+    panel.style.maxHeight="min(600px, calc("+vv.height+"px - 24px))";
     msgs.scrollTop=msgs.scrollHeight;
   }
   if(vv){ vv.addEventListener("resize", syncPanel); vv.addEventListener("scroll", syncPanel); }
-  input.addEventListener("focus", function(){ setTimeout(syncPanel, 60); setTimeout(syncPanel, 300); });
+  input.addEventListener("focus", function(){ setTimeout(syncPanel, 60); setTimeout(syncPanel, 300); setTimeout(syncPanel, 600); });
 
   fab.addEventListener("click", function(){ panel.classList.contains("open")?close():open(); });
   closeBtn.addEventListener("click", close);
