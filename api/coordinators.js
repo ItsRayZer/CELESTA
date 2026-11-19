@@ -78,7 +78,7 @@ export default async function handler(req, res) {
       // touched, so an admin-set phone is never overwritten. Once filled,
       // this never writes again.
       const PHONE_FIXES = {
-        'sc-1': '7306704199', 'sc-2': '9562133922', 'sc-3': '8590792481', 'sc-5': '7902604501',
+        'sc-1': '7306704199', 'sc-2': '9562133922', 'sc-3': '8590792481', 'sc-4': '8075641227', 'sc-5': '7902604501',
         'sc-8': '7012745327', 'sc-9': '8848929570',
       };
       const phoneMissing = list.filter(c => PHONE_FIXES[c.id] && !c.phone);
