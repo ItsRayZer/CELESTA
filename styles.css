@@ -125,6 +125,7 @@ a{color:inherit}
 .closing .coord{background:rgba(10,10,14,.72)}
 .coord h4{font-size:10px;letter-spacing:.28em;text-transform:uppercase;color:var(--gold);margin-bottom:8px}
 .coord p{color:var(--mut);font-size:14px}
+.coord p a{color:inherit;text-decoration:none}
 .closing .allc{display:inline-block;margin-bottom:44px;font-size:12px;letter-spacing:.24em;text-transform:uppercase;color:var(--ink);text-decoration:none;border-bottom:1px solid var(--gold);padding-bottom:4px}
 .closing .flinks{display:flex;gap:22px;justify-content:center;margin-bottom:44px;flex-wrap:wrap}
 .closing .flinks a{font-size:11px;letter-spacing:.26em;text-transform:uppercase;text-decoration:none;color:var(--mut)}
@@ -1111,6 +1112,7 @@ body.premium-page .pboard-row b{font-family:var(--sans);font-weight:700}
 .gz-label{display:inline-block;background:#ff5c00;color:#fff;font-size:10.5px;font-weight:800;letter-spacing:.16em;padding:4px 10px;border-radius:99px;margin-bottom:10px}
 .gz-info-card b{display:block;font-size:17px;font-weight:800;letter-spacing:-.02em;color:#111;line-height:1.25}
 .gz-info-card small{display:block;font-size:13px;color:#777;margin-top:4px}
+.gz-info-card small a{color:inherit;text-decoration:none}
 /* Prize board: brutalist */
 .gz-pboard{border:2.5px solid #111;box-shadow:5px 5px 0 #111}
 .gz-pboard .pboard-total span{background:none;-webkit-text-fill-color:#ff5c00;color:#ff5c00}
