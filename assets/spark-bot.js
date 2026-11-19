@@ -1,5 +1,5 @@
-/* SPARK Bot v11 — Axo-style chat assistant for SPARK 2K26.
-   v11: the keyword matcher still answers what it knows (score >= 3).
+/* SPARK Bot v14 — Axo-style chat assistant for SPARK 2K26.
+   v14: the keyword matcher still answers what it knows (score >= 3).
    Anything else goes to /api/spark-chat, which asks the GptOpen relay
    with a facts-only prompt built from the live events + coordinators.
    Header matches the Axofy Axo bot: big robot avatar on top, name + role,
@@ -63,8 +63,8 @@ var KB=[
   mk:["prize","prizes","sammana","cash","kitum","kaanum","price"],
   a:"Total prize pool: <b>Rs.14,250</b>.<br>Reels Competition: Rs.2,000 + Rs.1,000<br>Prompting: Rs.1,500 + Rs.750<br>Quiz: Rs.2,000 + Rs.1,000<br>Treasure Hunt: <b>Rs.6,000, winner-takes-all</b>.",
   m:"Total prize pool: <b>Rs.14,250</b>.<br>Reels Competition: Rs.2,000 + Rs.1,000<br>Prompting: Rs.1,500 + Rs.750<br>Quiz: Rs.2,000 + Rs.1,000<br>Treasure Hunt: <b>Rs.6,000, winner-takes-all</b>." },
-{ k:["register","registration","sign up","signup","join","apply","how to register","enroll","participate","entry","book","booking","online","can book online","book online"],
-  mk:["register","eppadi","cheyyum","join","apply","participate","cheyyan","regist","book"],
+{ k:["register","registration","sign up","signup","join","apply","how to register","enroll","participate","entry","book","booking","book online","can book online"],
+  mk:["register","eppadi","cheyyum","join","apply","participate","cheyyan","regist"],
   a:"Yes, you can register <b>online</b> right here. Go to the <b>Events</b> page, tap the event you want, and fill the form. You need your <b>school name and a valid school ID</b>. Registration is <b>free, there is no payment</b> of any kind. Registration is per event, and your team size must fit that event's limit.<br><a href=\"/events\">See all events</a>",
   m:"Yes, <b>online</b> aayi register cheyyam. <b>Events</b> page il poyi event select cheythu form fill cheyyuka. <b>School name-um valid school ID-um</b> venam. Registration <b>free aanu, payment onnum illa</b>. Registration oru event nu vendiyanu, team size event nte limit il otta venam.<br><a href=\"/events\">See all events</a>" },
 { k:["team","team size","members","how many","group"],
@@ -432,9 +432,20 @@ function build(){
     return t;
   }
   /* AI answers may only carry <b> and <br>; strip any other tag the model
-     might emit so it can never break the panel layout. */
+     might emit so it can never break the panel layout. Allowed tags are
+     normalized to bare <b> / </b> / <br> so an attribute (onclick, etc.)
+     can never survive on them. */
+  /* AI answers may only carry <b> and <br>; strip any other tag the model
+     might emit so it can never break the panel layout. One pass: an
+     allowed tag is normalized to bare <b> / </b> / <br> so an attribute
+     (onclick, etc.) can never survive on it; every other tag is removed. */
   function cleanAi(html){
-    return String(html||"").replace(/<(?!\/?(b|br)\b)[^>]*>/gi, "");
+    return String(html||"").replace(/<[/]?([a-z][a-z0-9]*)(?=[ />])[^>]*>/gi, function(m, tag){
+      tag = tag.toLowerCase();
+      if (tag === 'b') return m.charAt(1) === '/' ? '</b>' : '<b>';
+      if (tag === 'br') return '<br>';
+      return '';
+    });
   }
   function ask(q){
     q=(q||"").trim(); if(!q) return;

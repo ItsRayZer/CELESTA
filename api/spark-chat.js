@@ -19,9 +19,13 @@ const RELAY_TIMEOUT_MS = 25000;
 
 // Abuse protection (all in Redis, so it holds across every serverless
 // instance — the old in-memory per-IP limit did not):
-// 1. Origin/Referer allowlist — the endpoint only answers calls that
-//    come from the fest site itself. Direct curl/script calls are 403.
-// 2. Per-IP rate limit: 20 requests per 10 minutes.
+// 1. Origin/Referer allowlist — stops casual direct calls to the endpoint
+//    from curl or another site. A determined caller can spoof Origin, so
+//    this is a first layer only; the rate limit and daily cap are the
+//    real guards. Deployment URLs are NOT allowlisted, so the AI silently
+//    falls back to local answers when the site is opened via one.
+// 2. Per-IP rate limit: 60 requests per 10 minutes (venue Wi-Fi shares
+//    one public IP for 150-200 students, so 20 was too low).
 // 3. Daily global cap: 1000 AI calls per day. Past that, 429. This is
 //    the real token guard: even a distributed attack cannot drain the
 //    relay beyond 1000 calls/day. The bot falls back to its local
@@ -30,7 +34,7 @@ const RELAY_TIMEOUT_MS = 25000;
 // outage never kills the bot; the relay's own 60/10min limit is the
 // backstop then.
 const RATE_WINDOW_S = 10 * 60;
-const RATE_MAX = 20;
+const RATE_MAX = 60;
 const DAILY_MAX = 1000;
 
 const ALLOWED_HOSTS = new Set([
@@ -50,7 +54,12 @@ async function redisRateLimited(ip) {
   try {
     const key = 'celesta:sparkchat:rl:' + ip;
     const n = await redis.incr(key);
-    if (n === 1) await redis.expire(key, RATE_WINDOW_S);
+    if (n === 1) {
+      // Never leave a key with no TTL: if expire fails, delete the key
+      // instead, or the IP stays blocked forever (see api/visits.js).
+      try { await redis.expire(key, RATE_WINDOW_S); }
+      catch { try { await redis.del(key); } catch {} }
+    }
     return n > RATE_MAX;
   } catch { return false; }
 }
@@ -59,7 +68,12 @@ async function dailyCapHit() {
     const day = new Date().toISOString().slice(0, 10);
     const key = 'celesta:sparkchat:daily:' + day;
     const n = await redis.incr(key);
-    if (n === 1) await redis.expire(key, 24 * 60 * 60);
+    if (n === 1) {
+      // Never leave a key with no TTL: a stuck daily key would kill the
+      // AI for everyone once the counter passes DAILY_MAX.
+      try { await redis.expire(key, 24 * 60 * 60); }
+      catch { try { await redis.del(key); } catch {} }
+    }
     return n > DAILY_MAX;
   } catch { return false; }
 }
@@ -73,15 +87,24 @@ const KEY_CONTACTS = [
   'Faculty - Archana Gopinath - 9495955010',
 ];
 
+// Admin-editable text (event fields, coordinator names) goes into the
+// system prompt, so newlines are stripped: a forged newline could
+// otherwise smuggle a fake RULES section or an instruction into it.
+// Fields are also length-capped upstream (cleanEvent), and the finished
+// prompt is truncated below.
+function safeField(v) {
+  return String(v || '').replace(/[\r\n]+/g, ' ').trim();
+}
+
 function eventLine(e) {
   const team = 'Team ' + e.teamMin + '-' + e.teamMax;
   const prize = e.prize2
     ? 'Prizes: 1st Rs.' + e.prize1 + ', 2nd Rs.' + e.prize2
     : 'Prize: Rs.' + e.prize1 + ' winner-takes-all (single prize, no 2nd)';
-  const join = (arr) => (arr || []).filter(Boolean).join(' | ');
-  let s = '- ' + e.name + ' (' + team + '). ' + prize + '. '
-    + (e.when || '') + ' · ' + (e.where || '') + ' · ' + (e.duration || '') + '. '
-    + (e.about || '');
+  const join = (arr) => (arr || []).filter(Boolean).map(safeField).join(' | ');
+  let s = '- ' + safeField(e.name) + ' (' + team + '). ' + prize + '. '
+    + safeField(e.when) + ' · ' + safeField(e.where) + ' · ' + safeField(e.duration) + '. '
+    + safeField(e.about);
   if (e.how && e.how.length) s += '\n  Rounds: ' + join(e.how);
   if (e.rules && e.rules.length) s += '\n  Rules: ' + join(e.rules);
   if (e.reqs && e.reqs.length) s += '\n  Needs: ' + join(e.reqs);
@@ -95,16 +118,20 @@ function contactsBlock(coords) {
   for (const c of sc) {
     // A phone is listed only when the stored record actually has one.
     // Never invent a phone number.
-    let line = '  ' + c.name + ' - ' + c.event + ' coordinator'
-      + (c.cls ? ' (' + c.cls + ')' : '');
-    if (c.phone) line += ' - ' + c.phone;
+    let line = '  ' + safeField(c.name) + ' - ' + safeField(c.event) + ' coordinator'
+      + (c.cls ? ' (' + safeField(c.cls) + ')' : '');
+    if (c.phone) line += ' - ' + safeField(c.phone);
     lines.push(line);
   }
   return lines.join('\n');
 }
 
 export function buildSystemPrompt(events, coords, lang) {
-  const evLines = (events || []).filter(e => e && e.visible !== false).map(eventLine);
+  const visible = (events || []).filter(e => e && e.visible !== false);
+  const evLines = visible.map(eventLine);
+  // Prize pool computed from the live events, never hardcoded, so an
+  // admin prize edit is reflected in the AI's answers too.
+  const pool = visible.reduce((s, e) => s + (e.prize1 || 0) + (e.prize2 || 0), 0);
   const lines = [
     'You are SPARK Bot, the assistant for NEXUS SPARK 2K26 ("Decode Your Future"),',
     'an inter-school fest on Fri 27 Nov 2026, 10 AM, at Mar Augusthinose College,',
@@ -126,7 +153,7 @@ export function buildSystemPrompt(events, coords, lang) {
     'EVENTS (live, full details):',
     evLines.join('\n') || '- (no events listed)',
     '',
-    'Total prize pool: Rs.14,250.',
+    'Total prize pool: Rs.' + pool.toLocaleString('en-IN') + '.',
     '',
     'HOW TO REACH (researched):',
     '- Address: Mar Augusthinose College, Pala Ramapuram Road, Ramapuram Bazar P.O.,',
@@ -166,7 +193,10 @@ export function buildSystemPrompt(events, coords, lang) {
   ];
   // The language toggle is a stronger signal than guessing from the question.
   if (lang === 'ml') lines.push('The user is chatting in Malayalam (Manglish); answer in Manglish.');
-  return lines.join('\n');
+  // Cap the prompt so a huge admin-edited event can never blow past the
+  // model's context and 502 every AI answer.
+  const prompt = lines.join('\n');
+  return prompt.length > 12000 ? prompt.slice(0, 12000) : prompt;
 }
 
 async function loadCoords() {

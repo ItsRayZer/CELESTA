@@ -907,6 +907,12 @@ footer .f-nexus img{width:40px}
 .reg-page .ww-row+.ww-row{border-top:1px solid var(--rg-line)}
 .reg-page .ww-k{font-size:13px;letter-spacing:0;text-transform:none;font-weight:600;color:var(--rg-mut);min-width:70px}
 .reg-page .ww-row span:last-child{color:var(--rg-ink)}
+.reg-page .ww-actions{display:flex;gap:8px;padding:13px 0;border-top:1px solid var(--rg-line)}
+.reg-page .ww-act{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:11px 12px;border-radius:99px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.07);color:#fff;font:600 13px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;text-decoration:none}
+.reg-page .ww-act svg{flex:none}
+.reg-page .ww-act.call{border-color:rgba(76,210,122,.5);background:rgba(76,210,122,.13)}
+.reg-page .ww-act.wa{border-color:rgba(37,211,102,.5);background:rgba(37,211,102,.13)}
+.reg-page .ww-act:active{transform:scale(.97)}
 .reg-page .rd-acc{background:var(--rg-fill);border:0;border-radius:22px;margin-bottom:10px;padding:0 18px}
 .reg-page .rd-acc summary{font-size:16px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--rg-ink);padding:17px 0}
 .reg-page .rd-acc summary::after,.reg-page .rd-acc[open] summary::after{content:"";width:9px;height:9px;border-right:2px solid #9a9aa2;border-bottom:2px solid #9a9aa2;transform:rotate(45deg) translateY(-2px);transition:transform .3s;margin-right:4px;font-size:0}
