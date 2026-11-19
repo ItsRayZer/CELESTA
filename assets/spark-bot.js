@@ -1,4 +1,7 @@
-/* SPARK Bot v10 — Axo-style chat assistant for SPARK 2K26.
+/* SPARK Bot v11 — Axo-style chat assistant for SPARK 2K26.
+   v11: the keyword matcher still answers what it knows (score >= 3).
+   Anything else goes to /api/spark-chat, which asks the GptOpen relay
+   with a facts-only prompt built from the live events + coordinators.
    Header matches the Axofy Axo bot: big robot avatar on top, name + role,
    small language button + mute button only (no settings, no CC).
    Avatar: the SPARK robot head in its own natural shape, no circle, no
@@ -28,8 +31,8 @@ var ROLE="SPARK Assistant";
    k  = English keywords, mk = Manglish (Malayalam in Latin script) keywords.
    a  = English answer, m = Manglish answer. Matching checks both lists. */
 var KB=[
-{ k:["when","date","day","time","start","schedule","timing","which day","what day"],
-  mk:["eppo","eppozhanu","eppa","ennu","ennanu","ethra","samayam","date","time"],
+{ k:["when","date","day","time","start","schedule","timing","which day","what day","when is spark","when is the fest"],
+  mk:["eppo","eppozhanu","eppa","ennu","ennanu","ethra","samayam","date","time","spark eppozhanu","fest eppozhanu"],
   a:"SPARK 2K26 is on <b>Friday, 27 November 2026</b>, and it starts at <b>10 AM</b>. One day, four events, one campus.",
   m:"SPARK 2K26 <b>Friday, 27 November 2026</b> aanu, <b>10 AM</b> nu start cheyyum. Oru day, 4 events, oru campus." },
 { k:["where","venue","location","place","address","reach","how to reach","college","collage","ramapuram","kottayam","map","direction","where is the college","where is spark","where is the fest","college location","college address","fest venue","where is it happening"],
@@ -245,14 +248,17 @@ function scoreList(nq, list){
   }
   return score;
 }
-function answerFor(q){
+function matchFor(q){
   var nq=norm(q), best=null, bestScore=0;
   for(var i=0;i<KB.length;i++){
     var score=scoreList(nq, KB[i].k) + scoreList(nq, KB[i].mk||[]);
     if(score>bestScore){ bestScore=score; best=KB[i]; }
   }
-  if(!best) return FALLBACK[lang];
-  return (lang==="ml"&&best.m)?best.m:best.a;
+  if(!best) return {ans:FALLBACK[lang], score:0};
+  return {ans:(lang==="ml"&&best.m)?best.m:best.a, score:bestScore};
+}
+function answerFor(q){
+  return matchFor(q).ans;
 }
 
 /* ---------- Voice: read the bot's reply aloud (text-to-speech) ---------- */
@@ -318,7 +324,7 @@ var CSS=[
 ".sparkbot-typing i:nth-child(2){animation-delay:.18s}",
 ".sparkbot-typing i:nth-child(3){animation-delay:.36s}",
 "@keyframes sparkbotBlink{0%,80%,100%{opacity:.3;transform:translateY(0)}40%{opacity:1;transform:translateY(-3px)}}",
-".sparkbot-chips{display:flex;gap:8px;overflow-x:auto;padding:6px 12px 10px;flex:none;scrollbar-width:none}",
+".sparkbot-chips{display:flex;flex-wrap:wrap;gap:8px;padding:6px 12px 10px;flex:none}",
 ".sparkbot-chips::-webkit-scrollbar{display:none}",
 ".sparkbot-chip{flex:none;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:#fff;font:600 13px/1 -apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif;padding:9px 13px;border-radius:99px;cursor:pointer;white-space:nowrap}",
 ".sparkbot-chip:active{transform:scale(.96)}",
@@ -391,17 +397,58 @@ function build(){
     msgs.appendChild(t); msgs.scrollTop=msgs.scrollHeight;
     return t;
   }
+  /* AI answers may only carry <b> and <br>; strip any other tag the model
+     might emit so it can never break the panel layout. */
+  function cleanAi(html){
+    return String(html||"").replace(/<(?!\/?(b|br)\b)[^>]*>/gi, "");
+  }
   function ask(q){
     q=(q||"").trim(); if(!q) return;
     addMsg(q.replace(/</g,"&lt;"), "u");
     input.value="";
-    var t=showTyping();
-    setTimeout(function(){
-      t.remove();
-      var ans=answerFor(q);
+    var m=matchFor(q);
+    /* Strong local match: the existing fast path, typing delay unchanged. */
+    if(m.score>=3){
+      var t=showTyping();
+      setTimeout(function(){
+        t.remove();
+        addMsg(m.ans, "a");
+        speak(m.ans);
+      }, 450+Math.min(500, q.length*8));
+      return;
+    }
+    /* Weak or no local match: ask the AI endpoint, keep the typing
+       indicator visible while waiting. Any failure falls back to the
+       local answer (or the generic fallback when score is 0). */
+    var t2=showTyping(), done=false;
+    function finish(ans){
+      if(done) return; done=true;
+      t2.remove();
       addMsg(ans, "a");
       speak(ans);
-    }, 450+Math.min(500, q.length*8));
+    }
+    var timer=null, ctl=null;
+    try{
+      if(typeof AbortController!=="undefined"){
+        ctl=new AbortController();
+        timer=setTimeout(function(){ try{ ctl.abort(); }catch(e){} }, 30000);
+      }
+      fetch("/api/spark-chat", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({question:q, lang:lang}),
+        signal:ctl?ctl.signal:undefined
+      }).then(function(r){ return r.ok?r.json():null; })
+      .then(function(j){
+        if(timer) clearTimeout(timer);
+        if(j && typeof j.answer==="string" && j.answer.trim()) finish(cleanAi(j.answer));
+        else finish(m.ans);
+      })
+      .catch(function(){ if(timer) clearTimeout(timer); finish(m.ans); });
+    }catch(e){
+      if(timer) clearTimeout(timer);
+      finish(m.ans);
+    }
   }
   langBtn.addEventListener("click", function(){
     lang=(lang==="en")?"ml":"en";
