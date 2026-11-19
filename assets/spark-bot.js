@@ -1,5 +1,5 @@
-/* SPARK Bot v14 — Axo-style chat assistant for SPARK 2K26.
-   v14: the keyword matcher still answers what it knows (score >= 3).
+/* SPARK Bot v15 — Axo-style chat assistant for SPARK 2K26.
+   v15: the keyword matcher still answers what it knows (score >= 3).
    Anything else goes to /api/spark-chat, which asks the GptOpen relay
    with a facts-only prompt built from the live events + coordinators.
    Header matches the Axofy Axo bot: big robot avatar on top, name + role,
@@ -25,7 +25,6 @@
 "use strict";
 var AVATAR="/assets/spark-bot-avatar.webp?v=2";
 var NAME="SPARK Bot";
-var ROLE="SPARK Assistant";
 
 /* ---------- Knowledge base ----------
    k  = English keywords, mk = Manglish (Malayalam in Latin script) keywords.
@@ -302,13 +301,11 @@ var CSS=[
 ".sparkbot-hero{position:relative;flex:none;padding:48px 14px 0;text-align:center}",
 ".sparkbot-av{position:absolute;top:-41px;left:50%;transform:translateX(-50%);width:120px;height:83px;border:0;border-radius:0;background-color:transparent;background-image:url("+AVATAR+");background-size:contain;background-repeat:no-repeat;background-position:center;filter:drop-shadow(0 8px 20px rgba(0,0,0,.5))}",
 ".sparkbot-hero b{display:block;color:#fff;font:800 21px/1.2 -apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif;letter-spacing:.01em}",
-".sparkbot-hero span{display:block;color:rgba(255,255,255,.65);font:500 13.5px/1.4 -apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif;margin-top:4px}",
-".sparkbot-hero span i{display:inline-block;width:7px;height:7px;border-radius:50%;background:#3b82f6;margin-right:6px;font-style:normal}",
-".sparkbot-ctl{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:12px}",
-".sparkbot-lang{display:inline-flex;align-items:center;gap:7px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.07);color:#fff;font:600 13.5px/1 -apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif;padding:9px 13px;border-radius:99px;cursor:pointer}",
+".sparkbot-ctl{position:absolute;top:10px;left:10px;display:flex;align-items:center;gap:6px;z-index:2}",
+".sparkbot-lang{display:inline-flex;align-items:center;gap:5px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.07);color:#fff;font:600 12px/1 -apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif;padding:7px 10px;border-radius:99px;cursor:pointer}",
 ".sparkbot-lang svg{flex:none}",
-".sparkbot-lang .chev{font-size:10px;opacity:.7}",
-".sparkbot-mute{width:38px;height:38px;flex:none;border-radius:50%;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.07);color:#fff;cursor:pointer;display:grid;place-items:center}",
+".sparkbot-lang .chev{font-size:9px;opacity:.7}",
+".sparkbot-mute{width:30px;height:30px;flex:none;border-radius:50%;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.07);color:#fff;cursor:pointer;display:grid;place-items:center}",
 ".sparkbot-mute.off{color:rgba(255,255,255,.45)}",
 ".sparkbot-close{position:absolute;top:10px;right:10px;width:34px;height:34px;border-radius:50%;border:0;background:rgba(255,255,255,.1);color:#fff;font-size:17px;line-height:1;cursor:pointer;z-index:2}",
 ".sparkbot-msgs{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:2px;padding:14px 12px 8px;min-height:110px}",
@@ -346,9 +343,9 @@ var CSS=[
 ].join("\n");
 
 /* ---------- Build DOM ---------- */
-var GLOBE='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.9 5.7 3.9 9S14.5 18.4 12 21c-2.5-2.6-3.9-5.7-3.9-9S9.5 5.6 12 3z"/></svg>';
-var SPK_ON='<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5z" fill="currentColor" stroke="none"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>';
-var SPK_OFF='<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5z" fill="currentColor" stroke="none"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>';
+var GLOBE='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.9 5.7 3.9 9S14.5 18.4 12 21c-2.5-2.6-3.9-5.7-3.9-9S9.5 5.6 12 3z"/></svg>';
+var SPK_ON='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5z" fill="currentColor" stroke="none"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>';
+var SPK_OFF='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5z" fill="currentColor" stroke="none"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>';
 var PHONE_SVG='<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.2.2 2.4.6 3.6.1.3 0 .7-.2 1l-2.3 2.2z"/></svg>';
 var CHAT_SVG='<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>';
 
@@ -361,7 +358,7 @@ function build(){
   panel.className="sparkbot-panel"; panel.setAttribute("role","dialog"); panel.setAttribute("aria-label","SPARK Bot chat");
   panel.innerHTML=
     '<div class="sparkbot-hero"><span class="sparkbot-av"></span>'
-    +'<b>'+NAME+'</b><span><i></i>'+ROLE+'</span>'
+    +'<b>'+NAME+'</b>'
     +'<div class="sparkbot-ctl"><button class="sparkbot-lang" id="sparkbotLang">'+GLOBE+'<span id="sparkbotLangName">English</span><span class="chev">&#9662;</span></button>'
     +'<button class="sparkbot-mute" id="sparkbotMute" aria-label="Toggle sound"></button></div>'
     +'<button class="sparkbot-close" aria-label="Close chat">&times;</button></div>'
