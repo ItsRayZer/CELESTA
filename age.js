@@ -161,8 +161,9 @@
       gsap.fromTo(card, { y:90, x:d*60, opacity:0 }, { y:0, x:0, opacity:1, ease:"power2.out",
         scrollTrigger:{ trigger:card, start:"top 95%", end:"top 55%", scrub:true } });
       var pass = { trigger:card, start:"top bottom", end:"bottom top", scrub:true };
-      gsap.fromTo(card.querySelector("img"), { yPercent:-9 }, { yPercent:9, ease:"none", scrollTrigger:pass });
-      gsap.fromTo(card.querySelector(".ah-glabel"), { letterSpacing:"0.05em" }, { letterSpacing:"0.28em", ease:"none", scrollTrigger:pass });
+      var gimg = card.querySelector("img"), glbl = card.querySelector(".ah-glabel");
+      if(gimg && !gimg.classList.contains("tk-poster")) gsap.fromTo(gimg, { yPercent:-9 }, { yPercent:9, ease:"none", scrollTrigger:pass });
+      if(glbl) gsap.fromTo(glbl, { letterSpacing:"0.05em" }, { letterSpacing:"0.28em", ease:"none", scrollTrigger:pass });
     });
     return true;
   }
