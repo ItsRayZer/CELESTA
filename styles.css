@@ -265,7 +265,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--gold)}
 .hx-fb{display:none;position:absolute;left:50%;bottom:19svh;width:min(66svh,100vw);height:auto;max-width:none;transform:translateX(-50%);opacity:0;transition:opacity 1.4s ease}
 .hx.nogl .hx-fx{display:none}.hx.nogl .hx-fb{display:block}
 .hx:not(.b) .hx-fb.a,.hx.b .hx-fb.k{opacity:1}
-.hx-shade{position:absolute;left:0;right:0;bottom:0;height:46svh;z-index:4;pointer-events:none;background:linear-gradient(180deg,transparent,rgba(10,2,24,.5) 45%,#0a0218 85%,#0a0218)}
+.hx-shade{position:absolute;left:0;right:0;bottom:0;height:46svh;z-index:4;pointer-events:none;background:linear-gradient(180deg,transparent,rgba(10,2,24,.55) 55%,#0a0218)}
 /* --- hero text: one type system (serif for statements, spaced sans caps for labels), two clear zones --- */
 .hx{--hx-label:10.5px;--hx-track:.26em}
 .hx-top{position:relative;z-index:6;display:flex;flex-direction:column;align-items:center;gap:12px;padding:calc(env(safe-area-inset-top,0px) + 66px) 20px 0}
@@ -297,6 +297,8 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--gold)}
 .ah-stage>*{position:absolute;margin:0}
 .ah-robot{left:-10cqw;top:14.2%;width:73cqw;z-index:2}
 .ah-human{left:48cqw;top:41.4%;width:94cqw;z-index:2}
+/* PC: wide 4:3 stage so the hands are big and come from the sides (mobile stays 9:17) */
+@media (min-width:900px){.ah-stage{width:min(100%,calc(100svh*1/1));aspect-ratio:1/1}.ah-robot{left:-3.5cqw;top:-8%}.ah-human{left:44cqw;top:34%}}
 .ah-bird{z-index:2;will-change:transform}
 .ah-b1{left:3cqw;top:7%;width:19cqw}
 .ah-b2{left:6cqw;top:14%;width:20cqw;mix-blend-mode:screen}
@@ -1205,3 +1207,6 @@ body.dark-page .gz-tag--light{background:#111;color:#fff}
 
 .c-phone{display:block;margin-top:2px;font-size:14px;font-weight:600;color:#141412;text-decoration:none}
 .addr{color:#555;font-size:14px;margin-top:4px}
+
+/* ===== content protection: images and video cannot be dragged, long-pressed, or saved ===== */
+img,video{-webkit-user-drag:none;user-select:none;-webkit-user-select:none;-moz-user-select:none;-webkit-touch-callout:none}

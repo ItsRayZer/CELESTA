@@ -242,3 +242,19 @@
   window.addEventListener('resize',lift);
   lift();
 })();
+
+/* ===== content protection: no copy / download of images or video ===== */
+(function(){
+  function isMedia(t){ return t && t.closest && t.closest('img,video'); }
+  // block right-click / long-press menu on images and video
+  document.addEventListener('contextmenu', function(e){ if(isMedia(e.target)) e.preventDefault(); }, true);
+  // block dragging images / video out of the page
+  document.addEventListener('dragstart', function(e){ if(isMedia(e.target)) e.preventDefault(); }, true);
+  // block the common save / view-source shortcuts
+  document.addEventListener('keydown', function(e){
+    var k=(e.key||'').toLowerCase();
+    if((e.ctrlKey||e.metaKey) && (k==='s'||k==='u'||k==='p')) e.preventDefault();
+    if((e.ctrlKey||e.metaKey) && e.shiftKey && (k==='i'||k==='j'||k==='c')) e.preventDefault();
+    if(k==='f12') e.preventDefault();
+  });
+})();
