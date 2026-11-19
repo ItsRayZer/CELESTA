@@ -1,4 +1,4 @@
-/* SPARK Bot v9 — Axo-style chat assistant for SPARK 2K26.
+/* SPARK Bot v10 — Axo-style chat assistant for SPARK 2K26.
    Header matches the Axofy Axo bot: big robot avatar on top, name + role,
    small language button + mute button only (no settings, no CC).
    Avatar: the SPARK robot head in its own natural shape, no circle, no
@@ -13,7 +13,7 @@
    Keyboard: the pages use interactive-widget=resizes-content, so the layout
    viewport shrinks when the on-screen keyboard opens and the panel
    (bottom:0) sits flush above it with no gap. No JS coordinate math.
-   Drag: the panel moves freely in any direction by its header (grab the
+   Drag: ONLY the closed head (FAB) moves, the open panel stays put. Drag the head anywhere; a tap opens the chat. Slow drag follows the finger, a fast flick glides with momentum. Transform-only, so it cannot slow the site down.
    hero). Slow drag follows the finger 1:1 on the GPU transform. A fast
    flick down closes it, a fast flick up snaps it tall. Transform-only, so
    it cannot slow the site down.
@@ -32,8 +32,8 @@ var KB=[
   mk:["eppo","eppozhanu","eppa","ennu","ennanu","ethra","samayam","date","time"],
   a:"SPARK 2K26 is on <b>Friday, 27 November 2026</b>, and it starts at <b>10 AM</b>. One day, four events, one campus.",
   m:"SPARK 2K26 <b>Friday, 27 November 2026</b> aanu, <b>10 AM</b> nu start cheyyum. Oru day, 4 events, oru campus." },
-{ k:["where","venue","location","place","address","reach","how to reach","college","ramapuram","kottayam","map","direction"],
-  mk:["evide","venue","sthalam","college","ramapuram","kottayam","map","ethu","evideyanu"],
+{ k:["where","venue","location","place","address","reach","how to reach","college","collage","ramapuram","kottayam","map","direction","where is the college","where is spark","where is the fest","college location","college address","fest venue","where is it happening"],
+  mk:["evide","evideya","evdieya","evidea","evideyanu","venue","sthalam","college","collage","ramapuram","kottayam","map","ethu","fest evide","spark evide","college evide","evideyanu college","collage evdieya","evdieya college"],
   a:"The fest is at <b>Mar Augusthinose College, Ramapuram, Kottayam, Kerala</b>. You can see the venue map on the <b>Map</b> page.",
   m:"Fest <b>Mar Augusthinose College, Ramapuram, Kottayam, Kerala</b> aanu. Venue map <b>Map</b> page il kaanam." },
 { k:["event","events","competition","competitions","arena","what are the events","list of events","which events"],
@@ -152,8 +152,8 @@ var KB=[
   mk:["made","built","developer","technical"],
   a:"The SPARK website is built and run by <b>NEXUS</b>. Technical Lead: <b>Aben Sojan</b>.",
   m:"SPARK website build cheythathum run cheyyunnathum <b>NEXUS</b> aanu. Technical Lead: <b>Aben Sojan</b>." },
-{ k:["what is spark","about spark","tell me about spark","spark meaning","tagline","decode your future"],
-  mk:["spark","tagline"],
+{ k:["what is spark","about spark","tell me about spark","spark meaning","tagline","decode your future","spark entha"],
+  mk:["spark","tagline","entha","enth","spark entha","entha spark"],
   a:"<b>SPARK 2K26</b> is an inter-school fest for 12th standard students, organised by NEXUS at Mar Augusthinose College, Ramapuram. Tagline: <b>Decode Your Future</b>. Four events, Rs.14,250 in prizes, on Friday, 27 November 2026 from 10 AM.",
   m:"<b>SPARK 2K26</b> oru inter-school fest aanu, 12th standard students nu vendi, NEXUS organise cheyyunnu, Mar Augusthinose College, Ramapuram il. Tagline: <b>Decode Your Future</b>. 4 events, Rs.14,250 prizes, Friday, 27 November 2026, 10 AM muthal." },
 { k:["college student","can college students","i am in college","degree","bca student"],
@@ -168,8 +168,8 @@ var KB=[
   mk:["parking","vehicle","bike","car"],
   a:"Parking details are not on the site. Ask the Student Lead Ananthu Anil (7510142466).",
   m:"Parking details site il illa. Student Lead Ananthu Anil (7510142466) nod chodikkuka." },
-{ k:["solo","alone","single","by myself","without team","i am alone","can i join solo","join solo"],
-  mk:["solo","alone","single","thaniye"],
+{ k:["solo","alone","single","by myself","without team","i am alone","can i join solo","join solo","solo join","solo join cheyyamo","thaniye join"],
+  mk:["solo","alone","single","thaniye","solo join","thaniye join","join cheyyamo"],
   a:"Yes, you can join solo in <b>Reels Competition (1-4)</b> and <b>Prompting (1-2)</b>, both allow a team of 1. Quiz needs 2-3 and Treasure Hunt needs 3-5.",
   m:"Yes, <b>Reels Competition (1-4)</b> um <b>Prompting (1-2)</b> um thaniye join cheyyam. Quiz nu 2-3 venam, Treasure Hunt nu 3-5 venam." },
 { k:["change registration","cancel registration","edit registration","update my registration","registered wrong","mistake","change my registration","cancel my registration","edit my registration"],
@@ -196,12 +196,12 @@ var KB=[
   mk:["prompting what","prompt"],
   a:"<b>Prompting</b> is the art of crafting the perfect AI prompt. Team: 1-2 members. Prizes: 1st Rs.1,500, 2nd Rs.750. You will be given a task and you must write the best prompt to make the AI deliver.",
   m:"<b>Prompting</b> perfect AI prompt craft cheyyunna kalayanu. Team: 1-2 members. Prizes: 1st Rs.1,500, 2nd Rs.750. Oru task tharum, AI ne kond best output edukkanulla prompt ezhuthanam." },
-{ k:["how to reach","bus","transport","route","directions","reach the college","coming from"],
-  mk:["bus","transport","route","reach"],
+{ k:["how to reach","bus","transport","route","directions","reach the college","coming from","how to come","how do i get there","how to get to the college","bus route","college bus"],
+  mk:["bus","transport","route","reach","eppadi varum","engane varum","varan","bus evide","route etha"],
   a:"The fest is at <b>Mar Augusthinose College, Ramapuram, Kottayam, Kerala</b>. See the exact location on the <b>Map</b> page. For bus routes and directions from your place, ask the Student Lead Ananthu Anil (7510142466).",
   m:"Fest <b>Mar Augusthinose College, Ramapuram, Kottayam, Kerala</b> aanu. Exact location <b>Map</b> page il kaanam. Bus routes-um directions-um Student Lead Ananthu Anil (7510142466) nod chodikkuka." },
-{ k:["about the college","college info","mar augusthinose","about mac","college history"],
-  mk:["about the college","about mac","college"],
+{ k:["about the college","college info","mar augusthinose","about mac","college history","collage","college details","tell me about the college"],
+  mk:["about the college","about mac","college","collage","college ne kurichu","mac ne kurichu"],
   a:"<b>Mar Augusthinose College, Ramapuram, Kottayam, Kerala</b> hosts SPARK 2K26. NEXUS, the Association of Computer Applications (BCA department), organises the fest. For more about the college, ask the Student Lead Ananthu Anil (7510142466).",
   m:"<b>Mar Augusthinose College, Ramapuram, Kottayam, Kerala</b> aanu SPARK 2K26 host cheyyunnathu. NEXUS, Association of Computer Applications (BCA department), aanu fest organise cheyyunnathu. College ne kurichu kooduthal ariyam Student Lead Ananthu Anil (7510142466) nod chodikkuka." },
 { k:["help","i need help","emergency","support","assistance"],
@@ -241,7 +241,7 @@ function scoreList(nq, list){
     var kw=list[j];
     if(kw.indexOf(" ")>=0){ if(nq.indexOf(" "+kw+" ")>=0) score+=3; }
     else if(nq.indexOf(" "+kw+" ")>=0) score+=2;
-    else if(nq.indexOf(kw)>=0) score+=1;
+    else if(kw.length>=5 && nq.indexOf(kw)>=0) score+=1;
   }
   return score;
 }
@@ -287,15 +287,13 @@ function pop(){
 
 /* ---------- CSS (Axo-style header, bubbles, chips) ---------- */
 var CSS=[
-".sparkbot-fab{position:fixed;right:16px;bottom:calc(96px + env(safe-area-inset-bottom));z-index:101;width:76px;height:52px;border:0;border-radius:0;background-color:transparent;background-image:url("+AVATAR+");background-size:contain;background-repeat:no-repeat;background-position:center;cursor:pointer;padding:0;filter:drop-shadow(0 6px 16px rgba(0,0,0,.45));transition:transform .25s cubic-bezier(.2,.8,.2,1)}",
-".sparkbot-fab:active{transform:scale(.92)}",
+".sparkbot-fab{position:fixed;right:16px;bottom:calc(96px + env(safe-area-inset-bottom));z-index:101;width:76px;height:52px;border:0;border-radius:0;background-color:transparent;background-image:url("+AVATAR+");background-size:contain;background-repeat:no-repeat;background-position:center;cursor:grab;padding:0;filter:drop-shadow(0 6px 16px rgba(0,0,0,.45));transform:translate(var(--fx,0px),var(--fy,0px));touch-action:none;transition:transform .25s cubic-bezier(.2,.8,.2,1)}",
+".sparkbot-fab:active{transform:translate(var(--fx,0px),var(--fy,0px)) scale(.92)}",
+".sparkbot-fab.dragging{transition:none;will-change:transform;cursor:grabbing}",
 ".sparkbot-fab .sparkbot-dot{position:absolute;top:0;right:0;width:12px;height:12px;border-radius:50%;background:#22c55e;border:2px solid #fff}",
-".sparkbot-panel{position:fixed;left:50%;transform:translate(calc(-50% + var(--dx,0px)),calc(100% + 80px + var(--dy,0px)));bottom:0;width:min(420px,calc(100% - 16px));max-height:min(600px,calc(100dvh - 40px));z-index:102;display:flex;flex-direction:column;background:#141417;border:1px solid rgba(255,255,255,.14);border-radius:22px 22px 0 0;box-shadow:0 -12px 48px rgba(0,0,0,.5);overflow:visible;transition:transform .38s cubic-bezier(.2,.8,.2,1)}",
-".sparkbot-panel.open{transform:translate(calc(-50% + var(--dx,0px)),var(--dy,0px))}",
-".sparkbot-panel.dragging{transition:none;will-change:transform}",
-".sparkbot-hero{position:relative;flex:none;padding:48px 14px 0;text-align:center;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}",
-".sparkbot-hero.dragging{cursor:grabbing}",
-".sparkbot-grip{width:38px;height:4px;border-radius:99px;background:rgba(255,255,255,.28);margin:0 auto 10px}",
+".sparkbot-panel{position:fixed;left:50%;transform:translate(-50%,calc(100% + 80px));bottom:0;width:min(420px,calc(100% - 16px));max-height:min(600px,calc(100dvh - 40px));z-index:102;display:flex;flex-direction:column;background:#141417;border:1px solid rgba(255,255,255,.14);border-radius:22px 22px 0 0;box-shadow:0 -12px 48px rgba(0,0,0,.5);overflow:visible;transition:transform .38s cubic-bezier(.2,.8,.2,1)}",
+".sparkbot-panel.open{transform:translate(-50%,0)}",
+".sparkbot-hero{position:relative;flex:none;padding:48px 14px 0;text-align:center}",
 ".sparkbot-av{position:absolute;top:-41px;left:50%;transform:translateX(-50%);width:120px;height:83px;border:0;border-radius:0;background-color:transparent;background-image:url("+AVATAR+");background-size:contain;background-repeat:no-repeat;background-position:center;filter:drop-shadow(0 8px 20px rgba(0,0,0,.5))}",
 ".sparkbot-hero b{display:block;color:#fff;font:800 21px/1.2 -apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif;letter-spacing:.01em}",
 ".sparkbot-hero span{display:block;color:rgba(255,255,255,.65);font:500 13.5px/1.4 -apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif;margin-top:4px}",
@@ -329,7 +327,7 @@ var CSS=[
 ".sparkbot-input input::placeholder{color:rgba(255,255,255,.45)}",
 ".sparkbot-input button{width:44px;height:44px;flex:none;border-radius:50%;border:0;background:#ff5c00;color:#fff;font-size:18px;cursor:pointer}",
 ".sparkbot-input button:active{transform:scale(.92)}",
-"@media (min-width:720px){.sparkbot-panel{left:auto;right:16px;transform:translate(var(--dx,0px),calc(100% + 80px + var(--dy,0px)));bottom:calc(164px + env(safe-area-inset-bottom));border-radius:22px}.sparkbot-panel.open{transform:translate(var(--dx,0px),var(--dy,0px))}}"
+"@media (min-width:720px){.sparkbot-panel{left:auto;right:16px;transform:translateY(calc(100% + 80px));bottom:calc(164px + env(safe-area-inset-bottom));border-radius:22px}.sparkbot-panel.open{transform:none}}"
 ].join("\n");
 
 /* ---------- Build DOM ---------- */
@@ -345,7 +343,7 @@ function build(){
   var panel=document.createElement("div");
   panel.className="sparkbot-panel"; panel.setAttribute("role","dialog"); panel.setAttribute("aria-label","SPARK Bot chat");
   panel.innerHTML=
-    '<div class="sparkbot-hero"><div class="sparkbot-grip"></div><span class="sparkbot-av"></span>'
+    '<div class="sparkbot-hero"><span class="sparkbot-av"></span>'
     +'<b>'+NAME+'</b><span><i></i>'+ROLE+'</span>'
     +'<div class="sparkbot-ctl"><button class="sparkbot-lang" id="sparkbotLang">'+GLOBE+'<span id="sparkbotLangName">English</span><span class="chev">&#9662;</span></button>'
     +'<button class="sparkbot-mute" id="sparkbotMute" aria-label="Toggle sound"></button></div>'
@@ -429,7 +427,6 @@ function build(){
   function close(){
     panel.classList.remove("open");
     panel.style.top=""; panel.style.bottom=""; panel.style.maxHeight="";
-    panel.style.setProperty("--dx","0px"); panel.style.setProperty("--dy","0px");
     try{ window.speechSynthesis.cancel(); }catch(e){}
   }
 
@@ -448,71 +445,77 @@ function build(){
   window.addEventListener("resize", syncPanel);
   input.addEventListener("focus", function(){ setTimeout(syncPanel, 60); setTimeout(syncPanel, 300); setTimeout(syncPanel, 600); });
 
-  /* Drag: the panel moves freely in any direction by its header. Slow drag
-     follows the finger 1:1 on the GPU transform (no layout work, so it
-     cannot slow the site). A fast flick down closes it, a fast flick up
-     snaps it tall. Buttons inside the header are not drag handles. */
-  var hero=panel.querySelector(".sparkbot-hero");
-  var drag=null, rafPending=false;
-  function queueDrag(){
-    if(rafPending) return;
-    rafPending=true;
+  /* FAB drag: ONLY the closed head moves, the open panel stays put. Drag
+     the head anywhere on screen; a tap (no move) still opens the chat.
+     Slow drag follows the finger 1:1 on the GPU transform. A fast flick
+     glides it with momentum. It stays where dropped, clamped on screen.
+     Transform-only, so it cannot slow the site down. */
+  var fabDrag=null, fabRaf=false, fabSuppressClick=false;
+  function fabQueue(){
+    if(fabRaf) return;
+    fabRaf=true;
     requestAnimationFrame(function(){
-      rafPending=false;
-      if(!drag) return;
-      panel.style.setProperty("--dx", drag.dx+"px");
-      panel.style.setProperty("--dy", drag.dy+"px");
+      fabRaf=false;
+      if(!fabDrag) return;
+      fab.style.setProperty("--fx", fabDrag.fx+"px");
+      fab.style.setProperty("--fy", fabDrag.fy+"px");
     });
   }
-  hero.addEventListener("pointerdown", function(e){
-    if(!panel.classList.contains("open")) return;
-    if(e.target.closest("button")) return;
-    var r=panel.getBoundingClientRect();
-    drag={x0:e.clientX, y0:e.clientY,
-      dx0:parseFloat(panel.style.getPropertyValue("--dx"))||0,
-      dy0:parseFloat(panel.style.getPropertyValue("--dy"))||0,
-      dx:0, dy:0, lastX:e.clientX, lastY:e.clientY,
-      lastT:performance.now(), velY:0, rect:r};
-    drag.dx=drag.dx0; drag.dy=drag.dy0;
-    panel.classList.add("dragging");
-    hero.classList.add("dragging");
-    try{ hero.setPointerCapture(e.pointerId); }catch(err){}
+  function fabClamp(fx, fy, b){
+    var vw=window.innerWidth, vh=window.innerHeight;
+    fx=Math.max(8-b.baseL, Math.min(vw-8-b.baseR, fx));
+    fy=Math.max(8-b.baseT, Math.min(vh-8-b.baseB, fy));
+    return {fx:fx, fy:fy};
+  }
+  function fabGlide(vx, vy, b){
+    var fx=parseFloat(fab.style.getPropertyValue("--fx"))||0;
+    var fy=parseFloat(fab.style.getPropertyValue("--fy"))||0;
+    function step(){
+      vx*=0.92; vy*=0.92;
+      if(Math.abs(vx)<0.02 && Math.abs(vy)<0.02) return;
+      var c=fabClamp(fx+vx*16, fy+vy*16, b);
+      fx=c.fx; fy=c.fy;
+      fab.style.setProperty("--fx", fx+"px");
+      fab.style.setProperty("--fy", fy+"px");
+      requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+  fab.addEventListener("pointerdown", function(e){
+    var r=fab.getBoundingClientRect();
+    var fx0=parseFloat(fab.style.getPropertyValue("--fx"))||0;
+    var fy0=parseFloat(fab.style.getPropertyValue("--fy"))||0;
+    fabDrag={x0:e.clientX, y0:e.clientY, fx0:fx0, fy0:fy0, fx:fx0, fy:fy0,
+      moved:0, lastX:e.clientX, lastY:e.clientY, lastT:performance.now(),
+      velX:0, velY:0,
+      baseL:r.left-fx0, baseR:r.right-fx0, baseT:r.top-fy0, baseB:r.bottom-fy0};
+    fab.classList.add("dragging");
+    try{ fab.setPointerCapture(e.pointerId); }catch(err){}
   });
-  hero.addEventListener("pointermove", function(e){
-    if(!drag) return;
-    var dx=drag.dx0+(e.clientX-drag.x0);
-    var dy=drag.dy0+(e.clientY-drag.y0);
-    var r=drag.rect, vw=window.innerWidth, vh=window.innerHeight;
-    var minDy=8-r.top;
-    var maxDy=vh-60-r.top;
-    var minDx=-(r.left+r.width-90);
-    var maxDx=vw-90-r.left;
-    dx=Math.max(minDx, Math.min(maxDx, dx));
-    dy=Math.max(minDy, Math.min(maxDy, dy));
-    drag.dx=dx; drag.dy=dy;
-    var now=performance.now(), dt=now-drag.lastT;
-    if(dt>0){ drag.velY=(e.clientY-drag.lastY)/dt; drag.lastX=e.clientX; drag.lastY=e.clientY; drag.lastT=now; }
-    queueDrag();
+  fab.addEventListener("pointermove", function(e){
+    if(!fabDrag) return;
+    var dx=e.clientX-fabDrag.x0, dy=e.clientY-fabDrag.y0;
+    fabDrag.moved=Math.max(fabDrag.moved, Math.abs(dx)+Math.abs(dy));
+    var c=fabClamp(fabDrag.fx0+dx, fabDrag.fy0+dy, fabDrag);
+    fabDrag.fx=c.fx; fabDrag.fy=c.fy;
+    var now=performance.now(), dt=now-fabDrag.lastT;
+    if(dt>0){ fabDrag.velX=(e.clientX-fabDrag.lastX)/dt; fabDrag.velY=(e.clientY-fabDrag.lastY)/dt; fabDrag.lastX=e.clientX; fabDrag.lastY=e.clientY; fabDrag.lastT=now; }
+    fabQueue();
   });
-  function endDrag(){
-    if(!drag) return;
-    var d=drag; drag=null;
-    panel.classList.remove("dragging");
-    hero.classList.remove("dragging");
-    if(d.velY>0.55 || d.dy>160){ close(); return; }
-    if(d.velY<-0.55){
-      var r=panel.getBoundingClientRect();
-      var targetDy=d.dy+(16-r.top);
-      panel.style.setProperty("--dx", d.dx+"px");
-      panel.style.setProperty("--dy", targetDy+"px");
-      panel.style.maxHeight=Math.min(600, window.innerHeight-32)+"px";
-      return;
+  function fabEndDrag(){
+    if(!fabDrag) return;
+    var d=fabDrag; fabDrag=null;
+    fab.classList.remove("dragging");
+    if(d.moved>8){
+      fabSuppressClick=true;
+      setTimeout(function(){ fabSuppressClick=false; }, 60);
+      if(Math.abs(d.velX)>0.5 || Math.abs(d.velY)>0.5){ fabGlide(d.velX, d.velY, d); }
     }
   }
-  hero.addEventListener("pointerup", endDrag);
-  hero.addEventListener("pointercancel", endDrag);
+  fab.addEventListener("pointerup", fabEndDrag);
+  fab.addEventListener("pointercancel", function(){ if(fabDrag){ fabDrag=null; fab.classList.remove("dragging"); } });
 
-  fab.addEventListener("click", function(){ panel.classList.contains("open")?close():open(); });
+  fab.addEventListener("click", function(){ if(fabSuppressClick) return; panel.classList.contains("open")?close():open(); });
   closeBtn.addEventListener("click", close);
   sendBtn.addEventListener("click", function(){ ask(input.value); });
   input.addEventListener("keydown", function(e){ if(e.key==="Enter"){ e.preventDefault(); ask(input.value); } });
