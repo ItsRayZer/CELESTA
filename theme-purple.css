@@ -138,3 +138,6 @@ body.premium-page,body.light-page,body.reg-page,body.dark-page{background:transp
   .tk::before{display:none}
   .gz-info-card,.gz-info-card--dark,.gz-pboard,.light-page .pboard,.pboard,.wb-nexus-box{backdrop-filter:none;-webkit-backdrop-filter:none}
 }
+
+/* ===== Age of Heroes top blend: melt the hero into the purple, no hard edge ===== */
+.ah-hero::after{content:"";position:absolute;left:0;right:0;top:0;height:20svh;z-index:1;pointer-events:none;background:linear-gradient(180deg,#0a0218,transparent)}
