@@ -125,15 +125,31 @@ export default async function handler(req, res) {
       if (typeof req.body.team === 'number') rec.team = req.body.team;
       if (Array.isArray(req.body.members)) rec.members = req.body.members.map(String);
       // Keep the uniqueness markers in step with an edited phone/email.
+      // Claim the new markers FIRST: if either is taken, refuse before the
+      // record is saved (and before the old markers are dropped). A marker
+      // already pointing at this record is our own (that field didn't
+      // change), not a conflict.
       if (newPhone || newEmail) {
+        const oldMk = regMarkerKeys(rec.eventSlug || rec.event, normPhone(before.phone), before.email);
+        const mk = regMarkerKeys(rec.eventSlug || rec.event, normPhone(rec.phone), rec.email);
         try {
-          const oldMk = regMarkerKeys(rec.eventSlug || rec.event, normPhone(before.phone), before.email);
-          if (oldMk.phone) await redis.del(oldMk.phone);
-          if (oldMk.email) await redis.del(oldMk.email);
-          const mk = regMarkerKeys(rec.eventSlug || rec.event, normPhone(rec.phone), rec.email);
-          if (mk.phone) await redis.set(mk.phone, id, { nx: true, ex: MARKER_TTL });
-          if (mk.email) await redis.set(mk.email, id, { nx: true, ex: MARKER_TTL });
-        } catch { /* markers are a backstop; the record is already saved */ }
+          const claimedNew = [];
+          let ok = true;
+          for (const key of [mk.phone, mk.email]) {
+            if (!key) continue;
+            const r = await redis.set(key, id, { nx: true, ex: MARKER_TTL });
+            if (r) { claimedNew.push(key); continue; }
+            const owner = await redis.get(key);
+            if (owner === id) continue;
+            ok = false; break;
+          }
+          if (!ok) {
+            for (const k of claimedNew) { try { await redis.del(k); } catch {} }
+            return res.status(409).json({ error: 'This phone/email is already registered for ' + rec.event });
+          }
+          if (oldMk.phone && oldMk.phone !== mk.phone) await redis.del(oldMk.phone);
+          if (oldMk.email && oldMk.email !== mk.email) await redis.del(oldMk.email);
+        } catch { /* markers are a backstop; continue to save */ }
       }
       await redis.hset('celesta:regs', { [id]: JSON.stringify(rec) });
       // Log only what actually changed, with the old values for undo.

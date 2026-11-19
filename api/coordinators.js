@@ -76,11 +76,11 @@ export default async function handler(req, res) {
     if (!/^[A-Za-z0-9-]+$/.test(id)) return res.status(400).json({ error: 'Invalid coordinator id' });
     const rec = {
       id,
-      name: String(c.name).trim(),
-      team: String(c.team).trim(),
-      event: String(c.event || '').trim(),
-      cls: String(c.cls || '').trim(),
-      phone: String(c.phone || '').trim(),
+      name: String(c.name).trim().slice(0, 100),
+      team: String(c.team).trim().slice(0, 100),
+      event: String(c.event || '').trim().slice(0, 100),
+      cls: String(c.cls || '').trim().slice(0, 100),
+      phone: String(c.phone || '').trim().slice(0, 100),
     };
     try {
       const old = parseVal(await redis.hget('celesta:coordinators', rec.id));

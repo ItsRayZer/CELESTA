@@ -1,7 +1,7 @@
 // POST /api/admin-login — verify password, return role token
 // Lockout: 5 wrong passwords from one IP → 15 minutes blocked (429).
 // The counter lives in Redis; a Redis failure never blocks a real login.
-import { createHmac, timingSafeEqual } from 'crypto';
+import { createHmac, createHash, timingSafeEqual } from 'crypto';
 import { Redis } from '@upstash/redis';
 import { appendLog, recentEntries, clientInfo } from './activity-log.js';
 
@@ -87,12 +87,18 @@ export default async function handler(req, res) {
     }
   } catch { /* lockout check unavailable — continue */ }
 
-  if (password === writePw) {
+  // Constant-time compare: hash both sides with SHA-256 (always 32 bytes,
+  // so timingSafeEqual never throws on length) instead of ===, which
+  // short-circuits on the first differing character.
+  const pwHash = typeof password === 'string' ? createHash('sha256').update(password).digest() : null;
+  const writeHash = createHash('sha256').update(writePw).digest();
+  const readHash = createHash('sha256').update(readPw).digest();
+  if (pwHash && timingSafeEqual(pwHash, writeHash)) {
     try { await redis.del(failKey); } catch { /* ignore */ }
     await appendLog({ type: 'login', actor: 'write', action: 'Full-access admin logged in' }, req);
     return res.status(200).json({ ok: true, role: 'write', token: sign('write') });
   }
-  if (password === readPw) {
+  if (pwHash && timingSafeEqual(pwHash, readHash)) {
     try { await redis.del(failKey); } catch { /* ignore */ }
     await appendLog({ type: 'login', actor: 'read', action: 'Read-only admin logged in' }, req);
     return res.status(200).json({ ok: true, role: 'read', token: sign('read') });

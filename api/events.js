@@ -252,21 +252,26 @@ function slugify(name) {
 
 function cleanEvent(body, existing) {
   const e = existing ? { ...existing } : {};
-  const str = (k, d = '') => (typeof body[k] === 'string' ? body[k].trim() : (existing ? existing[k] : d));
+  // Caps mirror register.js: a write token must not be able to store
+  // multi-MB blobs that are then served to every public visitor.
+  const str = (k, d = '', max = 200) => {
+    const v = typeof body[k] === 'string' ? body[k].trim() : (existing ? existing[k] : d);
+    return typeof v === 'string' ? v.slice(0, max) : v;
+  };
   const num = (k, d = 0) => { const n = Number(body[k]); return Number.isFinite(n) ? n : (existing ? existing[k] : d); };
-  const arr = (k) => (Array.isArray(body[k]) ? body[k].map(String).map(s => s.trim()).filter(Boolean) : (existing ? existing[k] || [] : []));
+  const arr = (k, maxItem = 500, maxLen = 50) => (Array.isArray(body[k]) ? body[k].map(String).map(s => s.trim().slice(0, maxItem)).filter(Boolean).slice(0, maxLen) : (existing ? existing[k] || [] : []));
   const bool = (k, d = true) => (typeof body[k] === 'boolean' ? body[k] : (existing ? existing[k] : d));
-  e.name = str('name');
+  e.name = str('name', '', 100);
   if (!e.name) throw new Error('Name is required');
-  e.tagline = str('tagline');
-  e.about = str('about');
+  e.tagline = str('tagline', '', 200);
+  e.about = str('about', '', 2000);
   e.prize1 = Math.max(0, Math.round(num('prize1')));
   e.prize2 = Math.max(0, Math.round(num('prize2')));
   e.teamMin = Math.max(1, Math.round(num('teamMin', 1)));
   e.teamMax = Math.max(e.teamMin, Math.round(num('teamMax', e.teamMin)));
-  e.duration = str('duration');
-  e.when = str('when', 'Fri, 27 Nov 2026 \u00b7 10 AM');
-  e.where = str('where', 'Mar Augusthinose College, Ramapuram');
+  e.duration = str('duration', '', 100);
+  e.when = str('when', 'Fri, 27 Nov 2026 \u00b7 10 AM', 100);
+  e.where = str('where', 'Mar Augusthinose College, Ramapuram', 200);
   e.how = arr('how');
   e.rules = arr('rules');
   e.reqs = arr('reqs');
@@ -281,14 +286,20 @@ export default async function handler(req, res) {
     // Events change rarely; the public site fetches this on every page load.
     // 60s server cache + stale-while-revalidate keeps it fast without
     // ever showing a stale event for long.
-    res.setHeader('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300');
+    // Authenticated (admin) responses include hidden events, so they must
+    // never be shared-cached: only the public variant gets s-maxage.
+    const token = (req.headers.authorization || '').replace('Bearer ', '');
+    const role = token ? verify(token) : null;
+    if (role) {
+      res.setHeader('Cache-Control', 'private, no-store');
+    } else {
+      res.setHeader('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300');
+    }
     res.setHeader('Vary', 'Authorization');
     try {
       const events = await loadEvents();
       // Unauthenticated callers see listed events only; a logged-in admin
       // (read or write token) sees hidden ones too, for the admin UI.
-      const token = (req.headers.authorization || '').replace('Bearer ', '');
-      const role = token ? verify(token) : null;
       const list = role ? events : events.filter(e => e.visible);
       return res.status(200).json({ events: list });
     } catch (e) {

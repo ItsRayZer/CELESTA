@@ -174,7 +174,7 @@ export default async function handler(req, res) {
   const id = 'reg_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   const record = {
     id, event: ev.name, eventSlug: ev.slug, name, school, phone: phoneNorm, email: emailNorm, team: teamSize,
-    teamName: teamName || '', members: members || [],
+    teamName: teamName || '', members: Array.isArray(members) ? members.map(String) : [],
     paid: false, amount: 0, at: new Date().toISOString(),
     risk: { level: riskLevelFor(reasons), reasons, at: new Date().toISOString() },
   };

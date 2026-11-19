@@ -75,8 +75,8 @@ export async function appendLog(entry, req) {
       at: new Date().toISOString(),
       type: entry.type || 'change',
       actor: entry.actor || 'write',
-      action: entry.action || '',
-      detail: entry.detail || '',
+      action: String(entry.action || '').slice(0, 200),
+      detail: String(entry.detail || '').slice(0, 1000),
       target: entry.target || null,
       undo: entry.undo || null,
       undoes: entry.undoes || null,
@@ -128,30 +128,58 @@ async function applyUndo(u) {
     if (u.kind === 'reg-update') {
       const rec = parseVal(await redis.hget('celesta:regs', u.id));
       if (!rec) return { ok: false, error: 'Registration no longer exists' };
-      const oldMk = regMarkerKeys(rec.eventSlug || rec.event, normPhone(rec.phone), rec.email);
-      Object.assign(rec, u.before || {});
-      await redis.hset('celesta:regs', { [u.id]: JSON.stringify(rec) });
-      // Markers follow the restored values: drop the current ones, claim the old ones.
+      const curMk = regMarkerKeys(rec.eventSlug || rec.event, normPhone(rec.phone), rec.email);
+      const restored = { ...rec, ...(u.before || {}) };
+      const newMk = regMarkerKeys(restored.eventSlug || restored.event, normPhone(restored.phone), restored.email);
+      // Claim the restored markers BEFORE saving: if another record took that
+      // phone/email, refuse the undo. A marker already pointing at this
+      // record is our own, not a conflict.
       try {
-        if (oldMk.phone) await redis.del(oldMk.phone);
-        if (oldMk.email) await redis.del(oldMk.email);
-        const mk = regMarkerKeys(rec.eventSlug || rec.event, normPhone(rec.phone), rec.email);
-        if (mk.phone) await redis.set(mk.phone, u.id, { nx: true, ex: MARKER_TTL });
-        if (mk.email) await redis.set(mk.email, u.id, { nx: true, ex: MARKER_TTL });
-      } catch { /* markers are a backstop; the record is already restored */ }
+        const claimed = [];
+        for (const key of [newMk.phone, newMk.email]) {
+          if (!key) continue;
+          const ok = await redis.set(key, u.id, { nx: true, ex: MARKER_TTL });
+          if (ok) claimed.push(key);
+          else {
+            const owner = await redis.get(key);
+            if (owner !== u.id) {
+              for (const k of claimed) { try { await redis.del(k); } catch {} }
+              return { ok: false, error: 'That phone/email is now registered to someone else — undo blocked' };
+            }
+          }
+        }
+      } catch { /* markers are a backstop; continue */ }
+      await redis.hset('celesta:regs', { [u.id]: JSON.stringify(restored) });
+      try {
+        if (curMk.phone && curMk.phone !== newMk.phone) await redis.del(curMk.phone);
+        if (curMk.email && curMk.email !== newMk.email) await redis.del(curMk.email);
+      } catch { /* markers are a backstop */ }
       return { ok: true, message: 'Registration restored to its previous values' };
     }
     if (u.kind === 'reg-add') {
       const rec = u.record;
       const exists = await redis.hget('celesta:regs', rec.id);
       if (exists) return { ok: false, error: 'Registration already exists' };
+      // Claim the markers BEFORE restoring: if another record took that
+      // phone/email, refuse the undo.
+      const mk = regMarkerKeys(rec.eventSlug || rec.event, normPhone(rec.phone), rec.email);
+      try {
+        const claimed = [];
+        for (const key of [mk.phone, mk.email]) {
+          if (!key) continue;
+          const ok = await redis.set(key, rec.id, { nx: true, ex: MARKER_TTL });
+          if (ok) claimed.push(key);
+          else {
+            const owner = await redis.get(key);
+            if (owner !== rec.id) {
+              for (const k of claimed) { try { await redis.del(k); } catch {} }
+              return { ok: false, error: 'That phone/email is now registered to someone else — undo blocked' };
+            }
+          }
+        }
+      } catch { /* markers are a backstop; continue */ }
       await redis.hset('celesta:regs', { [rec.id]: JSON.stringify(rec) });
       await redis.zadd('celesta:reglist', { score: Date.parse(rec.at) || Date.now(), member: rec.id });
-      try {
-        const mk = regMarkerKeys(rec.eventSlug || rec.event, normPhone(rec.phone), rec.email);
-        if (mk.phone) await redis.set(mk.phone, rec.id, { nx: true, ex: MARKER_TTL });
-        if (mk.email) await redis.set(mk.email, rec.id, { nx: true, ex: MARKER_TTL });
-      } catch { /* markers are a backstop; the record is already restored */ }
       return { ok: true, message: 'Registration restored' };
     }
     if (u.kind === 'event-delete') {
