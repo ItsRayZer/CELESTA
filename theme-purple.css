@@ -6,10 +6,9 @@
 html{background:#0a0418!important}
 body{background:transparent!important;color:var(--ink)}
 #livebg{position:fixed;left:0;top:0;width:100%;height:100%;z-index:-1;display:block;pointer-events:none}
-html.livebg-fb body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
-  background:radial-gradient(ellipse 80% 40% at 30% 20%,rgba(150,70,255,.55),transparent 70%),radial-gradient(ellipse 70% 45% at 75% 75%,rgba(110,40,220,.5),transparent 70%),#0a0218;
-  animation:lbfb 14s ease-in-out infinite alternate}
-@keyframes lbfb{to{filter:hue-rotate(18deg) brightness(1.25);transform:scale(1.08)}}
+html.livebg-fb body::before{content:"";position:fixed;inset:-12%;z-index:-1;pointer-events:none;
+  background:#0a0218 url(/assets/bg-live.jpg) center/cover no-repeat;animation:lbfb 22s ease-in-out infinite alternate}
+@keyframes lbfb{0%{transform:scale(1.05) rotate(0deg)}50%{transform:scale(1.25) rotate(4deg) translate(2%,-2%);filter:hue-rotate(10deg)}100%{transform:scale(1.12) rotate(-4deg) translate(-2%,2%)}}
 /* dark bands become transparent so the live bg shows through */
 .qt,.closing,.ah-gallery,.wb-campus-bridge{background:transparent}
 .ah-gallery{box-shadow:none;clip-path:none}

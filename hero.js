@@ -1,5 +1,5 @@
-/* SPARK 2K26 — hero: stars + pose 1 ⇄ pose 2 smooth WebGL morph.
-   Scene flips every 4s on its own and again as you scroll through the hero. */
+/* SPARK 2K26 — hero: stars + pose 1 ⇄ pose 2 liquid glow morph (spark + glow edge).
+   Scene flips every 6s on its own and again as you scroll through the hero. */
 (function () {
   "use strict";
   var hx = document.getElementById("top");
@@ -82,16 +82,21 @@
       "  vec4 c=texture2D(s,q);return vec4(c.rgb*c.a,c.a);}",
       "void main(){",
       "  float t=T;vec2 uv=v;",
-      "  vec2 pv=vec2(.5,.04);vec2 o=uv-pv;",
-      "  float ps=smoothstep(0.,1.,smoothstep(0.,1.,P));",
-      "  float a=sin(t*.9)*.010+sin(t*.5+1.3)*.006;",
-      "  float br=1.+sin(t*1.25)*.006;",
-      "  o/=br;",
-      "  uv=pv+mat2(cos(a),-sin(a),sin(a),cos(a))*o;",
-      "  uv.y+=sin(t*1.1)*.004;uv.x+=sin(t*.7)*.004;",
-      "  vec2 ua=uv,uk=uv;",
-      "  ua.x+=ps*.004*uv.y;uk.x-=(1.-ps)*.004*uv.y;",
-      "  vec4 c=smp(A,ua,.972,.96,0.)*(1.-ps)+smp(K,uk,.972,.96,0.)*ps;",
+      "  float a=sin(t*.8)*.012;vec2 o=uv-vec2(.5,.35);",
+      "  uv=vec2(.5,.35)+mat2(cos(a),-sin(a),sin(a),cos(a))*o;",
+      "  uv.y+=sin(t*1.1)*.012;uv.x+=sin(t*.7)*.006;",
+      "  float ps=smoothstep(0.,1.,P);",
+      "  float f=v.y*.62+fb(v*vec2(3.,4.)+vec2(0.,t*.15))*.42;",
+      "  float d=f-mix(-.08,1.12,ps);",
+      "  float km=1.-smoothstep(-.03,.03,d);",
+      "  float e=exp(-abs(d)*22.)*sin(3.14159*ps);",
+      "  vec2 uk=uv;uk.x+=sin(uk.y*9.-t*2.)*.008*(1.-uk.y);",
+      "  vec4 c=smp(A,uv,.972,.96,0.)*(1.-km)+smp(K,uk,.972,.96,0.)*km;",
+      "  float cr=e*.014;",
+      "  c.r+=(smp(A,uv+vec2(cr,0.),.972,.96,0.).r*(1.-km)+smp(K,uk+vec2(cr,0.),.972,.96,0.).r*km-c.r)*.7;",
+      "  vec3 gc=mix(vec3(.45,.8,1.),vec3(1.,.72,.3),ps);",
+      "  float sp=step(.975,h(floor(v*vec2(70.,90.))+floor(t*7.)))*e*4.;",
+      "  c.rgb+=(gc*e*1.5+(vec3(1.)+gc)*sp)*clamp(c.a*1.6,0.,1.);",
       "  gl_FragColor=vec4(min(c.rgb,vec3(1.)),c.a);}"
     ].join("\n");
     var sh = function (ty, src) { var s = gl.createShader(ty); gl.shaderSource(s, src); gl.compileShader(s); return s; };
@@ -244,10 +249,10 @@
   function frame(now) {
     if (!vis) { raf = 0; return; }
     var t = (now - t0) / 1000, vh = window.innerHeight, sy = Math.min(window.scrollY, vh * 1.2);
-    var sc = (Math.floor(t / 4) + Math.floor(Math.min(window.scrollY, vh) / (vh * .28))) % 2;
+    var sc = (Math.floor(t / 6) + Math.floor(Math.min(window.scrollY, vh) / (vh * .28))) % 2;
     if (sc !== cur) { cur = sc; hx.classList.toggle("b", sc === 1); }
     var dt = Math.min((now - last) / 1000, .05); last = now;
-    var stp = dt / 2.2; mp += Math.max(-stp, Math.min(stp, sc - mp));
+    var stp = dt / 2.6; mp += Math.max(-stp, Math.min(stp, sc - mp));
     fw.style.transform = "translate3d(0," + (sy * .22).toFixed(1) + "px,0) scale(" + (1 + Math.min(sy / vh, 1) * .07).toFixed(3) + ")";
     ew.style.transform = "translate3d(0," + (sy * .1).toFixed(1) + "px,0)";
     drawSky(t, sy); drawFx(t); drawLand(t, sy);
