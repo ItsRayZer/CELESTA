@@ -1,5 +1,5 @@
-/* SPARK Bot v15 — Axo-style chat assistant for SPARK 2K26.
-   v15: the keyword matcher still answers what it knows (score >= 3).
+/* SPARK Bot v16 — Axo-style chat assistant for SPARK 2K26.
+   v16: the keyword matcher still answers what it knows (score >= 3).
    Anything else goes to /api/spark-chat, which asks the GptOpen relay
    with a facts-only prompt built from the live events + coordinators.
    Header matches the Axofy Axo bot: big robot avatar on top, name + role,
@@ -224,9 +224,13 @@ var GREET={
   ml:"Hey! Njan SPARK Bot aanu. SPARK 2K26 ne kurichu enthum chodikkam - events, prizes, registration, venue, contacts."
 };
 var CHIPS={
-  en:["When is SPARK?","What events are there?","How do I register?","Where is the venue?","Prizes?","Contact"],
-  ml:["SPARK eppozhanu?","Events enthokkeyanu?","Register eppadi cheyyum?","Venue evideyanu?","Prizes?","Contact"]
+  en:["When is SPARK?","What events are there?","How do I register?","Where is the venue?","Prizes?","Contact","What is SPARK?","Is registration free?","Who is the Student Lead?","Can I join more than one event?","How do I reach the college?","What should I bring?"],
+  ml:["SPARK eppozhanu?","Events enthokkeyanu?","Register eppadi cheyyum?","Venue evideyanu?","Prizes?","Contact","SPARK enthanu?","Registration free ano?","Student Lead aaranu?","Oru eventil kooduthal join cheyyamo?","Collegeil ethana?","Entha konduvaranam?"]
 };
+/* Chips a student already tapped. A used chip is removed once its answer
+   arrives and the next unused chip from the pool takes its place, one by
+   one. When every chip in the pool is used, the row hides itself. */
+var usedChips={};
 var PH={ en:"Ask about SPARK...", ml:"SPARK ne kurichu chodikkuka..." };
 
 /* ---------- State ---------- */
@@ -380,12 +384,16 @@ function build(){
   function langLabel(){ return lang==="ml"?"Malayalam":"English"; }
   function renderChips(){
     chipsBox.innerHTML="";
+    var shown=0;
     CHIPS[lang].forEach(function(c){
+      if(shown>=6||usedChips[c]) return;
       var b=document.createElement("button");
       b.className="sparkbot-chip"; b.textContent=c;
       b.addEventListener("click", function(){ ask(c); });
       chipsBox.appendChild(b);
+      shown++;
     });
+    chipsBox.style.display=shown?"":"none";
   }
   function renderMute(){ muteBtn.innerHTML=muted?SPK_OFF:SPK_ON; muteBtn.classList.toggle("off", muted); }
   function applyLang(){
@@ -429,10 +437,6 @@ function build(){
     return t;
   }
   /* AI answers may only carry <b> and <br>; strip any other tag the model
-     might emit so it can never break the panel layout. Allowed tags are
-     normalized to bare <b> / </b> / <br> so an attribute (onclick, etc.)
-     can never survive on them. */
-  /* AI answers may only carry <b> and <br>; strip any other tag the model
      might emit so it can never break the panel layout. One pass: an
      allowed tag is normalized to bare <b> / </b> / <br> so an attribute
      (onclick, etc.) can never survive on it; every other tag is removed. */
@@ -448,6 +452,7 @@ function build(){
     q=(q||"").trim(); if(!q) return;
     addMsg(q.replace(/</g,"&lt;"), "u");
     input.value="";
+    if(CHIPS[lang].indexOf(q)>=0) usedChips[q]=1;
     var m=matchFor(q);
     /* Strong local match: the existing fast path, typing delay unchanged. */
     if(m.score>=3){
@@ -455,6 +460,7 @@ function build(){
       setTimeout(function(){
         t.remove();
         addMsg(m.ans, "a");
+        renderChips();
         speak(m.ans);
       }, 450+Math.min(500, q.length*8));
       return;
@@ -467,6 +473,7 @@ function build(){
       if(done) return; done=true;
       t2.remove();
       addMsg(ans, "a");
+      renderChips();
       speak(ans);
     }
     var timer=null, ctl=null;
