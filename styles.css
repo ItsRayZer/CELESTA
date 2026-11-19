@@ -54,7 +54,7 @@ a{color:inherit}
 #pill.morphing .p-count,#pill.morphing .p-menu{opacity:0;transform:scale(.86)}
 @keyframes liquid-in{0%{opacity:0;transform:scale(.82)}60%{opacity:.9}100%{opacity:1;transform:scale(1)}}
 /* ---------- Hero ---------- */
-.hero{position:relative;min-height:100svh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:90px 20px 120px;overflow:hidden}
+.hero{position:relative;min-height:100svh;min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:90px 20px 120px;overflow:hidden}
 .hero-bg{position:absolute;inset:0;z-index:0}
 .hero-bg img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.5;
   -webkit-mask-image:linear-gradient(to bottom,#000 55%,transparent 98%);mask-image:linear-gradient(to bottom,#000 55%,transparent 98%)}
@@ -177,7 +177,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--gold)}
 }
 
 /* ---------- Age of Heroes: pinned scroll intro ---------- */
-.age{position:relative;height:100vh;height:100svh;overflow:hidden;background:var(--bg)}
+.age{position:relative;height:100vh;height:100svh;height:100dvh;overflow:hidden;background:var(--bg)}
 .age img{max-width:none}
 .age-stars{position:absolute;inset:0;width:100%;height:100%}
 .age .stage{position:relative;height:100%;width:min(100%,47svh);margin:0 auto;container-type:inline-size}
@@ -238,7 +238,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--gold)}
 @media(min-width:720px){.evx-grid{grid-template-columns:repeat(3,1fr)}}
 
 /* ---------- Hero v2: astronaut ⇄ astral guardian (WebGL morph) ---------- */
-.hx{position:relative;height:100vh;height:100svh;min-height:640px;overflow:hidden;background:#010207;text-align:center}
+.hx{position:relative;height:100vh;height:100svh;height:100dvh;min-height:640px;overflow:hidden;background:#010207;text-align:center}
 .hx-stars{position:absolute;inset:0;width:100%;height:100%;z-index:0}
 .hx-dots{position:absolute;inset:0;z-index:0;pointer-events:none;background:radial-gradient(rgba(255,255,255,.12) 1px,transparent 1.4px) 0 0/7px 7px;
   -webkit-mask-image:radial-gradient(ellipse 58% 20% at 10% 16%,#000,transparent 72%),radial-gradient(ellipse 46% 22% at 94% 42%,#000,transparent 72%),radial-gradient(ellipse 60% 12% at 58% 3%,#000,transparent 72%);
@@ -289,16 +289,16 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--gold)}
 @media (prefers-reduced-motion:reduce){.hx-wordmark,.hx-tag,.hx-head span,.hx-bottom,.hx-fx{animation:none}.hx-halo,.hx-head .ac{transition-duration:.01s}}
 @media (max-width:360px){.hx{--hx-track:.18em}.hx-sub-row{gap:7px}}
 /* ---------- Age of Heroes: scroll-synced ---------- */
-.ah-hero{position:relative;height:100vh;height:100svh;overflow:hidden;background:#000;display:grid;place-items:center}
+.ah-hero{position:relative;height:100vh;height:100svh;height:100dvh;overflow:hidden;background:#000;display:grid;place-items:center}
 #ah-stars{position:absolute;inset:0;width:100%;height:100%}
 /* Fixed 9:17 frame: every position below is a % of this frame, so spacing is identical on every phone */
-.ah-stage{position:relative;width:min(100%,calc(100vh*9/17));width:min(100%,calc(100svh*9/17));aspect-ratio:9/17;container-type:inline-size}
+.ah-stage{position:relative;width:min(100%,calc(100vh*9/17));width:min(100%,calc(100svh*9/17));width:min(100%,calc(100dvh*9/17));aspect-ratio:9/17;container-type:inline-size}
 @media (min-aspect-ratio:3/4){.ah-stage{overflow:hidden}}
 .ah-stage>*{position:absolute;margin:0}
 .ah-robot{left:-10cqw;top:14.2%;width:73cqw;z-index:2}
 .ah-human{left:48cqw;top:41.4%;width:94cqw;z-index:2}
 /* PC: wide 4:3 stage so the hands are big and come from the sides (mobile stays 9:17) */
-@media (min-width:900px){.ah-stage{width:min(100%,calc(100svh*1/1));aspect-ratio:1/1}.ah-robot{left:-3.5cqw;top:-8%}.ah-human{left:44cqw;top:34%}}
+@media (min-width:900px){.ah-stage{width:min(100%,calc(100svh*1/1));width:min(100%,calc(100dvh*1/1));aspect-ratio:1/1}.ah-robot{left:-3.5cqw;top:-8%}.ah-human{left:44cqw;top:34%}}
 .ah-bird{z-index:2;will-change:transform}
 .ah-b1{left:3cqw;top:7%;width:19cqw}
 .ah-b2{left:6cqw;top:14%;width:20cqw;mix-blend-mode:screen}
