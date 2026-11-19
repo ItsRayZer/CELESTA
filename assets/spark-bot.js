@@ -328,6 +328,12 @@ var CSS=[
 ".sparkbot-chips::-webkit-scrollbar{display:none}",
 ".sparkbot-chip{flex:none;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:#fff;font:600 13px/1 -apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif;padding:9px 13px;border-radius:99px;cursor:pointer;white-space:nowrap}",
 ".sparkbot-chip:active{transform:scale(.96)}",
+".sparkbot-help{display:flex;gap:8px;flex-wrap:wrap;margin:2px 0 6px;align-self:flex-start}",
+".sparkbot-help a{display:inline-flex;align-items:center;gap:6px;text-decoration:none}",
+".sparkbot-help a svg{flex:none}",
+".sparkbot-help a.call{border-color:rgba(76,210,122,.5);background:rgba(76,210,122,.13)}",
+".sparkbot-help a.wa{border-color:rgba(37,211,102,.5);background:rgba(37,211,102,.13)}",
+".sparkbot-help a:active{transform:scale(.96)}",
 ".sparkbot-input{display:flex;gap:8px;padding:10px 12px 8px;border-top:1px solid rgba(255,255,255,.09);flex:none}",
 ".sparkbot-foot{flex:none;text-align:center;font:500 10px/1.4 -apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif;color:rgba(255,255,255,.42);padding:0 12px calc(8px + env(safe-area-inset-bottom))}",
 ".sparkbot-foot a{color:rgba(255,255,255,.6);text-decoration:none}",
@@ -343,6 +349,8 @@ var CSS=[
 var GLOBE='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.9 5.7 3.9 9S14.5 18.4 12 21c-2.5-2.6-3.9-5.7-3.9-9S9.5 5.6 12 3z"/></svg>';
 var SPK_ON='<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5z" fill="currentColor" stroke="none"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>';
 var SPK_OFF='<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5z" fill="currentColor" stroke="none"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>';
+var PHONE_SVG='<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.2.2 2.4.6 3.6.1.3 0 .7-.2 1l-2.3 2.2z"/></svg>';
+var CHAT_SVG='<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>';
 
 function build(){
   var st=document.createElement("style"); st.textContent=CSS; document.head.appendChild(st);
@@ -393,7 +401,29 @@ function build(){
     var d=document.createElement("div");
     d.className="sparkbot-msg "+who; d.innerHTML=text;
     msgs.appendChild(d); msgs.scrollTop=msgs.scrollHeight;
+    if(who==="a" && needsHelp(text)) showHelp();
     return d;
+  }
+  /* Call / WhatsApp buttons, in the same pill style as the suggestion
+     chips. Shown after a bot answer that points to a real person (Ananthu)
+     or says the information is not provided. Only one set is shown at a
+     time, always after the latest such answer. Call goes to the Student
+     Lead Ananthu Anil; WhatsApp opens a chat with a prefilled question. */
+  var HELP_PHONE="7510142466";
+  var WA_TEXT=encodeURIComponent("Hi, I have a question about SPARK fest");
+  function needsHelp(text){
+    var t=String(text||"").replace(/<[^>]*>/g," ").toLowerCase();
+    return /ananthu|7510142466|not announced|not specified|not mentioned|not provided|isn.t specified|don.t mention|no .*announced/.test(t);
+  }
+  function showHelp(){
+    var old=msgs.querySelectorAll(".sparkbot-help");
+    for(var i=0;i<old.length;i++) old[i].remove();
+    var d=document.createElement("div");
+    d.className="sparkbot-help";
+    d.innerHTML=
+      '<a class="sparkbot-chip call" href="tel:+91'+HELP_PHONE+'">'+PHONE_SVG+'Call Now</a>'+
+      '<a class="sparkbot-chip wa" href="https://wa.me/91'+HELP_PHONE+'?text='+WA_TEXT+'" target="_blank" rel="noopener">'+CHAT_SVG+'WhatsApp Msg</a>';
+    msgs.appendChild(d); msgs.scrollTop=msgs.scrollHeight;
   }
   function showTyping(){
     var t=document.createElement("div");
