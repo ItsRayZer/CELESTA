@@ -1,5 +1,5 @@
-/* SPARK Bot v17 — Axo-style chat assistant for SPARK 2K26.
-   v17: the keyword matcher still answers what it knows (score >= 3).
+/* SPARK Bot v18 — Axo-style chat assistant for SPARK 2K26.
+   v18: the keyword matcher still answers what it knows (score >= 3).
    Anything else goes to /api/spark-chat, which asks the GptOpen relay
    with a facts-only prompt built from the live events + coordinators.
    Header matches the Axofy Axo bot: big robot avatar on top, name + role,
@@ -204,8 +204,12 @@ var KB=[
   m:"Fest <b>Mar Augusthinose College, Ramapuram, Kottayam, Kerala</b> aanu. Exact location <b>Map</b> page il kaanam. Bus routes-um directions-um Student Lead Ananthu Anil (7510142466) nod chodikkuka." },
 { k:["about the college","college info","mar augusthinose","about mac","college history","collage","college details","tell me about the college"],
   mk:["about the college","about mac","college","collage","college ne kurichu","mac ne kurichu"],
-  a:"<b>Mar Augusthinose College, Ramapuram, Kottayam, Kerala</b> hosts SPARK 2K26. NEXUS, the Association of Computer Applications (BCA department), organises the fest. For more about the college, ask the Student Lead Ananthu Anil (7510142466).",
-  m:"<b>Mar Augusthinose College, Ramapuram, Kottayam, Kerala</b> aanu SPARK 2K26 host cheyyunnathu. NEXUS, Association of Computer Applications (BCA department), aanu fest organise cheyyunnathu. College ne kurichu kooduthal ariyam Student Lead Ananthu Anil (7510142466) nod chodikkuka." },
+  a:"<b>Mar Augusthinose College, Ramapuram, Kottayam, Kerala</b> hosts SPARK 2K26. Around 1,160 students. NEXUS, the Association of Computer Applications (BCA department), organises the fest. For more about the college, ask the Student Lead Ananthu Anil (7510142466).",
+  m:"<b>Mar Augusthinose College, Ramapuram, Kottayam, Kerala</b> aanu SPARK 2K26 host cheyyunnathu. Approx 1,160 students undu. NEXUS, Association of Computer Applications (BCA department), aanu fest organise cheyyunnathu. College ne kurichu kooduthal ariyam Student Lead Ananthu Anil (7510142466) nod chodikkuka." },
+{ k:["how many students","students in the college","college strength","strength","how many students in the college","student count","how many students are there","number of students"],
+  mk:["collegeil ethana","college ethana","collegeil ethra","ethra students","students ethana","collegeil ethra students"],
+  a:"<b>Mar Augusthinose College</b> has around <b>1,160 students</b> (as per the college's own site).",
+  m:"<b>Mar Augusthinose College</b> il approx <b>1,160 students</b> undu (college nte official site parayunnathu)." },
 { k:["help","i need help","emergency","support","assistance"],
   mk:["help","emergency","support"],
   a:"For any help, contact the <b>Student Lead Ananthu Anil (7510142466)</b> or the <b>Associate Lead Bista Mariya Jojo (9746446739)</b>.",
