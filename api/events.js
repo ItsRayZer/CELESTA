@@ -12,29 +12,29 @@ const redis = new Redis({
 });
 
 export const DEFAULT_EVENTS = [
-  {
+    {
     "slug": "quiz",
     "name": "Quiz",
     "tagline": "Battle of wits across tech, science and general knowledge.",
-    "about": "A fast, team-based quiz covering General Knowledge. Think quickly, trust your team, and outscore every other school.",
+    "about": "A fast, team-based quiz covering General Knowledge and Technology. Think quickly, trust your team, and outscore every other school.",
     "prize1": 2000,
     "prize2": 1000,
     "teamMin": 2,
     "teamMax": 2,
-    "fee": "\u20b9100 per team",
+    "fee": "\u20b950 per team",
     "duration": "\u2248 90 minutes",
     "when": "Fri, 27 Nov 2026 \u00b7 10 AM",
     "where": "Mar Augusthinose College, Ramapuram",
     "how": [
-      "General Knowledge. The quiz consists of questions based on General Knowledge.",
+      "General Knowledge and Technology. The quiz consists of questions based on General Knowledge and Technology.",
       "Multiple rounds. Teams are shortlisted after each round based on performance; only shortlisted teams move to the next round.",
       "Final round. The team with the highest score in the final round is declared the winner."
     ],
     "rules": [
       "Each team must consist of exactly 2 members.",
+      "The registration fee is \u20b950 per team.",
+      "Participants must answer within the given time limit.",
       "Electronic gadgets are strictly prohibited during the competition.",
-      "The team that raises their hand first gets the first chance to answer; either of the two team members can give the answer.",
-      "If the first team gives an incorrect answer or fails to answer within the given time, the question will be passed to another team.",
       "Team members are not allowed to seek help from the audience.",
       "Any form of cheating or unfair practice will lead to disqualification.",
       "The quiz master's decision will be final."
@@ -47,7 +47,7 @@ export const DEFAULT_EVENTS = [
     "order": 3,
     "visible": true,
     "regOpen": true,
-    "rulesV": 2
+    "rulesV": 3
   },
   {
     "slug": "treasure-hunt",
@@ -63,12 +63,15 @@ export const DEFAULT_EVENTS = [
     "when": "Fri, 27 Nov 2026 \u00b7 10 AM",
     "where": "Mar Augusthinose College, Ramapuram",
     "how": [
+      "Multiple rounds. The competition will be conducted in multiple rounds, with a separate task in each round.",
+      "Separate time limits. Each round will have a separate time limit, which must be strictly followed.",
       "Solve the clues. Teams solve the clues and complete the tasks within the given time.",
       "Collect all clues. Teams must collect all the clues to complete the Treasure Hunt.",
       "Finish first. The team that collects all the clues and finds the treasure first, by following all the rules, is declared the winner."
     ],
     "rules": [
       "Each team must consist of exactly 4 members.",
+      "The registration fee is \u20b9200 per team.",
       "Mobile phones are strictly prohibited during the game.",
       "Participants must follow the instructions given by the coordinators.",
       "Sharing clues or answers with other teams is not allowed.",
@@ -76,6 +79,7 @@ export const DEFAULT_EVENTS = [
       "Any form of cheating will lead to disqualification.",
       "Damaging college property or disturbing others is strictly prohibited.",
       "Participants must maintain discipline throughout the competition.",
+      "Teams that fail to find the treasure within the allotted time must follow the additional instructions given by the organisers.",
       "The decision of the organisers will be final."
     ],
     "reqs": [
@@ -87,7 +91,7 @@ export const DEFAULT_EVENTS = [
     "order": 4,
     "visible": true,
     "regOpen": true,
-    "rulesV": 2
+    "rulesV": 3
   },
   {
     "slug": "prompting",
@@ -231,32 +235,20 @@ export async function loadEvents() {
   // prizes, and the Visible checkbox for Idea Presentation / Reels). The
   // stored copy already holds the right values, and the admin UI is now
   // the source of truth for order, prizes, and visibility.
-  // Real rules (20 Nov 2026): Bista's official rules replace the sample
-  // rules. One-time: a stored event without rulesV 2 takes the official
+  // Real rules (20 Nov 2026): the official rules replace the sample
+  // rules. One-time: a stored event whose rulesV differs from the default
+  // takes the official
   // team size, fee, duration and how/rules/reqs from DEFAULT_EVENTS.
-  // Admin edits after this stick, because rulesV is then already 2.
+  // Admin edits after this stick, because rulesV is then already at the default.
   const defBySlug = {};
   DEFAULT_EVENTS.forEach(d => { defBySlug[d.slug] = d; });
   for (const e of list) {
     const d = defBySlug[e.slug];
-    if (d && d.rulesV === 2 && e.rulesV !== 2) {
+    if (d && e.rulesV !== d.rulesV) {
       e.teamMin = d.teamMin; e.teamMax = d.teamMax; e.fee = d.fee;
       e.duration = d.duration;
       e.how = (d.how || []).slice(); e.rules = (d.rules || []).slice(); e.reqs = (d.reqs || []).slice();
-      e.rulesV = 2; dirty = true;
-    }
-  }
-  // Reels official rules (20 Nov 2026): the full official ruleset replaces
-  // the sample rules. One-time: a stored Reels event without rulesV 3 takes
-  // the official team size, fee, duration and how/rules/reqs from
-  // DEFAULT_EVENTS. Admin edits after this stick, because rulesV is then 3.
-  for (const e of list) {
-    const d = defBySlug[e.slug];
-    if (e.slug === 'reels-competition' && d && d.rulesV === 3 && e.rulesV !== 3) {
-      e.teamMin = d.teamMin; e.teamMax = d.teamMax; e.fee = d.fee;
-      e.duration = d.duration;
-      e.how = (d.how || []).slice(); e.rules = (d.rules || []).slice(); e.reqs = (d.reqs || []).slice();
-      e.rulesV = 3; dirty = true;
+      e.rulesV = d.rulesV; dirty = true;
     }
   }
   if (dirty) {
