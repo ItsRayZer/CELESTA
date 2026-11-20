@@ -184,7 +184,7 @@ async function applyUndo(u) {
     }
     if (u.kind === 'event-delete') {
       const ev = parseVal(await redis.hget('celesta:events', u.slug));
-      if (ev) return { ok: false, error: 'Event already exists' };
+      if (!ev) return { ok: false, error: 'Event no longer exists' };
       const regVals = await redis.hvals('celesta:regs');
       const n = (regVals || []).filter(v => {
         const r = parseVal(v);

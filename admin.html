@@ -233,8 +233,16 @@ tbody tr.flash{animation:flash 2.4s ease}
 
   <!-- REGISTRATIONS -->
   <section id="sec-reg" class="hidden">
-    <div class="secttl">Registrations <button class="ti" data-tip="Every student sign-up, live. Use search and the filters to find someone, tap an event card to filter by that event. Full-access accounts can mark fees paid, edit details, or delete a registration.">?</button></div>
+    <div class="secttl">Registrations <button class="ti" data-tip="Every student sign-up, live. Use search and the filters to find someone, tap an event card to open that event's own page. Full-access accounts can mark fees paid, edit details, or delete a registration.">?</button></div>
     <div class="secsub">Students who registered for the fest, across all 4 events.</div>
+
+    <!-- Event inside page: shown when an event card is tapped; overall view shows the cards -->
+    <div id="evDetail" class="hidden">
+      <button class="iconbtn" id="evBackBtn">← All events</button>
+      <div class="secttl" id="evDetailName" style="margin-top:14px">Event</div>
+      <div class="secsub" id="evDetailSub"></div>
+      <div class="stats" id="evDetailStats" style="margin-top:14px"></div>
+    </div>
 
     <div class="evgrid" id="evGrid"></div>
 
@@ -268,6 +276,7 @@ tbody tr.flash{animation:flash 2.4s ease}
         <input id="evTag" placeholder="Tagline (short line under the name)" style="grid-column:1/-1">
         <input id="evP1" type="number" min="0" placeholder="1st prize ₹">
         <input id="evP2" type="number" min="0" placeholder="2nd prize ₹">
+        <input id="evFee" placeholder="Fee (e.g. ₹100 per team)">
         <input id="evMin" type="number" min="1" placeholder="Min team size">
         <input id="evMax" type="number" min="1" placeholder="Max team size">
         <input id="evDur" placeholder="Duration (e.g. ≈ 60 minutes)">
@@ -366,6 +375,7 @@ tbody tr.flash{animation:flash 2.4s ease}
     <label>ABOUT</label><textarea id="evEAbout"></textarea>
     <label>1ST PRIZE (₹)</label><input id="evEP1" type="number" min="0">
     <label>2ND PRIZE (₹)</label><input id="evEP2" type="number" min="0">
+    <label>FEE (e.g. ₹100 per team)</label><input id="evEFee">
     <label>MIN TEAM SIZE</label><input id="evEMin" type="number" min="1">
     <label>MAX TEAM SIZE</label><input id="evEMax" type="number" min="1">
     <label>DURATION</label><input id="evEDur">
@@ -387,7 +397,7 @@ tbody tr.flash{animation:flash 2.4s ease}
 <script>
 const $=id=>document.getElementById(id);
 let TOKEN=localStorage.getItem('celesta_admin_tok')||'', ROLE=localStorage.getItem('celesta_admin_role')||'';
-let REGS=[], FILTER_EV='', SEEN=new Set(), COORDS=[], POSTER_CUSTOM={}, SEEN_READY=false, LOG_UNDONE=new Set();
+let REGS=[], FILTER_EV='', EV_DETAIL='', SEEN=new Set(), COORDS=[], POSTER_CUSTOM={}, SEEN_READY=false, LOG_UNDONE=new Set();
 let REG_TOTAL=0, REG_PAID_N=0, REG_PAID_AMT=0, REG_OFFSET=0, REG_HAS_MORE=false, POSTER_V=0, EVENT_COUNTS={};
 const REG_PAGE=200;
 let EDIT_ID=null;
@@ -534,9 +544,12 @@ document.addEventListener('click',e=>{
 
 // ---------- dock + drawer (Axofy-style) ----------
 function goTab(k){
-  // The Back button only makes sense off Overview (it returns there).
+  // Leaving Regs closes any open event page, so returning shows the overall view.
+  if(k!=='reg'){EV_DETAIL='';FILTER_EV='';}
+  // The Back button only makes sense off Overview (it returns there),
+  // or inside an event page (it returns to all events).
   // On Overview itself there is nowhere to go back to, so hide it.
-  $('topBack').style.display=(k==='overview')?'none':'';
+  $('topBack').style.display=(k==='overview'&&!EV_DETAIL)?'none':'';
   document.querySelectorAll('#dock button[data-tab]').forEach(x=>x.classList.toggle('on',x.dataset.tab===k));
   document.querySelectorAll('.dr-link[data-tab]').forEach(x=>x.classList.toggle('on',x.dataset.tab===k));
   ['overview','reg','events','coords','log'].forEach(s=>$('sec-'+s).classList.toggle('hidden',s!==k));
@@ -551,7 +564,7 @@ function openDrawer(o){$('drawer').classList.toggle('open',o);$('scrim').classLi
 function closeDrawer(){openDrawer(false);}
 $('dockMenu').onclick=()=>openDrawer(true);
 $('scrim').onclick=closeDrawer;
-$('topBack').onclick=()=>goTab('overview');
+$('topBack').onclick=()=>{ if(EV_DETAIL){closeEvent();} else {goTab('overview');} };
 $('topMenu').onclick=()=>openDrawer(true);
 
 // ---------- dock lift: keep the pinned bottom dock above the Android browser toolbar ----------
@@ -684,11 +697,12 @@ function render(){
     const n=evRegCount(e.slug,e.name);
     el.textContent=n+' reg'+(n===1?'':'s');
   });
-  // overview per-event list
+  // overview per-event list (tap a row to open that event's page in Regs)
   $('ovEvents').innerHTML=EVENTS_DB.map(e=>{
     const s=evStats(e);
-    return `<div class="glass crow"><div class="who"><b>${esc(e.name)}</b><span>${esc(e.tagline||'')}</span></div><span class="mut">${s.n} registered · ${s.paid} paid · <span class="amt">${fmt(s.amount)}</span></span></div>`;
+    return `<div class="glass crow" data-ev="${esc(e.slug)}" style="cursor:pointer"><div class="who"><b>${esc(e.name)}</b><span>${esc(e.tagline||'')}</span></div><span class="mut">${s.n} registered · ${s.paid} paid · <span class="amt">${fmt(s.amount)}</span></span></div>`;
   }).join('')||'<div class="empty">No events yet.</div>';
+  document.querySelectorAll('#ovEvents .crow').forEach(c=>c.onclick=()=>{goTab('reg');openEvent(c.dataset.ev);});
   // event cards
   $('evGrid').innerHTML=EVENTS_DB.map(e=>{
     const s=evStats(e);
@@ -699,7 +713,21 @@ function render(){
       <div class="row"><span>Collected</span><em class="amt">${fmt(s.amount)}</em></div>
     </div>`;
   }).join('');
-  document.querySelectorAll('.evcard').forEach(c=>c.onclick=()=>{FILTER_EV=FILTER_EV===c.dataset.ev?'':c.dataset.ev;$('fEv').value=FILTER_EV;render();});
+  document.querySelectorAll('.evcard').forEach(c=>c.onclick=()=>openEvent(c.dataset.ev));
+  // event inside page: overall view shows the cards, an open event shows its own page
+  const ev=EV_DETAIL?EVENTS_DB.find(e=>e.slug===EV_DETAIL):null;
+  $('evDetail').classList.toggle('hidden',!ev);
+  $('evGrid').classList.toggle('hidden',!!ev);
+  $('fEv').classList.toggle('hidden',!!ev);
+  if(ev){
+    const s=evStats(ev);
+    $('evDetailName').textContent=ev.name;
+    $('evDetailSub').textContent=(ev.tagline||'')+' · Team '+ev.teamMin+'–'+ev.teamMax+' · Fee '+(ev.fee?fmt(ev.fee):'—');
+    $('evDetailStats').innerHTML=
+      '<div class="glass stat"><small>REGISTERED</small><b>'+s.n+'</b></div>'+
+      '<div class="glass stat"><small>PAID</small><b class="green">'+s.paid+'</b></div>'+
+      '<div class="glass stat"><small>COLLECTED</small><b class="gold">'+fmt(s.amount)+'</b></div>';
+  }
   // rows
   const w=isWrite();
   $('empty').classList.toggle('hidden',list.length>0);
@@ -781,16 +809,29 @@ $('modalSave').onclick=async()=>{
 
 $('q').addEventListener('input',render);
 $('fEv').addEventListener('change',e=>{FILTER_EV=e.target.value;render();});
+
+// ---------- event inside pages ----------
+function openEvent(slug){
+  EV_DETAIL=slug;FILTER_EV=slug;$('fEv').value=slug;
+  render();window.scrollTo(0,0);
+}
+function closeEvent(){
+  EV_DETAIL='';FILTER_EV='';$('fEv').value='';
+  render();window.scrollTo(0,0);
+}
+$('evBackBtn').onclick=closeEvent;
 $('fPay').addEventListener('change',render);
 $('fRisk').addEventListener('change',render);
 $('loadMoreBtn').onclick=()=>load(false);
 
 // ---------- posters ----------
-async function refreshPosterFlags(){
+// Uses the poster flag from /api/events (already loaded into EVENTS_DB),
+// so no /api/poster call is made per event just to check existence.
+function refreshPosterFlags(){
   let changed=false;
   for(const e of EVENTS_DB){
-    try{const r=await fetch('/api/poster?event='+e.slug+'&v='+POSTER_V,{cache:'no-store'});const has=r.ok;if(POSTER_CUSTOM[e.slug]!==has){POSTER_CUSTOM[e.slug]=has;changed=true;}}
-    catch(err){if(POSTER_CUSTOM[e.slug]){POSTER_CUSTOM[e.slug]=false;changed=true;}}
+    const has=!!e.poster;
+    if(POSTER_CUSTOM[e.slug]!==has){POSTER_CUSTOM[e.slug]=has;changed=true;}
   }
   if(changed)renderEventsAdmin();
 }
@@ -957,7 +998,7 @@ function renderEventsAdmin(){
     const custom=POSTER_CUSTOM[e.slug];
     return `<div class="glass crow evrow">
       <div class="evposter">
-        <img src="/api/poster?event=${e.slug}&v=${POSTER_V}" onerror="this.onerror=null;this.src='/assets/poster-${e.slug}.webp'" alt="${esc(e.name)} poster">
+        <img src="${e.poster?'/api/poster?event='+e.slug+'&v='+POSTER_V:'/assets/poster-'+e.slug+'.webp'}" alt="${esc(e.name)} poster">
         ${w?`<label class="pchange">Change<input type="file" accept="image/*" data-up="${e.slug}" style="display:none"></label>${custom?`<button class="preset" data-reset="${e.slug}">Reset</button>`:''}`:''}
       </div>
       <div class="who"><b>${esc(e.name)}</b><span>${esc(e.tagline||'')} · 1st ${fmt(e.prize1)} / 2nd ${fmt(e.prize2)} · Team ${e.teamMin}–${e.teamMax} · <span data-count="${e.slug}">${n} reg${n===1?'':'s'}</span></span></div>
@@ -1014,7 +1055,7 @@ function openEvEdit(slug){
   if(!e)return;
   EDIT_EV=slug;
   $('evEName').value=e.name||'';$('evETag').value=e.tagline||'';$('evEAbout').value=e.about||'';
-  $('evEP1').value=e.prize1;$('evEP2').value=e.prize2;
+  $('evEP1').value=e.prize1;$('evEP2').value=e.prize2;$('evEFee').value=e.fee||'';
   $('evEMin').value=e.teamMin;$('evEMax').value=e.teamMax;
   $('evEDur').value=e.duration||'';$('evEWhen').value=e.when||'';$('evEWhere').value=e.where||'';
   $('evEHow').value=(e.how||[]).join('\n');$('evERules').value=(e.rules||[]).join('\n');$('evEReqs').value=(e.reqs||[]).join('\n');
@@ -1027,7 +1068,7 @@ $('modalEvSave').onclick=async()=>{
   if(!EDIT_EV)return;
   const lines=id=>$(id).value.split('\n').map(s=>s.trim()).filter(Boolean);
   const body={slug:EDIT_EV,name:$('evEName').value.trim(),tagline:$('evETag').value.trim(),about:$('evEAbout').value.trim(),
-    prize1:parseInt($('evEP1').value,10)||0,prize2:parseInt($('evEP2').value,10)||0,
+    prize1:parseInt($('evEP1').value,10)||0,prize2:parseInt($('evEP2').value,10)||0,fee:$('evEFee').value.trim(),
     teamMin:parseInt($('evEMin').value,10)||1,teamMax:parseInt($('evEMax').value,10)||1,
     duration:$('evEDur').value.trim(),when:$('evEWhen').value.trim(),where:$('evEWhere').value.trim(),
     how:lines('evEHow'),rules:lines('evERules'),reqs:lines('evEReqs'),
@@ -1040,7 +1081,7 @@ $('evAddBtn').onclick=async()=>{
   const name=$('evName').value.trim();
   if(!name){toast('Enter a name');return;}
   const body={name,tagline:$('evTag').value.trim(),
-    prize1:parseInt($('evP1').value,10)||0,prize2:parseInt($('evP2').value,10)||0,
+    prize1:parseInt($('evP1').value,10)||0,prize2:parseInt($('evP2').value,10)||0,fee:$('evFee').value.trim(),
     teamMin:parseInt($('evMin').value,10)||1,teamMax:parseInt($('evMax').value,10)||1,
     duration:$('evDur').value.trim(),order:parseInt($('evOrd').value,10)||99,
     about:'',how:[],rules:[],reqs:[],visible:true,regOpen:true};
@@ -1050,7 +1091,7 @@ $('evAddBtn').onclick=async()=>{
     if(!r.ok){toast(d.error||'Failed');return;}
     await ensureEvents(true);
     renderEventsAdmin();render();
-    ['evName','evTag','evP1','evP2','evMin','evMax','evDur','evOrd'].forEach(id=>{$(id).value='';});
+    ['evName','evTag','evP1','evP2','evFee','evMin','evMax','evDur','evOrd'].forEach(id=>{$(id).value='';});
     toast('Event added — now tap Edit to fill in the details');
   }catch(e){toast('Failed');}
 };

@@ -93,18 +93,18 @@
     <div class="ah-spark" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
     <h2 class="ah-title">The age of heroes</h2>
     <div class="ah-card" aria-hidden="true">
-<div class="ah-slide on"><div class="ah-frame"><img loading="lazy" decoding="async" src="/api/poster?event=reels-competition" onerror="this.onerror=null;this.src='/assets/poster-reels-competition.webp'" alt=""></div><span class="ah-label">Reels Competition</span></div>
-      <div class="ah-slide"><div class="ah-frame"><img loading="lazy" decoding="async" src="/api/poster?event=prompting" onerror="this.onerror=null;this.src='/assets/poster-prompting.webp'" alt=""></div><span class="ah-label">Prompting</span></div>
-      <div class="ah-slide"><div class="ah-frame"><img src="/api/poster?event=quiz" onerror="this.onerror=null;this.src='/assets/poster-quiz.webp'" alt=""></div><span class="ah-label">Quiz</span></div>
-      <div class="ah-slide"><div class="ah-frame"><img loading="lazy" decoding="async" src="/api/poster?event=treasure-hunt" onerror="this.onerror=null;this.src='/assets/poster-treasure-hunt.webp'" alt=""></div><span class="ah-label">Treasure Hunt</span></div>
+<div class="ah-slide on"><div class="ah-frame"><img loading="lazy" decoding="async" src="/assets/poster-reels-competition.webp" alt=""></div><span class="ah-label">Reels Competition</span></div>
+      <div class="ah-slide"><div class="ah-frame"><img loading="lazy" decoding="async" src="/assets/poster-prompting.webp" alt=""></div><span class="ah-label">Prompting</span></div>
+      <div class="ah-slide"><div class="ah-frame"><img src="/assets/poster-quiz.webp" alt=""></div><span class="ah-label">Quiz</span></div>
+      <div class="ah-slide"><div class="ah-frame"><img loading="lazy" decoding="async" src="/assets/poster-treasure-hunt.webp" alt=""></div><span class="ah-label">Treasure Hunt</span></div>
     </div>
   </div>
 </section>
 <section class="ah-gallery" aria-label="Events">
-<a class="ah-gcard" href="/registration/reels-competition"><div class="tk-wrap"><div class="tk"><img class="tk-poster" loading="lazy" decoding="async" src="/api/poster?event=reels-competition" onerror="this.onerror=null;this.src='/assets/poster-reels-competition.webp'" alt="Reels Competition"><div class="tk-perf"></div></div></div></a>
-  <a class="ah-gcard" href="/registration/prompting"><div class="tk-wrap"><div class="tk"><img class="tk-poster" loading="lazy" decoding="async" src="/api/poster?event=prompting" onerror="this.onerror=null;this.src='/assets/poster-prompting.webp'" alt="Prompting"><div class="tk-perf"></div></div></div></a>
-  <a class="ah-gcard" href="/registration/quiz"><div class="tk-wrap"><div class="tk"><img class="tk-poster" loading="lazy" decoding="async" src="/api/poster?event=quiz" onerror="this.onerror=null;this.src='/assets/poster-quiz.webp'" alt="Quiz"><div class="tk-perf"></div></div></div></a>
-  <a class="ah-gcard" href="/registration/treasure-hunt"><div class="tk-wrap"><div class="tk"><img class="tk-poster" loading="lazy" decoding="async" src="/api/poster?event=treasure-hunt" onerror="this.onerror=null;this.src='/assets/poster-treasure-hunt.webp'" alt="Treasure Hunt"><div class="tk-perf"></div></div></div></a>
+<a class="ah-gcard" href="/registration/reels-competition"><div class="tk-wrap"><div class="tk"><img class="tk-poster" loading="lazy" decoding="async" src="/assets/poster-reels-competition.webp" alt="Reels Competition"><div class="tk-perf"></div></div></div></a>
+  <a class="ah-gcard" href="/registration/prompting"><div class="tk-wrap"><div class="tk"><img class="tk-poster" loading="lazy" decoding="async" src="/assets/poster-prompting.webp" alt="Prompting"><div class="tk-perf"></div></div></div></a>
+  <a class="ah-gcard" href="/registration/quiz"><div class="tk-wrap"><div class="tk"><img class="tk-poster" loading="lazy" decoding="async" src="/assets/poster-quiz.webp" alt="Quiz"><div class="tk-perf"></div></div></div></a>
+  <a class="ah-gcard" href="/registration/treasure-hunt"><div class="tk-wrap"><div class="tk"><img class="tk-poster" loading="lazy" decoding="async" src="/assets/poster-treasure-hunt.webp" alt="Treasure Hunt"><div class="tk-perf"></div></div></div></a>
 </section>
 
 <main>
@@ -287,12 +287,21 @@
 <script>
 // Home gallery: keep event names in sync with the database. Text only, and only
 // when the count matches the gallery (4) — the gallery layout is never touched.
+// Also swaps in a custom poster (via /api/poster) only for events that have
+// one — the static imgs above already point at the static asset, so no
+// /api/poster call is made for events without a custom poster.
 (function(){
   fetch('/api/events').then(function(r){return r.json();}).then(function(d){
     var list=(d.events||[]).filter(function(e){return e.visible;});
     var slides=document.querySelectorAll('.ah-label'), cards=document.querySelectorAll('.ah-glabel');
     if(list.length===slides.length) list.forEach(function(e,i){ if(slides[i])slides[i].textContent=e.name; });
     if(list.length===cards.length) list.forEach(function(e,i){ if(cards[i])cards[i].textContent=e.name; });
+    list.forEach(function(e){
+      if(!e.poster)return;
+      document.querySelectorAll('img[src="/assets/poster-'+e.slug+'.webp"]').forEach(function(img){
+        img.src='/api/poster?event='+e.slug;
+      });
+    });
   }).catch(function(){});
 })();
 </script>

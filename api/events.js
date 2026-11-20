@@ -220,14 +220,12 @@ export async function loadEvents() {
   // first run nothing is stale anymore, so this never writes again.
   let dirty = false;
   for (const e of list) if (normalizeEvent(e)) dirty = true;
-  for (const e of list) {
-    if (HIDDEN_SLUGS.has(e.slug) && e.visible !== false) { e.visible = false; dirty = true; }
-  }
-  // Restore: Reels Competition is back on the public site (19 Nov 2026), so
-  // flip the stored copy to visible again. Runs the same way as the hide above.
-  for (const e of list) {
-    if (RESTORED_SLUGS.has(e.slug) && e.visible !== true) { e.visible = true; dirty = true; }
-  }
+  // The one-time HIDDEN/RESTORED/POSTER_ORDER/PRIZE_FIXES forcing blocks
+  // below were removed 20 Nov 2026: they already ran, and leaving them in
+  // meant every read silently overwrote admin edits (reorder, Treasure Hunt
+  // prizes, and the Visible checkbox for Idea Presentation / Reels). The
+  // stored copy already holds the right values, and the admin UI is now
+  // the source of truth for order, prizes, and visibility.
   // Real rules (20 Nov 2026): Bista's official rules replace the sample
   // rules. One-time: a stored event without rulesV 2 takes the official
   // team size, fee, duration and how/rules/reqs from DEFAULT_EVENTS.
@@ -243,13 +241,6 @@ export async function loadEvents() {
       e.rulesV = 2; dirty = true;
     }
   }
-  // Poster order (19 Nov 2026): the official SPARK poster lists the events
-  // as Reels, Prompting, Quiz, Treasure Hunt. Force the stored copy to match.
-  for (const e of list) {
-    if (POSTER_ORDER[e.slug] !== undefined && e.order !== POSTER_ORDER[e.slug]) { e.order = POSTER_ORDER[e.slug]; dirty = true; }
-    const pf = PRIZE_FIXES[e.slug];
-    if (pf && (e.prize1 !== pf.prize1 || e.prize2 !== pf.prize2)) { e.prize1 = pf.prize1; e.prize2 = pf.prize2; dirty = true; }
-  }
   if (dirty) {
     const obj = {};
     list.forEach(e => { obj[e.slug] = JSON.stringify(e); });
@@ -264,20 +255,12 @@ export async function loadEvents() {
 // anything changed. The venue name ("Mar Augusthinose College") is correct
 // and is never touched.
 
-// Events the NEXUS leader removed (18 Nov 2026): hidden from the public site
-// and from registration, but kept in storage so the admin can still see them
-// and restore them later if needed. (Reels Competition was restored 19 Nov 2026.)
-const HIDDEN_SLUGS = new Set(['idea-presentation']);
-// Events restored by the NEXUS leader (19 Nov 2026): back on the public site
-// and registration. The stored copy is flipped to visible on first read.
-const RESTORED_SLUGS = new Set(['reels-competition']);
-// Poster order (19 Nov 2026): the official SPARK poster lists the events as
-// Reels Competition, Prompting, Quiz, Treasure Hunt. The stored copy is
-// forced to this order on read.
-const POSTER_ORDER = { 'reels-competition': 1, 'prompting': 2, 'quiz': 3, 'treasure-hunt': 4, 'idea-presentation': 5 };
-// Treasure Hunt is a single winner-takes-all prize (19 Nov 2026): 1st 6000,
-// no 2nd prize. The stored copy is forced to this on read.
-const PRIZE_FIXES = { 'treasure-hunt': { prize1: 6000, prize2: 0 } };
+// The one-time HIDDEN/RESTORED/POSTER_ORDER/PRIZE_FIXES constants were
+// removed 20 Nov 2026 (see loadEvents): they already ran, and keeping the
+// forcing meant every read silently overwrote admin edits. The stored copy
+// already holds the right values (Idea Presentation hidden, Reels visible,
+// poster order 1-5, Treasure Hunt 6000 winner-takes-all), and the admin UI
+// is now the source of truth.
 const STALE_FIXES = [
   ['Valid college ID card', 'Valid school ID card'],
   ['outscore every other college', 'outscore every other school'],
@@ -354,9 +337,16 @@ export default async function handler(req, res) {
     res.setHeader('Vary', 'Authorization');
     try {
       const events = await loadEvents();
+      // One lookup for all custom posters: pages use this flag to skip the
+      // /api/poster call entirely when no custom poster exists. That call
+      // 404s and burns a Redis command per event per student, so skipping
+      // it is the single biggest free-tier saving on fest day.
+      let posters = {};
+      try { posters = await redis.hgetall('celesta:posters') || {}; } catch {}
       // Unauthenticated callers see listed events only; a logged-in admin
       // (read or write token) sees hidden ones too, for the admin UI.
-      const list = role ? events : events.filter(e => e.visible);
+      const list = (role ? events : events.filter(e => e.visible))
+        .map(e => ({ ...e, poster: !!posters[e.slug] }));
       return res.status(200).json({ events: list });
     } catch (e) {
       return res.status(200).json({ events: DEFAULT_EVENTS.filter(e => e.visible) });
