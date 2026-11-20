@@ -180,12 +180,15 @@ export const DEFAULT_EVENTS = [
     "how": [
       "Create in 2 hours. The reel must be created entirely within the competition time (2 hours).",
       "Shoot on campus. All footage must be shot within the fest venue/campus, using your own mobile phone and equipment.",
-      "Submit one reel. Each team submits only one reel; your own voice-overs are allowed."
+      "Submit one reel. Each team submits only one reel; your own voice-overs are allowed.",
+      "Judged on creativity and originality, video quality and editing, content and presentation, and overall impact."
     ],
     "rules": [
       "Each team must consist of exactly 2 members.",
+      "The registration fee is ₹100 per team.",
       "No pre-recorded videos or previously edited clips are allowed.",
-      "No assistance from college staff, organisers, or external people is allowed.",
+      "No assistance from college staff, organisers, or external persons is allowed.",
+      "Participants must shoot and edit their reels independently.",
       "Offensive, inappropriate, or disrespectful content is strictly prohibited.",
       "Dangerous stunts or activities that disrupt the fest are not allowed.",
       "The organisers' decision is final.",
@@ -197,12 +200,13 @@ export const DEFAULT_EVENTS = [
       "Open to school students only. One team per student, per event.",
       "Your own mobile phone and equipment.",
       "Video: 30\u201390 seconds, MP4, 9:16 portrait, minimum 720p.",
+      "Editing must be completed within the allotted competition time.",
       "Basic editing apps and copyright-safe audio are permitted."
     ],
     "order": 1,
     "visible": true,
     "regOpen": true,
-    "rulesV": 2
+    "rulesV": 3
   }
 ];
 
@@ -242,15 +246,17 @@ export async function loadEvents() {
       e.rulesV = 2; dirty = true;
     }
   }
-  // Reels usage rights (20 Nov 2026): the college reserves the right to use
-  // submitted reels on its official channels. One-time APPEND to the stored
-  // Reels rules only, and only if the clause is not already there — it never
-  // removes or rewrites anything, so admin edits to the rules stay intact.
+  // Reels official rules (20 Nov 2026): the full official ruleset replaces
+  // the sample rules. One-time: a stored Reels event without rulesV 3 takes
+  // the official team size, fee, duration and how/rules/reqs from
+  // DEFAULT_EVENTS. Admin edits after this stick, because rulesV is then 3.
   for (const e of list) {
-    if (e.slug === 'reels-competition' && Array.isArray(e.rules)
-      && !e.rules.some(r => String(r).includes('reserves the right to use'))) {
-      e.rules.push('The college reserves the right to use, share, publish or reproduce the submitted reels on its official social media platforms, website and other promotional materials.');
-      dirty = true;
+    const d = defBySlug[e.slug];
+    if (e.slug === 'reels-competition' && d && d.rulesV === 3 && e.rulesV !== 3) {
+      e.teamMin = d.teamMin; e.teamMax = d.teamMax; e.fee = d.fee;
+      e.duration = d.duration;
+      e.how = (d.how || []).slice(); e.rules = (d.rules || []).slice(); e.reqs = (d.reqs || []).slice();
+      e.rulesV = 3; dirty = true;
     }
   }
   if (dirty) {
