@@ -188,7 +188,8 @@ export const DEFAULT_EVENTS = [
       "No assistance from college staff, organisers, or external people is allowed.",
       "Offensive, inappropriate, or disrespectful content is strictly prohibited.",
       "Dangerous stunts or activities that disrupt the fest are not allowed.",
-      "The organisers' decision is final."
+      "The organisers' decision is final.",
+      "The college reserves the right to use, share, publish or reproduce the submitted reels on its official social media platforms, website and other promotional materials."
     ],
     "reqs": [
       "Valid school ID card for every participant.",
@@ -239,6 +240,17 @@ export async function loadEvents() {
       e.duration = d.duration;
       e.how = (d.how || []).slice(); e.rules = (d.rules || []).slice(); e.reqs = (d.reqs || []).slice();
       e.rulesV = 2; dirty = true;
+    }
+  }
+  // Reels usage rights (20 Nov 2026): the college reserves the right to use
+  // submitted reels on its official channels. One-time APPEND to the stored
+  // Reels rules only, and only if the clause is not already there — it never
+  // removes or rewrites anything, so admin edits to the rules stay intact.
+  for (const e of list) {
+    if (e.slug === 'reels-competition' && Array.isArray(e.rules)
+      && !e.rules.some(r => String(r).includes('reserves the right to use'))) {
+      e.rules.push('The college reserves the right to use, share, publish or reproduce the submitted reels on its official social media platforms, website and other promotional materials.');
+      dirty = true;
     }
   }
   if (dirty) {
