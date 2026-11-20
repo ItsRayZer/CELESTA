@@ -767,6 +767,15 @@ textarea{min-height:92px;resize:vertical}
   pointer-events:none;
 }
 .wb-campus-photo video.on{opacity:1;}
+/* Reels fallback photo (the college photo): shown whenever no reel is playing
+   (still loading, or a reel failed to play). Sits over the campus photo and
+   under the reel videos; a playing reel fades in over it. Same parallax
+   transform as the photo (about.js). */
+#wb-reels-fallback{
+  position:absolute;
+  inset:0;
+  will-change:transform;
+}
 /* Soft white cloud mist blending top of campus photo into the white section above */
 .wb-campus-mist-top{
   position:absolute;

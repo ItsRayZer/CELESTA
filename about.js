@@ -164,40 +164,124 @@
     }
 
     var campImg = document.getElementById("wb-campus-img");
-    var campVid = document.getElementById("wb-campus-vid");
-    if(campImg){
-      gsap.fromTo(campImg,
+    var campLayers = [campImg, document.getElementById("wb-reels-fallback"),
+      document.getElementById("wb-reel-a"), document.getElementById("wb-reel-b")];
+    campLayers.forEach(function(el){
+      if(!el) return;
+      gsap.fromTo(el,
         { yPercent: -7, scale: 1.1 },
         { yPercent: 7, scale: 1.02, ease: "none",
           scrollTrigger: { trigger: "#college", start: "top bottom", end: "bottom top", scrub: true } }
       );
-    }
-    if(campVid){
-      gsap.fromTo(campVid,
-        { yPercent: -7, scale: 1.1 },
-        { yPercent: 7, scale: 1.02, ease: "none",
-          scrollTrigger: { trigger: "#college", start: "top bottom", end: "bottom top", scrub: true } }
-      );
-    }
+    });
     return true;
   }
 
-  /* Campus video: fade in over the photo once it can play. No spinner, no
-     controls; the photo stays underneath until the video is ready, and if the
-     video fails the photo simply stays. */
-  function initCampusVideo(){
-    var vid = document.getElementById("wb-campus-vid");
-    if(!vid) return;
-    function show(){ vid.classList.add("on"); }
-    if(vid.readyState >= 3){ show(); return; }
-    vid.addEventListener("canplay", show, { once:true });
-    vid.addEventListener("error", function(){ vid.remove(); });
-    /* If the video is still not ready after a while, leave the photo; the
-       canplay listener above will fade it in whenever it does arrive. */
-    var p = vid.play ? vid.play() : null;
-    if(p && p.catch) p.catch(function(){ /* autoplay blocked; stays a photo */ });
+  /* Reels rotator: the 8 Instagram reels, cut into 32 five-second clips
+     (4 per reel), played one at a time for 5s each. The reel order is
+     shuffled and each reel's clips are shuffled too, so no reel and no
+     five-second part repeats until every reel has played. Two videos
+     crossfade (1.2s opacity) so there is no cut, and the next clip is
+     preloaded into the hidden video while the current one plays, so there
+     is no loading flash. If a clip fails to load or play, the college
+     photo underneath stays visible and the rotator moves on. */
+  function initReelsRotator(){
+    var va = document.getElementById("wb-reel-a");
+    var vb = document.getElementById("wb-reel-b");
+    if(!va || !vb) return;
+    var vids = [va, vb];
+    var SEG = 5; /* seconds per clip */
+    var REELS = 8, PER = 4;
+    function shuffle(a){
+      for(var i=a.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=a[i]; a[i]=a[j]; a[j]=t; }
+      return a;
+    }
+    /* per-reel shuffled clip numbers, refilled when a reel's clips run out */
+    var pool = [];
+    for(var r=0;r<REELS;r++) pool.push(shuffle([1,2,3,4]));
+    /* shuffled reel order, reshuffled after every full round of 8 */
+    var order = shuffle([0,1,2,3,4,5,6,7]);
+    var oi = 0;
+    var lastReel = -1;
+    function nextClip(){
+      if(oi >= order.length){
+        /* a new round must not start with the reel that just played */
+        do { order = shuffle([0,1,2,3,4,5,6,7]); } while(order[0] === lastReel);
+        oi = 0;
+      }
+      var ri = order[oi++];
+      lastReel = ri;
+      if(!pool[ri].length) pool[ri] = shuffle([1,2,3,4]);
+      var ci = pool[ri].pop();
+      return "/assets/reels/r" + (ri+1) + "-" + ci + ".mp4";
+    }
+    var active = 0; /* index of the visible video */
+    var timer = null;
+    var cached = null; /* next clip src, already prepared in the hidden video */
+    function prepare(src, vid, done){
+      var ok = false;
+      function fin(v){ if(!ok){ ok = true; done(v); } }
+      if(vid.dataset.clip === src){
+        if(vid.readyState >= 2){ fin(true); return; }
+        vid.addEventListener("canplay", function(){ fin(true); }, { once:true });
+        vid.addEventListener("error", function(){ fin(false); }, { once:true });
+        setTimeout(function(){ fin(vid.readyState >= 2); }, 4000);
+        return;
+      }
+      vid.addEventListener("canplay", function(){ fin(true); }, { once:true });
+      vid.addEventListener("error", function(){ fin(false); }, { once:true });
+      vid.dataset.clip = src;
+      vid.src = src;
+      vid.load();
+      setTimeout(function(){ fin(vid.readyState >= 2); }, 4000);
+    }
+    function reveal(src){
+      var next = vids[1-active];
+      var pr = next.play ? next.play() : null;
+      if(pr && pr.catch) pr.catch(function(){});
+      next.classList.add("on");
+      vids[active].classList.remove("on");
+      try{ vids[active].pause(); }catch(e){}
+      active = 1-active;
+      var following = nextClip();
+      cached = following;
+      prepare(following, vids[1-active], function(ok){ if(!ok) cached = null; });
+      if(timer) clearTimeout(timer);
+      timer = setTimeout(advance, SEG*1000);
+    }
+    function advance(){
+      var src = cached || nextClip();
+      cached = null;
+      var next = vids[1-active];
+      if(next.dataset.clip === src && next.readyState >= 2){
+        reveal(src);
+      } else {
+        prepare(src, next, function(ok){
+          if(ok) reveal(src);
+          else { if(timer) clearTimeout(timer); timer = setTimeout(advance, 1200); }
+        });
+      }
+    }
+    /* boot: prepare the first clip, then reveal it (the photo shows meanwhile) */
+    var first = nextClip();
+    prepare(first, vids[0], function(ok){
+      if(ok) reveal(first);
+      else { if(timer) clearTimeout(timer); timer = setTimeout(advance, 1200); }
+    });
+    /* pause when the tab is hidden so it does not burn battery or data */
+    document.addEventListener("visibilitychange", function(){
+      if(document.hidden){
+        vids.forEach(function(v){ try{ v.pause(); }catch(e){} });
+        if(timer) clearTimeout(timer);
+      } else {
+        var cur = vids[active];
+        if(cur && cur.paused) cur.play().catch(function(){});
+        if(timer) clearTimeout(timer);
+        timer = setTimeout(advance, SEG*1000);
+      }
+    });
   }
-  initCampusVideo();
+  initReelsRotator();
 
   function initNativeScrub(){
     if(initialized) return;
@@ -238,9 +322,12 @@
       if(campImg && colSec){
         var cr = colSec.getBoundingClientRect();
         var cp = clamp((vh - cr.top) / Math.max(1, vh + cr.height), 0, 1);
-        campImg.style.transform = "translate3d(0," + (-7 + 14 * cp).toFixed(1) + "%,0) scale(1.08)";
-        var campVid = document.getElementById("wb-campus-vid");
-        if(campVid) campVid.style.transform = "translate3d(0," + (-7 + 14 * cp).toFixed(1) + "%,0) scale(1.08)";
+        var campT = "translate3d(0," + (-7 + 14 * cp).toFixed(1) + "%,0) scale(1.08)";
+        campImg.style.transform = campT;
+        ["wb-reels-fallback", "wb-reel-a", "wb-reel-b"].forEach(function(id){
+          var el = document.getElementById(id);
+          if(el) el.style.transform = campT;
+        });
       }
     }
     var rafS = 0;
