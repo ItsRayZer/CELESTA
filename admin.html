@@ -534,6 +534,9 @@ document.addEventListener('click',e=>{
 
 // ---------- dock + drawer (Axofy-style) ----------
 function goTab(k){
+  // The Back button only makes sense off Overview (it returns there).
+  // On Overview itself there is nowhere to go back to, so hide it.
+  $('topBack').style.display=(k==='overview')?'none':'';
   document.querySelectorAll('#dock button[data-tab]').forEach(x=>x.classList.toggle('on',x.dataset.tab===k));
   document.querySelectorAll('.dr-link[data-tab]').forEach(x=>x.classList.toggle('on',x.dataset.tab===k));
   ['overview','reg','events','coords','log'].forEach(s=>$('sec-'+s).classList.toggle('hidden',s!==k));
@@ -590,6 +593,8 @@ $('logoutBtn').onclick=()=>{localStorage.removeItem('celesta_admin_tok');localSt
 // ---------- dashboard ----------
 async function showDash(){
   $('login').classList.add('hidden');$('dash').classList.remove('hidden');$('dock').classList.remove('hidden');
+  // Dashboard always opens on Overview, where Back has nowhere to go.
+  $('topBack').style.display='none';
   const w=isWrite();
   $('rolePill').textContent=w?'WRITE · FULL ACCESS':'READ · VIEW ONLY';
   $('rolePill').classList.toggle('write',w);
