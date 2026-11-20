@@ -16,105 +16,118 @@ export const DEFAULT_EVENTS = [
     "slug": "quiz",
     "name": "Quiz",
     "tagline": "Battle of wits across tech, science and general knowledge.",
-    "about": "A fast, team-based quiz covering technology, science, current affairs and general knowledge. Think quickly, trust your team, and outscore every other school.",
+    "about": "A fast, team-based quiz covering General Knowledge. Think quickly, trust your team, and outscore every other school.",
     "prize1": 2000,
     "prize2": 1000,
     "teamMin": 2,
-    "teamMax": 3,
-    "duration": "≈ 90 minutes",
-    "when": "Fri, 27 Nov 2026 · 10 AM",
+    "teamMax": 2,
+    "fee": "\u20b9100 per team",
+    "duration": "\u2248 90 minutes",
+    "when": "Fri, 27 Nov 2026 \u00b7 10 AM",
     "where": "Mar Augusthinose College, Ramapuram",
     "how": [
-      "Round 1 — Written prelims. A written paper for all teams. The top teams move on.",
-      "Round 2 — Rapid fire & visuals. Short questions and picture rounds with quick answers.",
-      "Round 3 — Final buzzer round. Finalists compete on the buzzer; ties are settled by sudden death."
+      "General Knowledge. The quiz consists of questions based on General Knowledge.",
+      "Multiple rounds. Teams are shortlisted after each round based on performance; only shortlisted teams move to the next round.",
+      "Final round. The team with the highest score in the final round is declared the winner."
     ],
     "rules": [
-      "No mobile phones, smartwatches or notes during any round.",
-      "Answers must come from the team — no help from the audience.",
-      "The quizmaster's ruling on an answer is final.",
-      "Judges' and organizers' decisions are final.",
-      "Misconduct or cheating leads to disqualification."
+      "Each team must consist of exactly 2 members.",
+      "Electronic gadgets are strictly prohibited during the competition.",
+      "The team that raises their hand first gets the first chance to answer; either of the two team members can give the answer.",
+      "If the first team gives an incorrect answer or fails to answer within the given time, the question will be passed to another team.",
+      "Team members are not allowed to seek help from the audience.",
+      "Any form of cheating or unfair practice will lead to disqualification.",
+      "The quiz master's decision will be final."
     ],
     "reqs": [
       "Valid school ID card for every participant.",
       "Report at the registration desk by 9:30 AM.",
-      "Open to school students only. One team per student, per event.",
-      "Pen and a rough sheet (if you prefer your own)."
+      "Open to school students only. One team per student, per event."
     ],
     "order": 3,
     "visible": true,
-    "regOpen": true
+    "regOpen": true,
+    "rulesV": 2
   },
   {
     "slug": "treasure-hunt",
     "name": "Treasure Hunt",
     "tagline": "Race across the campus solving clues to find the treasure.",
-    "about": "Teams receive a first clue and race across the campus, solving riddles, puzzles and tech challenges that lead to the next checkpoint — and finally to the treasure.",
+    "about": "Teams receive a first clue and race across the campus, solving clues and completing tasks that lead to the next checkpoint — and finally to the treasure.",
     "prize1": 6000,
     "prize2": 0,
-    "teamMin": 3,
-    "teamMax": 5,
-    "duration": "≈ 2 hours",
-    "when": "Fri, 27 Nov 2026 · 10 AM",
+    "teamMin": 4,
+    "teamMax": 4,
+    "fee": "\u20b9200 per team",
+    "duration": "\u2248 2 hours",
+    "when": "Fri, 27 Nov 2026 \u00b7 10 AM",
     "where": "Mar Augusthinose College, Ramapuram",
     "how": [
-      "Start. Every team gets its first clue at the same time from the registration desk.",
-      "Checkpoints. Solve each clue and have a volunteer stamp your card before moving on.",
-      "Finish. The first team to complete the trail with the most valid stamps wins; time penalties apply for hints."
+      "Solve the clues. Teams solve the clues and complete the tasks within the given time.",
+      "Collect all clues. Teams must collect all the clues to complete the Treasure Hunt.",
+      "Finish first. The team that collects all the clues and finds the treasure first, by following all the rules, is declared the winner."
     ],
     "rules": [
-      "The whole team must stay together at every checkpoint.",
-      "Walk — running in corridors and labs is not allowed.",
-      "Restricted areas are marked; entering them means disqualification.",
-      "Do not move, hide or damage clue items; leave them as you found them.",
-      "Judges' and organizers' decisions are final.",
-      "Misconduct or cheating leads to disqualification."
+      "Each team must consist of exactly 4 members.",
+      "Mobile phones are strictly prohibited during the game.",
+      "Participants must follow the instructions given by the coordinators.",
+      "Sharing clues or answers with other teams is not allowed.",
+      "Participants must not leave the designated game area.",
+      "Any form of cheating will lead to disqualification.",
+      "Damaging college property or disturbing others is strictly prohibited.",
+      "Participants must maintain discipline throughout the competition.",
+      "The decision of the organisers will be final."
     ],
     "reqs": [
       "Valid school ID card for every participant.",
       "Report at the registration desk by 9:30 AM.",
       "Open to school students only. One team per student, per event.",
-      "One smartphone per team (some clues need it).",
       "Comfortable footwear and a water bottle."
     ],
     "order": 4,
     "visible": true,
-    "regOpen": true
+    "regOpen": true,
+    "rulesV": 2
   },
   {
     "slug": "prompting",
     "name": "Prompting",
     "tagline": "Craft the sharpest prompt and make AI deliver.",
-    "about": "Show how well you can talk to AI. You receive briefs and must write prompts that get the best possible output — accurate, creative and efficient.",
+    "about": "Show how well you can talk to AI. You receive a task and must write prompts that get the best possible output — accurate, creative and efficient.",
     "prize1": 1500,
     "prize2": 750,
     "teamMin": 1,
-    "teamMax": 2,
-    "duration": "≈ 60 minutes",
-    "when": "Fri, 27 Nov 2026 · 10 AM",
+    "teamMax": 1,
+    "fee": "\u20b9100 per participant",
+    "duration": "30 minutes",
+    "when": "Fri, 27 Nov 2026 \u00b7 10 AM",
     "where": "Mar Augusthinose College, Ramapuram",
     "how": [
-      "Round 1 — Prompt challenge. Solve the given tasks with the fewest and best prompts.",
-      "Round 2 — Final brief. Top participants get a surprise brief and a live time limit."
+      "One task, 30 minutes. All participants are given the same task and 30 minutes to complete it.",
+      "One AI tool only. Only the AI tool assigned by the organisers may be used; switching between AI tools is not allowed.",
+      "Judging. The AI output is evaluated on creativity, accuracy and relevance; the quality and clarity of the prompts is also considered."
     ],
     "rules": [
-      "Only the AI tool(s) announced for the event may be used.",
-      "Copy-pasting ready-made answers from outside the tool is not allowed.",
-      "Prompts and outputs are reviewed by the judges.",
-      "Judges' and organizers' decisions are final.",
-      "Misconduct or cheating leads to disqualification."
+      "Each participant must compete individually.",
+      "Only the AI tools permitted by the organisers can be used.",
+      "Participants must use their own creativity and ideas while writing prompts.",
+      "Copying prompts from other participants or external sources is strictly prohibited.",
+      "Participants must not use mobile phones or other devices except those permitted by the organisers.",
+      "Participants must not switch between different AI tools; they must use only the AI tool assigned by the organisers.",
+      "Sharing or switching devices during the competition is strictly prohibited.",
+      "The decision of the judges will be final.",
+      "Any form of malpractice will lead to disqualification."
     ],
     "reqs": [
       "Valid school ID card for every participant.",
       "Report at the registration desk by 9:30 AM.",
       "Open to school students only. One team per student, per event.",
-      "A laptop or smartphone with internet (if you want to use your own device).",
-      "A free account for the AI tool will be announced before the event."
+      "Use only the AI tool and devices assigned by the organisers."
     ],
     "order": 2,
     "visible": true,
-    "regOpen": true
+    "regOpen": true,
+    "rulesV": 2
   },
   {
     "slug": "idea-presentation",
@@ -125,8 +138,8 @@ export const DEFAULT_EVENTS = [
     "prize2": 1000,
     "teamMin": 2,
     "teamMax": 4,
-    "duration": "≈ 7 minutes per team",
-    "when": "Fri, 27 Nov 2026 · 10 AM",
+    "duration": "\u2248 7 minutes per team",
+    "when": "Fri, 27 Nov 2026 \u00b7 10 AM",
     "where": "Mar Augusthinose College, Ramapuram",
     "how": [
       "Pitch. 5 minutes to present your idea with slides.",
@@ -155,38 +168,40 @@ export const DEFAULT_EVENTS = [
     "slug": "reels-competition",
     "name": "Reels Competition",
     "tagline": "Tell a story in under a minute.",
-    "about": "Make a short reel on the theme announced at the event. Plan, shoot and edit it on the spot — creativity and storytelling decide the winner.",
+    "about": "Make a short reel on the spot. Plan, shoot and edit it within the competition time — creativity and storytelling decide the winner.",
     "prize1": 2000,
     "prize2": 1000,
-    "teamMin": 1,
-    "teamMax": 4,
-    "duration": "≈ 2 hours",
-    "when": "Fri, 27 Nov 2026 · 10 AM",
+    "teamMin": 2,
+    "teamMax": 2,
+    "fee": "\u20b9100 per team",
+    "duration": "\u2248 2 hours",
+    "when": "Fri, 27 Nov 2026 \u00b7 10 AM",
     "where": "Mar Augusthinose College, Ramapuram",
     "how": [
-      "Theme. The theme is announced at the start of the event.",
-      "Shoot & edit. About 2 hours to film on campus and edit your reel.",
-      "Submit. Hand over the final file to the coordinator before the deadline; best reels are screened."
+      "Create in 2 hours. The reel must be created entirely within the competition time (2 hours).",
+      "Shoot on campus. All footage must be shot within the fest venue/campus, using your own mobile phone and equipment.",
+      "Submit one reel. Each team submits only one reel; your own voice-overs are allowed."
     ],
     "rules": [
-      "Reel length 30–60 seconds, vertical (9:16).",
-      "Content must be original; use only royalty-free or original music.",
-      "No offensive, political or hurtful content.",
-      "Late submissions are not accepted.",
-      "Judges' and organizers' decisions are final.",
-      "Misconduct or cheating leads to disqualification."
+      "Each team must consist of exactly 2 members.",
+      "No pre-recorded videos or previously edited clips are allowed.",
+      "No assistance from college staff, organisers, or external people is allowed.",
+      "Offensive, inappropriate, or disrespectful content is strictly prohibited.",
+      "Dangerous stunts or activities that disrupt the fest are not allowed.",
+      "The organisers' decision is final."
     ],
     "reqs": [
       "Valid school ID card for every participant.",
       "Report at the registration desk by 9:30 AM.",
       "Open to school students only. One team per student, per event.",
-      "A smartphone or camera and a charger / power bank.",
-      "A video-editing app installed on your device.",
-      "A pen drive or a way to share the final file."
+      "Your own mobile phone and equipment.",
+      "Video: 30\u201390 seconds, MP4, 9:16 portrait, minimum 720p.",
+      "Basic editing apps and copyright-safe audio are permitted."
     ],
     "order": 1,
     "visible": true,
-    "regOpen": true
+    "regOpen": true,
+    "rulesV": 2
   }
 ];
 
@@ -212,6 +227,21 @@ export async function loadEvents() {
   // flip the stored copy to visible again. Runs the same way as the hide above.
   for (const e of list) {
     if (RESTORED_SLUGS.has(e.slug) && e.visible !== true) { e.visible = true; dirty = true; }
+  }
+  // Real rules (20 Nov 2026): Bista's official rules replace the sample
+  // rules. One-time: a stored event without rulesV 2 takes the official
+  // team size, fee, duration and how/rules/reqs from DEFAULT_EVENTS.
+  // Admin edits after this stick, because rulesV is then already 2.
+  const defBySlug = {};
+  DEFAULT_EVENTS.forEach(d => { defBySlug[d.slug] = d; });
+  for (const e of list) {
+    const d = defBySlug[e.slug];
+    if (d && d.rulesV === 2 && e.rulesV !== 2) {
+      e.teamMin = d.teamMin; e.teamMax = d.teamMax; e.fee = d.fee;
+      e.duration = d.duration;
+      e.how = (d.how || []).slice(); e.rules = (d.rules || []).slice(); e.reqs = (d.reqs || []).slice();
+      e.rulesV = 2; dirty = true;
+    }
   }
   // Poster order (19 Nov 2026): the official SPARK poster lists the events
   // as Reels, Prompting, Quiz, Treasure Hunt. Force the stored copy to match.
@@ -293,6 +323,8 @@ function cleanEvent(body, existing) {
   e.prize2 = Math.max(0, Math.round(num('prize2')));
   e.teamMin = Math.max(1, Math.round(num('teamMin', 1)));
   e.teamMax = Math.max(e.teamMin, Math.round(num('teamMax', e.teamMin)));
+  e.fee = str('fee', '', 100);
+  e.rulesV = num('rulesV', 0);
   e.duration = str('duration', '', 100);
   e.when = str('when', 'Fri, 27 Nov 2026 \u00b7 10 AM', 100);
   e.where = str('where', 'Mar Augusthinose College, Ramapuram', 200);

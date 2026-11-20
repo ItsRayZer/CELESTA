@@ -130,6 +130,7 @@
       +'<div class="ww-row"><span class="ww-k">Where</span><span>'+esc(e.where||'')+'</span></div>'
       +'<div class="ww-row"><span class="ww-k">Team</span><span>'+esc(teamLabel(e))+'</span></div>'
       +'<div class="ww-row"><span class="ww-k">Duration</span><span>'+esc(e.duration||'')+'</span></div>'
+      +(e.fee?'<div class="ww-row"><span class="ww-k">Fee</span><span>'+esc(e.fee)+'</span></div>':'')
       +'<div class="ww-row"><span class="ww-k">Coordinators</span><span>'+esc(coordNames||'\u2014')+'</span></div>'
       +'<div class="ww-row"><span class="ww-k">Contact</span><span>'+esc(FEST_CONTACT)+'</span></div>'
       +'<div class="ww-actions"><a class="ww-act call" href="tel:+91'+LEAD_PHONE+'">'+PHONE_SVG+'Call</a><a class="ww-act wa" href="https://wa.me/91'+LEAD_PHONE+'?text='+WA_TEXT+'" target="_blank" rel="noopener">'+CHAT_SVG+'WhatsApp Msg</a></div>'
@@ -226,6 +227,6 @@
 })();
 </script>
 <script src="/livebg.js?v=3" defer></script>
-<script src="/assets/spark-bot.js?v=19"></script>
+<script src="/assets/spark-bot.js?v=20"></script>
 </body>
 </html>

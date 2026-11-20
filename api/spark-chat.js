@@ -103,6 +103,7 @@ function eventLine(e) {
     : 'Prize: Rs.' + e.prize1 + ' winner-takes-all (single prize, no 2nd)';
   const join = (arr) => (arr || []).filter(Boolean).map(safeField).join(' | ');
   let s = '- ' + safeField(e.name) + ' (' + team + '). ' + prize + '. '
+    + (e.fee ? 'Fee: ' + safeField(e.fee) + ' (paid at the venue). ' : '')
     + safeField(e.when) + ' · ' + safeField(e.where) + ' · ' + safeField(e.duration) + '. '
     + safeField(e.about);
   if (e.how && e.how.length) s += '\n  Rounds: ' + join(e.how);
@@ -142,8 +143,11 @@ export function buildSystemPrompt(events, coords, lang) {
     'REGISTRATION - READ THIS FIRST:',
     '- Registration is ONLINE on this website: open the Events page, tap an event,',
     '  fill the form (name, school, phone, email, team name, team members).',
-    '- Registration is FREE. There is NO fee and NO online payment of any kind.',
-    '  There is no payment link, no UPI, no ticket booking, no seat booking.',
+    '- Online registration is FREE: there is NO online payment, no payment link,',
+    '  no UPI, no ticket booking, no seat booking.',
+    '- Each event has a fee, paid at the venue on the day: Treasure Hunt Rs.200',
+    '  per team, Prompting Rs.100 per participant, Reels Rs.100 per team,',
+    '  Quiz Rs.100 per team. Never ask for or accept any online payment.',
     '- "Book online" means register online (free). A student may join more than',
     '  one event, but only one team per student per event.',
     '- Report at the registration desk by 9:30 AM on 27 Nov with a valid school ID.',
