@@ -49,6 +49,18 @@ async function ensureSeeded() {
 
 export default async function handler(req, res) {
   if (req.method === 'GET') {
+    // Coordinators change rarely; the contact and register pages fetch this
+    // on every load. Public variant gets a shared cache so the CDN serves
+    // most hits without touching Redis; an admin (token) always gets fresh
+    // data after an edit, so it is never shared-cached.
+    const token = (req.headers.authorization || '').replace('Bearer ', '');
+    const role = token ? verify(token) : null;
+    if (role) {
+      res.setHeader('Cache-Control', 'private, no-store');
+    } else {
+      res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600');
+    }
+    res.setHeader('Vary', 'Authorization');
     try {
       await ensureSeeded();
       const vals = await redis.hvals('celesta:coordinators');

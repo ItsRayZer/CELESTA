@@ -23,10 +23,10 @@ const redis = new Redis({
   token: process.env.UPSTASH_REDIS_REST_TOKEN,
 });
 
-// 100 per 10 min per IP: still stops a flood from one device, but a whole
-// venue on shared Wi-Fi (one public IP) can register normally. Duplicates
-// are already blocked per phone+event, and junk is flagged for review.
-const RL_LIMIT = 100;
+// 300 per 10 min per IP: the whole venue shares one public IP, and the
+// 9:30-10:00 rush is ~135-150 submissions. 100 would 429 students past #100.
+// Duplicates are already blocked per phone+email, and junk is flagged.
+const RL_LIMIT = 300;
 const RL_WINDOW = 600;   // per 10 minutes
 
 // Client IP: trust only what the platform sets. Vercel overwrites x-real-ip
@@ -96,12 +96,16 @@ export default async function handler(req, res) {
 
   // Validate the event against the database (falls back to the built-in list if storage is down).
   let ev = null;
+  let storageDown = false;
   try {
     const events = await loadEvents();
     ev = events.find(e => e.slug === event || e.name === event) || null;
   } catch (e) {
-    ev = null;
+    storageDown = true;
   }
+  // If storage itself failed, say so honestly (503) instead of misleading
+  // the student with "Unknown event" for a real event.
+  if (storageDown) return res.status(503).json({ error: 'Registration is temporarily unavailable. Please try again in a moment.' });
   if (!ev) return res.status(400).json({ error: 'Unknown event' });
   if (!ev.visible) return res.status(403).json({ error: 'This event is no longer listed' });
   if (!ev.regOpen) return res.status(403).json({ error: 'Registrations are closed for this event' });
@@ -110,8 +114,8 @@ export default async function handler(req, res) {
   if (!Number.isInteger(teamSize) || teamSize < ev.teamMin || teamSize > ev.teamMax) {
     return res.status(400).json({ error: 'Team size for ' + ev.name + ' must be ' + ev.teamMin + '–' + ev.teamMax });
   }
-  // members are the OTHER team members: teamSize - 1 names expected, at most teamMax.
-  if (Array.isArray(members) && members.length > ev.teamMax) {
+  // members are the OTHER team members (leader excluded): at most teamMax - 1.
+  if (Array.isArray(members) && members.length > ev.teamMax - 1) {
     return res.status(400).json({ error: 'Too many team members for ' + ev.name });
   }
   if (teamSize > 1 && (!Array.isArray(members) || members.filter(m => String(m || '').trim()).length < teamSize - 1)) {

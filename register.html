@@ -121,7 +121,7 @@
         +'<div class="field check" id="f-agree"><label for="in-agree">I confirm these details are correct and every member will carry a valid school ID card on 27 November 2026.</label><input id="in-agree" type="checkbox"></div>'
         +'</div>'
         +'<button class="rg-submit" type="submit">Register for '+esc(e.name)+'</button>'
-        +'<p class="reg-note">Your registration is saved with the organizers. Confirmation and payment details will be announced soon.</p>'
+        +(e.fee?'<p class="reg-note">Registration is free online. Fee: '+esc(e.fee)+', pay at the venue on 27 November 2026. Report by 9:30 AM with a valid school ID.</p>':'<p class="reg-note">Your registration is saved with the organizers.</p>')
         +'<div class="ok-msg" id="ok-msg" role="status"></div>'
         +'</form>')
       +'<div class="rd-below"><p class="rd-about">'+esc(e.about||'')+'</p>'
@@ -192,7 +192,7 @@
         if(box){
           box.innerHTML='<h3>Registered</h3><p><strong>'+esc(e.name)+'</strong><br>'
             +(teamname?esc(teamname)+' · ':'')+esc(name)+' · '+esc(school)+' · Team of '+esc(team)+'</p>'
-            +'<p class="reg-note">Saved with the organizers. Carry a valid ID card on 27 November 2026 and report by 9:30 AM. The organizers will announce confirmation and payment details soon — please keep a screenshot.</p>';
+            +(e.fee?'<p class="reg-note">Saved with the organizers. Fee: '+esc(e.fee)+' — pay at the venue on 27 November 2026. Carry a valid ID card and report by 9:30 AM. Please keep a screenshot.</p>':'<p class="reg-note">Saved with the organizers. Carry a valid ID card and report by 9:30 AM on 27 November 2026. Please keep a screenshot.</p>');
           box.classList.add('show');
           box.scrollIntoView({behavior:'smooth',block:'center'});
         }
@@ -210,9 +210,18 @@
     });
   }
   if(!slug){showMsg('No event selected','Pick an event from the Events page to register.',true);return;}
+  // 8s timeout per fetch: a hung request falls back to the empty list
+  // instead of leaving the page on "Loading event..." forever.
+  function fetchJson(url, fallback){
+    return new Promise(function(resolve){
+      var done=false;
+      var to=setTimeout(function(){ if(!done){ done=true; resolve(fallback); } }, 8000);
+      fetch(url).then(function(r){ return r.json(); }).then(function(d){ if(!done){ done=true; clearTimeout(to); resolve(d); } }).catch(function(){ if(!done){ done=true; clearTimeout(to); resolve(fallback); } });
+    });
+  }
   Promise.all([
-    fetch('/api/events').then(function(r){return r.json();}).catch(function(){return {events:[]};}),
-    fetch('/api/coordinators').then(function(r){return r.json();}).catch(function(){return {coordinators:[]};})
+    fetchJson('/api/events', {events:[]}),
+    fetchJson('/api/coordinators', {coordinators:[]})
   ]).then(function(res){
     var d=res[0], c=res[1];
     var list=(d.events||[]);
@@ -227,6 +236,6 @@
 })();
 </script>
 <script src="/livebg.js?v=4" defer></script>
-<script src="/assets/spark-bot.js?v=20"></script>
+<script src="/assets/spark-bot.js?v=21"></script>
 </body>
 </html>

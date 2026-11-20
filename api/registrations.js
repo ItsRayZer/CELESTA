@@ -91,7 +91,8 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Team size must be ' + teamMin + '–' + teamMax + ' for ' + (ev ? ev.name : rec.event) });
       }
       if (Array.isArray(req.body.members)) {
-        if (req.body.members.length > teamMax || req.body.members.some(m => String(m).length > 100)) {
+        // members exclude the leader: at most teamMax - 1 other names.
+        if (req.body.members.length > teamMax - 1 || req.body.members.some(m => String(m).length > 100)) {
           return res.status(400).json({ error: 'Member names are too long or there are too many members' });
         }
       }

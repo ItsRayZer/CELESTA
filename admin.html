@@ -611,7 +611,7 @@ async function showDash(){
   EVENTS_DB.forEach(e=>{const o=document.createElement('option');o.value=e.slug;o.textContent=e.name;sel.appendChild(o);});
   renderEventsAdmin();
   load();
-  setInterval(()=>{if(!$('dash').classList.contains('hidden')&&!document.hidden&&navigator.onLine)load();},30000);
+  setInterval(()=>{if(!$('dash').classList.contains('hidden')&&!document.hidden&&navigator.onLine)load();},120000);
 }
 
 // Bot check: the server writes x.risk = {level, reasons, at} on every
@@ -624,12 +624,17 @@ function riskWhy(x){
 }
 
 async function load(reset=true){
+  // Refresh re-fetches the whole window the admin already has loaded
+  // (not just the first page), so the auto-refresh never jumps them
+  // back to page 1 and never loses the rows they loaded with "load more".
+  var want=REG_PAGE;
   if(reset){
+    want=Math.max(REG_PAGE, REGS.length);
     REG_OFFSET=0;
     if(!REGS.length)$('rows').innerHTML='<tr class="skel"><td colspan="6"><div class="bar"></div></td></tr><tr class="skel"><td colspan="6"><div class="bar"></div></td></tr><tr class="skel"><td colspan="6"><div class="bar"></div></td></tr>';
   }
   try{
-    const r=await fetch('/api/registrations?limit='+REG_PAGE+'&offset='+REG_OFFSET,{headers:{Authorization:'Bearer '+TOKEN},cache:'no-store'});
+    const r=await fetch('/api/registrations?limit='+want+'&offset='+REG_OFFSET,{headers:{Authorization:'Bearer '+TOKEN},cache:'no-store'});
     if(r.status===401){localStorage.removeItem('celesta_admin_tok');localStorage.removeItem('celesta_admin_role');location.reload();return;}
     const d=await r.json();
     const fresh=(d.regs||[]).filter(x=>!SEEN.has(x.id));

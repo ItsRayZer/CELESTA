@@ -225,7 +225,7 @@
         if(vid.readyState >= 2){ fin(true); return; }
         vid.addEventListener("canplay", function(){ fin(true); }, { once:true });
         vid.addEventListener("error", function(){ fin(false); }, { once:true });
-        setTimeout(function(){ fin(vid.readyState >= 2); }, 4000);
+        setTimeout(function(){ fin(vid.readyState >= 2); }, 8000);
         return;
       }
       vid.addEventListener("canplay", function(){ fin(true); }, { once:true });
@@ -233,7 +233,7 @@
       vid.dataset.clip = src;
       vid.src = src;
       vid.load();
-      setTimeout(function(){ fin(vid.readyState >= 2); }, 4000);
+      setTimeout(function(){ fin(vid.readyState >= 2); }, 8000);
     }
     function reveal(src){
       var next = vids[1-active];
