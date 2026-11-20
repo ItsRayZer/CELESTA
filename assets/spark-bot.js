@@ -1,4 +1,4 @@
-/* SPARK Bot v18 — Axo-style chat assistant for SPARK 2K26.
+/* Spark AI v19 — Axo-style chat assistant for SPARK 2K26.
    v18: the keyword matcher still answers what it knows (score >= 3).
    Anything else goes to /api/spark-chat, which asks the GptOpen relay
    with a facts-only prompt built from the live events + coordinators.
@@ -24,7 +24,7 @@
 (function(){
 "use strict";
 var AVATAR="/assets/spark-bot-avatar.webp?v=2";
-var NAME="SPARK Bot";
+var NAME="Spark AI";
 
 /* ---------- Knowledge base ----------
    k  = English keywords, mk = Manglish (Malayalam in Latin script) keywords.
@@ -74,6 +74,14 @@ var KB=[
   mk:["contact","phone","number","vilikku","help","support","coordinator","lead","ananthu","bista"],
   a:"Main contacts:<br><b>Student Lead - Ananthu Anil</b>: 7510142466<br><b>Associate Lead - Bista Mariya Jojo</b>: 9746446739<br><br>Faculty: Shibu Kallarackal (9446375272), Archana Gopinath (9495955010).<br>For help with a specific event, contact that event's coordinators on its registration page.",
   m:"Main contacts:<br><b>Student Lead - Ananthu Anil</b>: 7510142466<br><b>Associate Lead - Bista Mariya Jojo</b>: 9746446739<br><br>Faculty: Shibu Kallarackal (9446375272), Archana Gopinath (9495955010).<br>Oru event ne kurichu help venamenkil aa event nte registration page il coordinators ne contact cheyyuka." },
+{ k:["faculty coordinator","faculty coordinators","faculty","teacher coordinator","teachers","who are the faculty","faculty in charge","event faculty"],
+  mk:["faculty","teacher","faculty coordinator","adhyapakar","teacher"],
+  a:"Faculty coordinators:<br><b>Reels Competition</b>: Arun K Abraham<br><b>Treasure Hunt</b>: Soni E S, Anett Joseph, Raisa Jose<br><b>Quiz</b>: Shan Augustine, Rekha Claris Joseph, Alphonsa Jose<br><b>Prompting</b>: Surabhi Kurian, Maria Jacob, Meenu Elizabeth Sebastian<br><br>Event General Coordinators (faculty): Shibu Kallarackal, Archana Gopinath.",
+  m:"Faculty coordinators:<br><b>Reels Competition</b>: Arun K Abraham<br><b>Treasure Hunt</b>: Soni E S, Anett Joseph, Raisa Jose<br><b>Quiz</b>: Shan Augustine, Rekha Claris Joseph, Alphonsa Jose<br><b>Prompting</b>: Surabhi Kurian, Maria Jacob, Meenu Elizabeth Sebastian<br><br>Event General Coordinators (faculty): Shibu Kallarackal, Archana Gopinath." },
+{ k:["which schools","invited schools","schools invited","school list","list of schools","is my school invited","which school","schools participating","participating schools","shortlisted schools"],
+  mk:["schools","school list","invited schools","ente school","school invited","shortlisted"],
+  a:"29 schools are shortlisted and invited: Alphonsa English Medium School (Aruvithura), Govt HSS (Edakkoly), Emmanuel's HSS (Kothanalloor), St. Mary's Boys HSS (Kuravilangadu), St. Thomas HSS (Erumely), Little Flower Public School (Kollamula), Jyothi Public School (Paika), SPHSS (Elanji), St. Sebastian (Kadanadu), St. Augustine (Karimkunnam), St. Sebastian (Vazhithala), St. Sebastian (Thodupuzha), St. George (Muthalakodam), St. George HSS (Aruvithura), St. Antony's HSS (Plassanal), St. Mary's HSS (Bharananganam), ARS (Bharananganam), St. Joseph's HSS (Vilakkumadam), St. Mary's HSS (Teekoy), O.L.L.H.S.S. (Uzhavoor), St. Paul's HSS (Valiyakumaramangalam, Moonnilavu), St. Mary's HSS (Arakkulam), St. Augustine's HSS (Ramapuram), St. Michael's HSS (Pravithanam), Chavara Public School (Pala), St. Anns HSS (Kurianadu), St. Michaels HSS (Kaduthuruthy), St. Xavier's Vocational Higher Secondary School (Kuruppanthara), St. Antony's Higher Secondary School (SAHSS) (Mutholy)",
+  m:"29 schools shortlist cheythittundu: Alphonsa English Medium School (Aruvithura), Govt HSS (Edakkoly), Emmanuel's HSS (Kothanalloor), St. Mary's Boys HSS (Kuravilangadu), St. Thomas HSS (Erumely), Little Flower Public School (Kollamula), Jyothi Public School (Paika), SPHSS (Elanji), St. Sebastian (Kadanadu), St. Augustine (Karimkunnam), St. Sebastian (Vazhithala), St. Sebastian (Thodupuzha), St. George (Muthalakodam), St. George HSS (Aruvithura), St. Antony's HSS (Plassanal), St. Mary's HSS (Bharananganam), ARS (Bharananganam), St. Joseph's HSS (Vilakkumadam), St. Mary's HSS (Teekoy), O.L.L.H.S.S. (Uzhavoor), St. Paul's HSS (Valiyakumaramangalam, Moonnilavu), St. Mary's HSS (Arakkulam), St. Augustine's HSS (Ramapuram), St. Michael's HSS (Pravithanam), Chavara Public School (Pala), St. Anns HSS (Kurianadu), St. Michaels HSS (Kaduthuruthy), St. Xavier's Vocational Higher Secondary School (Kuruppanthara), St. Antony's Higher Secondary School (SAHSS) (Mutholy)" },
 { k:["instagram","insta","social","follow"],
   mk:["instagram","insta","social","follow"],
   a:"Follow the fest on Instagram: <b>@celesta2k26</b> - updates, announcements and results.<br><a href=\"https://www.instagram.com/celesta2k26\" target=\"_blank\" rel=\"noopener\">@celesta2k26 on Instagram</a>",
@@ -224,8 +232,8 @@ var FALLBACK={
   ml:"Aa answer enikku ariyilla. Events, prizes, registration, venue, contacts enningane chodichu nokku - allenkil Student Lead <b>Ananthu Anil (7510142466)</b> ne vilikku."
 };
 var GREET={
-  en:"Hey! I am the SPARK Bot. Ask me anything about SPARK 2K26 - events, prizes, registration, venue, or contacts.",
-  ml:"Hey! Njan SPARK Bot aanu. SPARK 2K26 ne kurichu enthum chodikkam - events, prizes, registration, venue, contacts."
+  en:"Hey! I am Spark AI. Ask me anything about SPARK 2K26 - events, prizes, registration, venue, or contacts.",
+  ml:"Hey! Njan Spark AI aanu. SPARK 2K26 ne kurichu enthum chodikkam - events, prizes, registration, venue, contacts."
 };
 var CHIPS={
   en:["When is SPARK?","What events are there?","How do I register?","Where is the venue?","Prizes?","Contact","What is SPARK?","Is registration free?","Who is the Student Lead?","Can I join more than one event?","How do I reach the college?","What should I bring?"],
@@ -351,10 +359,10 @@ var CHAT_SVG='<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor
 function build(){
   var st=document.createElement("style"); st.textContent=CSS; document.head.appendChild(st);
   var fab=document.createElement("button");
-  fab.className="sparkbot-fab"; fab.setAttribute("aria-label","Chat with SPARK Bot");
+  fab.className="sparkbot-fab"; fab.setAttribute("aria-label","Chat with Spark AI");
   fab.innerHTML='<span class="sparkbot-dot"></span>';
   var panel=document.createElement("div");
-  panel.className="sparkbot-panel"; panel.setAttribute("role","dialog"); panel.setAttribute("aria-label","SPARK Bot chat");
+  panel.className="sparkbot-panel"; panel.setAttribute("role","dialog"); panel.setAttribute("aria-label","Spark AI chat");
   panel.innerHTML=
     '<div class="sparkbot-hero"><span class="sparkbot-av"></span>'
     +'<b>'+NAME+'</b>'

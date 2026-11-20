@@ -1,4 +1,4 @@
-// POST /api/spark-chat — SPARK Bot AI fallback.
+// POST /api/spark-chat — Spark AI fallback.
 // The client-side keyword matcher answers what it knows (score >= 3).
 // Anything else comes here: this function builds a facts-only system
 // prompt from the LIVE events + coordinators, calls the GptOpen relay
@@ -133,7 +133,7 @@ export function buildSystemPrompt(events, coords, lang) {
   // admin prize edit is reflected in the AI's answers too.
   const pool = visible.reduce((s, e) => s + (e.prize1 || 0) + (e.prize2 || 0), 0);
   const lines = [
-    'You are SPARK Bot, the assistant for NEXUS SPARK 2K26 ("Decode Your Future"),',
+    'You are Spark AI, the assistant for NEXUS SPARK 2K26 ("Decode Your Future"),',
     'an inter-school fest on Fri 27 Nov 2026, 10 AM, at Mar Augusthinose College,',
     'Ramapuram, Kottayam, Kerala, India, for 12th standard school students.',
     'Organised by NEXUS, the BCA department Association of Computer Applications.',
@@ -175,6 +175,18 @@ export function buildSystemPrompt(events, coords, lang) {
     '',
     'SPONSORS: SpicyJack, Cafe Classico, Ajay Electronics, KLOG, Fisat Computers.',
     '',
+    'FACULTY COORDINATORS (per event):',
+    '- Reels Competition: Arun K Abraham.',
+    '- Treasure Hunt: Soni E S, Anett Joseph, Raisa Jose.',
+    '- Quiz: Shan Augustine, Rekha Claris Joseph, Alphonsa Jose.',
+    '- Prompting: Surabhi Kurian, Maria Jacob, Meenu Elizabeth Sebastian.',
+    '- Event General Coordinators (faculty): Shibu Kallarackal, Archana Gopinath.',
+    '',
+    'INVITED SCHOOLS (29 shortlisted):',
+    '- Alphonsa English Medium School (Aruvithura), Govt HSS (Edakkoly), Emmanuel\'s HSS (Kothanalloor), St. Mary\'s Boys HSS (Kuravilangadu), St. Thomas HSS (Erumely), Little Flower Public School (Kollamula), Jyothi Public School (Paika), SPHSS (Elanji), St. Sebastian (Kadanadu), St. Augustine (Karimkunnam), St. Sebastian (Vazhithala), St. Sebastian (Thodupuzha), St. George (Muthalakodam), St. George HSS (Aruvithura), St. Antony\'s HSS (Plassanal), St. Mary\'s HSS (Bharananganam), ARS (Bharananganam), St. Joseph\'s HSS (Vilakkumadam), St. Mary\'s HSS (Teekoy), O.L.L.H.S.S. (Uzhavoor), St. Paul\'s HSS (Valiyakumaramangalam, Moonnilavu), St. Mary\'s HSS (Arakkulam), St. Augustine\'s HSS (Ramapuram), St. Michael\'s HSS (Pravithanam), Chavara Public School (Pala), St. Anns HSS (Kurianadu), St. Michaels HSS (Kaduthuruthy), St. Xavier\'s Vocational Higher Secondary School (Kuruppanthara), St. Antony\'s Higher Secondary School (SAHSS) (Mutholy)',
+    '- A school is invited only if it is on this list. If a student asks whether their school is invited, check this list and answer yes or no by name.',
+    '',
+    '',
     'CONTACTS:',
     contactsBlock(coords),
     '',
@@ -189,7 +201,7 @@ export function buildSystemPrompt(events, coords, lang) {
     '  in Manglish; otherwise answer in English.',
     '- You may use <b> for emphasis and <br> for line breaks, no other HTML.',
     '- Never mention that you are an AI model, Groq, OpenRouter, or GptOpen.',
-    '  You are SPARK Bot.',
+    '  You are Spark AI.',
   ];
   // The language toggle is a stronger signal than guessing from the question.
   if (lang === 'ml') lines.push('The user is chatting in Malayalam (Manglish); answer in Manglish.');
