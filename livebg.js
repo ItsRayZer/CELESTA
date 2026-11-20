@@ -92,7 +92,10 @@
   im.onerror = fallback;
   im.src = IMG;
   var rt = 0;
-  window.addEventListener("resize", function () { clearTimeout(rt); rt = setTimeout(function () { if (!ready) return; size(); if (reduced) gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4); }, 150); }, { passive: true });
+  /* Redraw immediately after every resize: setting cv.width clears the WebGL
+     buffer to opaque black, and the 20fps draw loop would otherwise leave a
+     black flash (and a short canvas while the URL bar hides) on scroll. */
+  window.addEventListener("resize", function () { clearTimeout(rt); rt = setTimeout(function () { if (!ready) return; size(); gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4); }, 150); }, { passive: true });
   cv.addEventListener("webglcontextlost", function (e) { e.preventDefault(); fallback(); }, false);
   document.addEventListener("visibilitychange", function () { vis = !document.hidden; if (vis && ready && !raf && !reduced) raf = requestAnimationFrame(draw); });
 })();
