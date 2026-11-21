@@ -184,6 +184,12 @@ nav button.on { background: #fff; color: #000; }
     <section class="plan-home" style="padding:20px 16px 36px">
       <div class="plan-brand"><img src="/assets/logo.webp" alt="SPARK"><span>SPARK FEES · LIVE SYNC</span></div>
 
+      <!-- LANDING ACTIONS: Dashboard (left) + Scan QR (right) -->
+      <div class="flex gap-2" style="margin:14px 0 0">
+        <button type="button" id="btn-home-dashboard" class="btn b-ghost flex-1 !py-2.5 text-xs">Dashboard</button>
+        <button type="button" id="btn-home-scan" class="btn b-lime flex-1 !py-2.5 text-xs">Scan QR</button>
+      </div>
+
       <!-- OVERALL LEDGER (all 4 events summed) -->
       <section id="overall-hero" class="rounded-[28px] p-4 border border-white/10 overflow-hidden relative" style="background:radial-gradient(110% 80% at 90% -20%,rgba(191,90,242,.5),transparent 60%),radial-gradient(90% 70% at 0% 110%,rgba(10,132,255,.45),transparent 60%),radial-gradient(70% 60% at 100% 110%,rgba(255,55,95,.3),transparent 60%),#000">
         <div class="flex justify-between items-start">
@@ -1007,12 +1013,30 @@ nav button.on { background: #fff; color: #000; }
   }
   function openScannedCollect(r){
     closeScanner();
-    if(r.eventSlug&&r.eventSlug!==curEvent){
-      openEvent(r.eventSlug);
+    // Ticket records carry eventSlug; if an old record lacks it, resolve the
+    // slug from the event name via the loaded overview (landing page has no
+    // event selected, so an unresolved slug would otherwise do nothing).
+    var slug=r.eventSlug||'';
+    if(!slug&&r.event&&overview&&overview.events){
+      var ev=overview.events.find(function(e){return e.name===r.event;});
+      if(ev)slug=ev.slug;
+    }
+    if(slug&&slug!==curEvent){
+      openEvent(slug);
       loadEventData().then(function(){
         if(!findReg(r.id))lookupExtra.push(r);
         selectStudent(r.id); setTab('collect');
       });
+      return;
+    }
+    if(!slug&&!curEvent){
+      // Landing page and no event could be identified — say so in the
+      // scanner instead of silently staying on the landing page.
+      $('scan-overlay').classList.remove('hide');
+      $('scan-cam-box').classList.remove('hide');
+      $('scan-manual-box').classList.remove('hide');
+      scanMsg('Could not identify the event for this ticket.',1);
+      $('btn-scan-another').classList.remove('hide');
       return;
     }
     if(!findReg(r.id))lookupExtra.push(r);
@@ -1060,6 +1084,9 @@ nav button.on { background: #fff; color: #000; }
     });
   }
   $('btn-scan-qr').onclick=function(){openScanner();};
+  // Landing page buttons (same scanner, same overlay — reused, not rebuilt).
+  $('btn-home-scan').onclick=function(){openScanner();};
+  $('btn-home-dashboard').onclick=function(){location.href='/admin';};
   $('btn-scan-close').onclick=function(){closeScanner();};
   $('btn-scan-another').onclick=function(){openScanner();};
   $('btn-scan-manual').onclick=function(){
