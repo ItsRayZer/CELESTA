@@ -57,7 +57,7 @@
         if(isFinder(r,c)){
           s+='<rect x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+cell.toFixed(1)+'" height="'+cell.toFixed(1)+'" fill="#1a0b2e"/>';
         }else{
-          s+='<circle cx="'+(x+cell/2).toFixed(1)+'" cy="'+(y+cell/2).toFixed(1)+'" r="'+(cell*0.42).toFixed(1)+'" fill="#1a0b2e"/>';
+          s+='<circle cx="'+(x+cell/2).toFixed(1)+'" cy="'+(y+cell/2).toFixed(1)+'" r="'+(cell*0.46).toFixed(1)+'" fill="#1a0b2e"/>';
         }
       }
     }
@@ -81,7 +81,7 @@
       {k:'Phone',v:t.phone}
     ];
     if(t.fee)rows.push({k:'Fee',v:t.fee+'  ·  Pay at the venue'});
-    var qrText='SPARK 2K26\nEvent: '+t.event+'\nID: '+t.id+'\nLeader: '+t.name+'\nSchool: '+t.school+'\nMembers: '+memberList.join(', ')+'\nPhone: '+t.phone+(t.fee?'\nFee: '+t.fee+' (pay at venue)':'');
+    var qrText='https://spark.maraugusthinosecollege.org/ticket?id='+t.id;
     // Real ticket shape: main section, perforation with side notches, stub.
     var W=1080,px=72,rowH=58;
     var mainH=px+64+88+44+28+rows.length*rowH+16;
@@ -167,7 +167,7 @@
     }
     var t=d.ticket;
     var memberList=[t.name].concat(t.members||[]);
-    var qrText='SPARK 2K26\nEvent: '+t.event+'\nID: '+t.id+'\nLeader: '+t.name+'\nSchool: '+t.school+'\nMembers: '+memberList.join(', ')+'\nPhone: '+t.phone+(t.fee?'\nFee: '+t.fee+' (pay at venue)':'');
+    var qrText='https://spark.maraugusthinosecollege.org/ticket?id='+t.id;
     var rows='';
     rows+='<div class="tk-row"><span class="tk-k">Event</span><span class="tk-v">'+esc(t.event)+'</span></div>';
     if(t.teamName)rows+='<div class="tk-row"><span class="tk-k">Team</span><span class="tk-v">'+esc(t.teamName)+'</span></div>';
