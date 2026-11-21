@@ -314,7 +314,7 @@ function pop(){
 
 /* ---------- CSS (Axo-style header, bubbles, chips) ---------- */
 var CSS=[
-".sparkbot-fab{position:fixed;right:16px;bottom:calc(96px + env(safe-area-inset-bottom));z-index:101;width:76px;height:52px;border:0;border-radius:0;background-color:transparent;background-image:url("+AVATAR+");background-size:contain;background-repeat:no-repeat;background-position:center;cursor:grab;padding:0;filter:drop-shadow(0 6px 16px rgba(0,0,0,.45));transform:translate(var(--fx,0px),var(--fy,0px));touch-action:none;transition:transform .25s cubic-bezier(.2,.8,.2,1)}",
+".sparkbot-fab{position:fixed;right:16px;bottom:calc(180px + env(safe-area-inset-bottom));z-index:101;width:76px;height:52px;border:0;border-radius:0;background-color:transparent;background-image:url("+AVATAR+");background-size:contain;background-repeat:no-repeat;background-position:center;cursor:grab;padding:0;filter:drop-shadow(0 6px 16px rgba(0,0,0,.45));transform:translate(var(--fx,0px),var(--fy,0px));touch-action:none;transition:transform .25s cubic-bezier(.2,.8,.2,1)}",
 ".sparkbot-fab:active{transform:translate(var(--fx,0px),var(--fy,0px)) scale(.92)}",
 ".sparkbot-fab.dragging{transition:none;will-change:transform;cursor:grabbing}",
 ".sparkbot-fab .sparkbot-dot{position:absolute;top:0;right:0;width:12px;height:12px;border-radius:50%;background:#22c55e;border:2px solid #fff}",
