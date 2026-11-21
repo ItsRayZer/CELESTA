@@ -216,7 +216,7 @@ tbody tr:hover{background:var(--hover)}
   <div class="topbar">
     <div class="ttl">SPARK Admin<small id="roleSub">DASHBOARD</small></div>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-      <a class="iconbtn" href="/fees" target="_blank" rel="noopener" style="text-decoration:none;background:var(--goldbtn);color:#000;border-color:var(--goldbtn)">Fees</a>
+      <a class="iconbtn" id="feesLink" href="/fees" target="_blank" rel="noopener" style="text-decoration:none;background:var(--goldbtn);color:#000;border-color:var(--goldbtn)">Fees</a>
       <span class="rolepill" id="rolePill">READ</span>
     </div>
   </div>
@@ -621,6 +621,7 @@ async function showDash(){
   $('roleSub').textContent=w?'FULL ACCESS':'READ ONLY';
   $('addForm').classList.toggle('hidden',!w);
   $('logLink').classList.toggle('hidden',!w);
+  $('feesLink').classList.toggle('hidden',!w); // Fees app: full admin (write) only, never read-only
   collectFingerprint();
   await ensureEvents();
   const sel=$('fEv');sel.innerHTML='<option value="">All events</option>';
