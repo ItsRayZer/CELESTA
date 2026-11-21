@@ -1,4 +1,5 @@
-/* Spark AI v24 — Axo-style chat assistant for SPARK 2K26.
+/* Spark AI v25 — Axo-style chat assistant for SPARK 2K26.
+   v25: mute button added (top-left, next to language); choice remembered.
    v24: Instagram is now @sparkk.2026 (was @celesta2k26) in the KB.
    v23: fees synced to the official PDF (21 Nov): Prompting Rs.50 (was Rs.100),
    Quiz Rs.100 (was Rs.50); TH coordinators Abhinav Babu + Ashwin PS;
@@ -18,7 +19,7 @@
    Languages: English (default) + Malayalam (Manglish). The matcher understands
    BOTH English and Manglish keywords in either language.
    Sound: the bot READS its reply aloud (text-to-speech).
-   Client-side only, no server. No mute button (owner: language only).
+   Client-side only, no server. Mute button (top-left) silences it; remembered.
    Keyboard: the pages use interactive-widget=resizes-content, so the layout
    viewport shrinks when the on-screen keyboard opens and the panel
    (bottom:0) sits flush above it with no gap. No JS coordinate math.
@@ -254,6 +255,8 @@ var PH={ en:"Ask about SPARK...", ml:"SPARK ne kurichu chodikkuka..." };
 /* ---------- State ---------- */
 var lang="en";
 try{ var saved=localStorage.getItem("sparkbot_lang"); if(saved==="ml"||saved==="en") lang=saved; }catch(e){}
+var muted=false;
+try{ muted=localStorage.getItem("sparkbot_muted")==="1"; }catch(e){}
 
 /* ---------- Matching (English + Manglish, either language) ---------- */
 function norm(s){ return (" "+s.toLowerCase().replace(/[^a-z0-9 ]/g," ").replace(/\s+/g," ").trim()+" "); }
@@ -283,6 +286,7 @@ function answerFor(q){
 /* ---------- Voice: read the bot's reply aloud (text-to-speech) ---------- */
 function stripHtml(s){ return s.replace(/<br\s*\/?>/gi,". ").replace(/<[^>]+>/g,"").replace(/&nbsp;/g," ").trim(); }
 function speak(html){
+  if(muted) return;
   if(!("speechSynthesis" in window)){ pop(); return; }
   try{
     window.speechSynthesis.cancel();
@@ -321,6 +325,7 @@ var CSS=[
 ".sparkbot-hero b{display:block;color:#fff;font:800 21px/1.2 -apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif;letter-spacing:.01em}",
 ".sparkbot-ctl{position:absolute;top:10px;left:10px;display:flex;align-items:center;gap:6px;z-index:2}",
 ".sparkbot-lang{display:inline-flex;align-items:center;gap:5px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.07);color:#fff;font:600 12px/1 -apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif;padding:7px 10px;border-radius:99px;cursor:pointer}",
+".sparkbot-lang.muted{opacity:.55}",
 ".sparkbot-lang svg{flex:none}",
 ".sparkbot-close{position:absolute;top:10px;right:10px;width:34px;height:34px;border-radius:50%;border:0;background:rgba(255,255,255,.1);color:#fff;font-size:17px;line-height:1;cursor:pointer;z-index:2}",
 ".sparkbot-msgs{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:2px;padding:14px 12px 8px;min-height:110px}",
@@ -359,6 +364,8 @@ var CSS=[
 
 /* ---------- Build DOM ---------- */
 var GLOBE='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.9 5.7 3.9 9S14.5 18.4 12 21c-2.5-2.6-3.9-5.7-3.9-9S9.5 5.6 12 3z"/></svg>';
+var SPK_ON='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z" fill="currentColor" stroke="none"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>';
+var SPK_OFF='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z" fill="currentColor" stroke="none"/><line x1="16" y1="9" x2="22" y2="15"/><line x1="22" y1="9" x2="16" y2="15"/></svg>';
 var PHONE_SVG='<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.2.2 2.4.6 3.6.1.3 0 .7-.2 1l-2.3 2.2z"/></svg>';
 var CHAT_SVG='<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>';
 
@@ -372,7 +379,7 @@ function build(){
   panel.innerHTML=
     '<div class="sparkbot-hero"><span class="sparkbot-av"></span>'
     +'<b>'+NAME+'</b>'
-    +'<div class="sparkbot-ctl"><button class="sparkbot-lang" id="sparkbotLang" aria-label="Switch language">'+GLOBE+'<span id="sparkbotLangName">E</span></button></div>'
+    +'<div class="sparkbot-ctl"><button class="sparkbot-lang" id="sparkbotLang" aria-label="Switch language">'+GLOBE+'<span id="sparkbotLangName">E</span></button><button class="sparkbot-lang" id="sparkbotMute" aria-label="Mute voice"></button></div>'
     +'<button class="sparkbot-close" aria-label="Close chat">&times;</button></div>'
     +'<div class="sparkbot-msgs" id="sparkbotMsgs"></div>'
     +'<div class="sparkbot-chips" id="sparkbotChips"></div>'
@@ -386,6 +393,7 @@ function build(){
       closeBtn=panel.querySelector(".sparkbot-close"),
       langBtn=panel.querySelector("#sparkbotLang"),
       langName=panel.querySelector("#sparkbotLangName"),
+      muteBtn=panel.querySelector("#sparkbotMute"),
       greeted=false;
 
   function langLabel(){ return lang==="ml"?"M":"E"; }
@@ -522,6 +530,18 @@ function build(){
     addMsg(note, "a");
     speak(note);
   });
+  function renderMute(){
+    muteBtn.innerHTML=muted?SPK_OFF:SPK_ON;
+    muteBtn.classList.toggle("muted",muted);
+    muteBtn.setAttribute("aria-label",muted?"Unmute voice":"Mute voice");
+    try{ localStorage.setItem("sparkbot_muted",muted?"1":"0"); }catch(e){}
+  }
+  muteBtn.addEventListener("click", function(){
+    muted=!muted;
+    if(muted){ try{ window.speechSynthesis.cancel(); }catch(e){} }
+    renderMute();
+  });
+  renderMute();
   function open(){
     panel.classList.add("open");
     if(!greeted){ greeted=true; var g=GREET[lang]; addMsg(g, "a"); speak(g); }
