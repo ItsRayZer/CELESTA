@@ -181,16 +181,11 @@ nav button.on { background: #fff; color: #000; }
 
   <!-- ===== MAIN PAGE: overall ledger + choose an event ===== -->
   <div id="view-home">
-    <section class="plan-home" style="padding:28px 16px 48px">
+    <section class="plan-home" style="padding:20px 16px 36px">
       <div class="plan-brand"><img src="/assets/logo.webp" alt="SPARK"><span>SPARK FEES · LIVE SYNC</span></div>
-      <div class="plan-hero">
-        <div class="plan-kicker">Fest fees · all events</div>
-        <h1>Collect fees<br>for SPARK 2K26.</h1>
-        <p>Overall collection across all 4 events, live. Pick an event below to see its students, collect fees, and check its funds.</p>
-      </div>
 
       <!-- OVERALL LEDGER (all 4 events summed) -->
-      <section id="overall-hero" class="rounded-[28px] p-5 border border-white/10 overflow-hidden relative" style="background:radial-gradient(110% 80% at 90% -20%,rgba(191,90,242,.5),transparent 60%),radial-gradient(90% 70% at 0% 110%,rgba(10,132,255,.45),transparent 60%),radial-gradient(70% 60% at 100% 110%,rgba(255,55,95,.3),transparent 60%),#000">
+      <section id="overall-hero" class="rounded-[28px] p-4 border border-white/10 overflow-hidden relative" style="background:radial-gradient(110% 80% at 90% -20%,rgba(191,90,242,.5),transparent 60%),radial-gradient(90% 70% at 0% 110%,rgba(10,132,255,.45),transparent 60%),radial-gradient(70% 60% at 100% 110%,rgba(255,55,95,.3),transparent 60%),#000">
         <div class="flex justify-between items-start">
           <div>
             <div class="text-xs font-semibold" style="color:var(--mut)">Overall Ledger · All Events</div>
@@ -200,14 +195,14 @@ nav button.on { background: #fff; color: #000; }
             <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> <span>LIVE SYNC</span>
           </div>
         </div>
-        <div class="flex items-end justify-between mt-6">
+        <div class="flex items-end justify-between mt-4">
           <div>
             <div class="text-xs font-semibold" style="color:var(--mut)">Total Collected</div>
             <div id="ov-collected" class="text-4xl sm:text-5xl font-black tracking-tighter leading-none mt-1">₹0</div>
           </div>
           <div id="ov-remaining" class="text-right text-xs sm:text-sm font-bold" style="color:var(--pink)">₹0 to collect</div>
         </div>
-        <div class="relative h-3 rounded-full overflow-hidden mt-4" style="background:rgba(255,255,255,.12)">
+        <div class="relative h-3 rounded-full overflow-hidden mt-3" style="background:rgba(255,255,255,.12)">
           <div id="ov-bar" class="h-3 rounded-full" style="width:0%;background:linear-gradient(90deg,#0a84ff,#bf5af2,#ff375f);transition:width .6s"></div>
           <div class="absolute inset-0 ticks"></div>
         </div>
@@ -217,7 +212,7 @@ nav button.on { background: #fff; color: #000; }
         </div>
       </section>
 
-      <div class="plan-kicker" style="margin:26px 0 12px">Choose an event</div>
+      <div class="plan-kicker" style="margin:18px 0 10px">Choose an event</div>
       <div id="event-list" class="plan-list"><div class="plan-empty">Loading events…</div></div>
       <div class="text-center text-[10px] font-mono pt-8" style="color:var(--mut)">FEES · SPARK 2K26 · Admin only · live sync every 5s</div>
     </section>
@@ -316,7 +311,7 @@ nav button.on { background: #fff; color: #000; }
         <div class="flex justify-between items-center mb-4">
           <div>
             <h2 class="font-extrabold text-lg">Collect Fee</h2>
-            <p class="text-xs" style="color:var(--mut)">Find the student by phone or name, verify the payment, then mark it paid.</p>
+            <p class="text-xs" style="color:var(--mut)">Find the student by phone, name or ticket QR, verify the payment, then mark it paid.</p>
           </div>
           <span id="collect-event" class="chip" style="color:var(--cyan)"></span>
         </div>
@@ -329,6 +324,7 @@ nav button.on { background: #fff; color: #000; }
             <div class="flex gap-2 mb-2">
               <input id="student-search-input" class="inp flex-1 min-w-0" placeholder="Search by name, chest no. or phone number..." autocomplete="off">
               <button type="button" id="btn-collect-search" class="btn b-main text-xs !py-2.5 !px-3.5 shrink-0">Search</button>
+              <button type="button" id="btn-scan-qr" class="btn b-lime text-xs !py-2.5 !px-3.5 shrink-0">Scan QR</button>
             </div>
             <div id="student-dropdown-list" class="overflow-y-auto" style="position:relative;max-height:220px;border:1px solid var(--line);border-radius:16px;background:rgba(255,255,255,.03)"></div>
           </div>
@@ -412,9 +408,49 @@ nav button.on { background: #fff; color: #000; }
   </div>
 </div>
 
+<!-- QR SCANNER OVERLAY (Collect tab) -->
+<div id="scan-overlay" class="hide fixed inset-0 z-[80] overflow-y-auto" style="background:rgba(0,0,0,.96)">
+  <div class="min-h-full flex flex-col items-center justify-center gap-4 p-4">
+    <div class="w-full max-w-md flex justify-between items-center">
+      <div class="font-extrabold text-lg">Scan ticket QR</div>
+      <button type="button" id="btn-scan-close" class="btn b-ghost !py-2 !px-3 text-xs">Close</button>
+    </div>
+    <div id="scan-cam-box" class="w-full max-w-md">
+      <div class="relative aspect-square rounded-3xl overflow-hidden" style="border:1px solid var(--line);background:#000">
+        <video id="scan-video" playsinline muted class="w-full h-full" style="object-fit:cover"></video>
+        <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div style="width:62%;aspect-ratio:1;border:3px solid #d6ff3f;border-radius:20px;box-shadow:0 0 0 9999px rgba(0,0,0,.55)"></div>
+        </div>
+      </div>
+      <p class="text-xs text-center mt-3" style="color:var(--mut)">Point the camera at the student's ticket QR</p>
+    </div>
+    <p id="scan-msg" class="msg text-center" style="margin:0"></p>
+    <div id="scan-manual-box" class="w-full max-w-md">
+      <div class="text-xs font-semibold mb-1" style="color:var(--mut)">or paste a ticket link / reg id</div>
+      <div class="flex gap-2">
+        <input id="scan-manual" class="inp flex-1 min-w-0" placeholder="Ticket link or reg_..." autocomplete="off">
+        <button type="button" id="btn-scan-manual" class="btn b-main text-xs !py-2.5 !px-3.5 shrink-0">Open</button>
+      </div>
+    </div>
+    <div id="scan-paid" class="hide w-full max-w-md rounded-2xl p-5 text-center" style="background:rgba(48,209,88,.12);border:1px solid rgba(48,209,88,.5)">
+      <div class="font-black text-xl" style="color:var(--green)">Already Paid</div>
+      <div class="big-chest"><span>Chest No.</span><b id="scan-paid-chest">—</b></div>
+      <div class="rounded-2xl p-4 text-sm space-y-2 text-left" style="background:rgba(255,255,255,.05);border:1px solid var(--line)">
+        <div class="flex justify-between gap-3"><span style="color:var(--mut)">Student</span><b id="scan-paid-name" class="text-right"></b></div>
+        <div class="flex justify-between gap-3"><span style="color:var(--mut)">Event</span><b id="scan-paid-event" class="text-right"></b></div>
+        <div class="flex justify-between gap-3"><span style="color:var(--mut)">Amount paid</span><b id="scan-paid-amount" class="text-right"></b></div>
+        <div class="flex justify-between gap-3"><span style="color:var(--mut)">Method</span><b id="scan-paid-method" class="text-right"></b></div>
+        <div class="flex justify-between gap-3"><span style="color:var(--mut)">Paid at</span><b id="scan-paid-when" class="text-right"></b></div>
+      </div>
+    </div>
+    <button type="button" id="btn-scan-another" class="hide btn b-lime !py-2.5 !px-5 text-sm font-bold">Scan another</button>
+  </div>
+</div>
+
 <div id="toast" class="fixed left-1/2 -translate-x-1/2 z-[90] px-4 py-3 rounded-2xl text-xs font-bold opacity-0 pointer-events-none transition-opacity" style="bottom:calc(96px + env(safe-area-inset-bottom))"></div>
 
 <script src="/assets/qrcode.min.js?v=1" defer></script>
+<script src="/assets/jsQR.js"></script>
 <script>
 (function(){
   var TOKEN_KEY='celesta_admin_tok', ROLE_KEY='celesta_admin_role';
@@ -890,6 +926,145 @@ nav button.on { background: #fff; color: #000; }
       else{toast((res.data&&res.data.error)||'Could not undo',1);}
     }).catch(function(){toast('Connection failed',1);});
   };
+
+  // ---------- QR scanner (Collect tab) ----------
+  // Ticket QRs encode the ticket URL (…/ticket?id=reg_…); the reg id is the
+  // token. Scan → parse reg id → ticket API → already-paid panel, or open
+  // the normal collect card for an unpaid student. No mark-paid ever happens
+  // from a scan alone; Cash/GPay on the collect card still does the paying.
+  var scanStream=null, scanRunning=false, scanCanvas=null, lastBad='', lastBadAt=0;
+  function parseRegId(text){
+    if(!text)return '';
+    var m=String(text).match(/reg_[A-Za-z0-9_-]{8,32}/);
+    return m?m[0]:'';
+  }
+  function feeNum(feeStr){var n=parseInt(String(feeStr||'').replace(/[^0-9]/g,''),10);return isNaN(n)?0:n;}
+  function scanMsg(t,err){var m=$('scan-msg');if(!m)return;m.textContent=t||'';m.className='msg text-center'+(err?' err':'');}
+  function stopScan(){
+    scanRunning=false;
+    if(scanStream){scanStream.getTracks().forEach(function(tr){tr.stop();});scanStream=null;}
+    var v=$('scan-video'); if(v)v.srcObject=null;
+  }
+  function scanTick(){
+    if(!scanRunning)return;
+    var v=$('scan-video');
+    try{
+      if(v&&v.readyState===v.HAVE_ENOUGH_DATA&&typeof jsQR!=='undefined'){
+        var vw=v.videoWidth, vh=v.videoHeight;
+        if(vw&&vh){
+          var scale=Math.min(1,480/vw);
+          var w=Math.round(vw*scale), h=Math.round(vh*scale);
+          if(!scanCanvas)scanCanvas=document.createElement('canvas');
+          scanCanvas.width=w; scanCanvas.height=h;
+          var ctx=scanCanvas.getContext('2d');
+          ctx.drawImage(v,0,0,w,h);
+          var img=ctx.getImageData(0,0,w,h);
+          var code=jsQR(img.data,w,h,{inversionAttempts:'attemptBoth'});
+          if(code&&code.data){handleScanned(code.data);return;}
+        }
+      }
+    }catch(e){/* bad frame — keep scanning */}
+    setTimeout(function(){if(scanRunning)requestAnimationFrame(scanTick);},100);
+  }
+  function openScanner(){
+    $('scan-overlay').classList.remove('hide');
+    $('scan-paid').classList.add('hide');
+    $('btn-scan-another').classList.add('hide');
+    $('scan-cam-box').classList.remove('hide');
+    $('scan-manual-box').classList.remove('hide');
+    scanMsg('');
+    var manual=$('scan-manual'); if(manual)manual.value='';
+    if(typeof jsQR==='undefined'){scanMsg('Scanner library failed to load — use the manual box below.',1);return;}
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){scanMsg('Camera not available — allow camera access or use the manual link box below.',1);return;}
+    navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:false}).then(function(stream){
+      scanStream=stream;
+      var v=$('scan-video');
+      v.srcObject=stream;
+      v.play();
+      scanRunning=true;
+      scanTick();
+    }).catch(function(){
+      scanMsg('Camera not available — allow camera access or use the manual link box below.',1);
+    });
+  }
+  function closeScanner(){stopScan();$('scan-overlay').classList.add('hide');}
+  function showScanPaid(r){
+    stopScan();
+    $('scan-cam-box').classList.add('hide');
+    $('scan-manual-box').classList.add('hide');
+    scanMsg('');
+    $('scan-paid-chest').textContent=r.chest||'—';
+    $('scan-paid-name').textContent=r.teamName||r.name;
+    $('scan-paid-event').textContent=r.event||'';
+    $('scan-paid-amount').textContent=inr(r.amount||r.feeAmount||feeNum(r.fee));
+    $('scan-paid-method').textContent=r.paidMethod==='cash'?'Cash':(r.paidMethod==='gpay'?'GPay':'—');
+    $('scan-paid-when').textContent=r.paidAt?fmtWhen(r.paidAt):(r.at?fmtWhen(r.at):'—');
+    $('scan-paid').classList.remove('hide');
+    $('btn-scan-another').classList.remove('hide');
+  }
+  function openScannedCollect(r){
+    closeScanner();
+    if(r.eventSlug&&r.eventSlug!==curEvent){
+      openEvent(r.eventSlug);
+      loadEventData().then(function(){
+        if(!findReg(r.id))lookupExtra.push(r);
+        selectStudent(r.id); setTab('collect');
+      });
+      return;
+    }
+    if(!findReg(r.id))lookupExtra.push(r);
+    selectStudent(r.id); setTab('collect');
+  }
+  function handleScanned(text){
+    var id=parseRegId(text);
+    if(!id){
+      // Not a ticket QR — keep the scanner open and keep trying. Same bad
+      // code held in frame repeats the message at most once per 2 seconds.
+      var now=Date.now();
+      if(text!==lastBad||now-lastBadAt>2000){lastBad=text;lastBadAt=now;scanMsg('Not a SPARK ticket QR — try again.',1);}
+      if(scanRunning)scanTick();
+      return;
+    }
+    stopScan();
+    scanMsg('Loading…');
+    var local=findReg(id);
+    if(local){
+      if(local.paid){showScanPaid(local);return;}
+      openScannedCollect(local);return;
+    }
+    fetch('/api/ticket?id='+encodeURIComponent(id)).then(function(res){
+      return res.json().then(function(d){return {status:res.status,data:d};});
+    }).then(function(r){
+      if(r.status!==200||!r.data||!r.data.ticket){
+        scanMsg('No registration found for this QR.',1);
+        $('btn-scan-another').classList.remove('hide');
+        return;
+      }
+      var t=r.data.ticket;
+      var reg={id:t.id,chest:t.chest||'',event:t.event||'',eventSlug:t.eventSlug||'',name:t.name||'',school:t.school||'',team:t.team||1,teamName:t.teamName||'',members:t.members||[],phone:t.phone||'',fee:t.fee||'',feeAmount:feeNum(t.fee),paid:!!t.paid,amount:feeNum(t.fee),paidMethod:'',paidAt:'',at:t.at||''};
+      if(!reg.paid){openScannedCollect(reg);return;}
+      // Already paid: the public ticket API does not return method/time, so
+      // enrich them from the admin students list for that event.
+      if(!reg.eventSlug){showScanPaid(reg);return;}
+      api('/api/fees?action=students&event='+encodeURIComponent(reg.eventSlug)).then(function(rs){
+        var full=(rs.data&&rs.data.regs||[]).find(function(x){return x.id===reg.id;});
+        if(full){reg.paidMethod=full.paidMethod||'';reg.paidAt=full.paidAt||'';reg.feeAmount=full.feeAmount||reg.feeAmount;reg.amount=full.feeAmount||reg.amount;}
+        showScanPaid(reg);
+      }).catch(function(){showScanPaid(reg);});
+    }).catch(function(){
+      scanMsg('Connection failed — try again.',1);
+      $('btn-scan-another').classList.remove('hide');
+    });
+  }
+  $('btn-scan-qr').onclick=function(){openScanner();};
+  $('btn-scan-close').onclick=function(){closeScanner();};
+  $('btn-scan-another').onclick=function(){openScanner();};
+  $('btn-scan-manual').onclick=function(){
+    var v=($('scan-manual').value||'').trim();
+    if(!v){scanMsg('Paste a ticket link or reg id first.',1);return;}
+    handleScanned(v);
+  };
+  $('scan-manual').addEventListener('keydown',function(e){if(e.key==='Enter')$('btn-scan-manual').click();});
 
   // ---------- receipt modal (SPARK 2K26 purple theme) ----------
   function openReceipt(r){
