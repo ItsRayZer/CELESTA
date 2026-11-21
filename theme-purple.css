@@ -145,13 +145,18 @@ body.premium-page,body.light-page,body.reg-page,body.dark-page{background:transp
 .tk-mini-head{margin:0;font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:rgba(255,255,255,.75)}
 .tk-mini-event{margin:6px 0 0;font-size:24px;font-weight:700;line-height:1.2;color:#fff}
 .tk-mini-date{margin:6px 0 0;font-size:13px;line-height:1.5;color:rgba(255,255,255,.8)}
-.tk-qr-row{display:flex;align-items:center;gap:16px;margin:16px 0 0;padding:14px 0 0;border-top:1px dashed rgba(255,255,255,.35)}
+.tk-qr-row{display:flex;align-items:center;gap:16px;margin:14px 0 0;padding:0}
 .tk-qr{flex:none;width:160px;height:160px;border-radius:14px;overflow:hidden;background:#fff}
 .tk-qr svg{display:block;width:160px;height:160px}
 .tk-qr-side{display:flex;flex-direction:column;gap:4px;min-width:0}
 .tk-qr-side span{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.7)}
 .tk-qr-side b{font-size:14px;font-weight:700;letter-spacing:.02em;line-height:1.5;color:#fff;word-break:break-all}
 .tk-qr-side em{font-style:normal;font-size:12px;color:rgba(255,255,255,.75)}
+/* Real ticket perforation: dashed tear line + a punched notch on each edge. */
+.tk-perf{position:relative;height:0;margin:16px -20px 0;border-top:2px dashed rgba(255,255,255,.45)}
+.tk-perf i{position:absolute;top:-11px;width:22px;height:22px;border-radius:50%;background:#060608}
+.tk-perf i:first-child{left:-11px}
+.tk-perf i:last-child{right:-11px}
 /* Narrow phones: stack the QR above the ID so nothing clips or wraps. */
 @media (max-width:480px){
   .tk-qr-row{flex-direction:column;align-items:center;gap:12px;text-align:center}
