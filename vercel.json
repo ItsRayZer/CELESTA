@@ -177,6 +177,14 @@
     {
       "destination": "/admin.html",
       "source": "/admin"
+    },
+    {
+      "source": "/terms",
+      "destination": "/terms.html"
+    },
+    {
+      "source": "/privacy",
+      "destination": "/privacy.html"
     }
   ],
   "trailingSlash": false

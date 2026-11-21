@@ -19,7 +19,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=Marcellus&display=swap">
-<link rel="stylesheet" href="/styles.css?v=60">
+<link rel="stylesheet" href="/styles.css?v=61">
 <link rel="stylesheet" href="/theme-purple.css?v=6">
 <style>#pill{display:none!important}</style>
 <style>html{background:#060608}body{background:#060608}.hp{position:absolute!important;left:-9999px!important;top:auto;width:1px;height:1px;overflow:hidden}</style>
@@ -50,6 +50,7 @@
   <div class="f-nexus"><img src="/assets/nexus-logo-dark.webp" alt="NEXUS logo" loading="lazy"><span>NEXUS · Computer Applications Department Association</span></div>
   <div>Mar Augusthinose College, Ramapuram</div>
   <div class="f-line" id="f-line">Four events. One day. One campus.</div>
+  <div class="f-links"><a href="/terms">Terms &amp; Conditions</a> · <a href="/privacy">Privacy Policy</a></div>
 </footer>
 
 <script src="/app.js?v=33" defer></script>
@@ -118,8 +119,8 @@
         +'<div class="field" id="f-teamname"><label for="in-teamname">Team name</label><input id="in-teamname" type="text" placeholder="Optional" maxlength="80"></div>'
         +'<div class="field" id="f-members" hidden><label for="in-members">Members</label><textarea id="in-members" placeholder="Other members, one per line"></textarea><div class="err" id="err-members">Add the names of your other team members.</div></div>'
         +'</div><div class="rg-group">'
-        +'<div class="field check" id="f-agree"><label for="in-agree">I confirm these details are correct, every member will carry a valid school ID card on 27 November 2026, and I agree to my details being used only for SPARK fest registration.</label><input id="in-agree" type="checkbox"></div>'
-        +'<p class="reg-note">Privacy: your name, school, phone and email are used only to run SPARK fest and contact you about it. They are not shared or sold. Ask the organizers any time to delete them.</p>'
+        +'<div class="field check" id="f-agree"><label for="in-agree">I confirm these details are correct, every member will carry a valid school ID card on 27 November 2026, and I agree to the <a href="/terms">Terms &amp; Conditions</a> and to my details being used only for SPARK fest registration.</label><input id="in-agree" type="checkbox"></div>'
+        +'<p class="reg-note">Privacy: your name, school, phone and email are used only to run SPARK fest and contact you about it. They are not shared or sold. Ask the organizers any time to delete them. Read the full <a href="/privacy">Privacy Policy</a>.</p>'
         +'</div>'
         +'<button class="rg-submit" type="submit">Register for '+esc(e.name)+'</button>'
         +(e.fee?'<p class="reg-note">Registration is free online. Fee: '+esc(e.fee)+', pay at the venue on 27 November 2026. Report by 9:30 AM with a valid school ID.</p>':'<p class="reg-note">Your registration is saved with the organizers.</p>')
