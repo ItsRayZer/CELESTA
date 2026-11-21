@@ -231,7 +231,7 @@ nav button.on { background: #fff; color: #000; }
           <img src="/assets/logo.webp" alt="SPARK" width="34" height="34" class="shrink-0" style="width:34px;height:34px;object-fit:contain">
         </div>
         <div class="flex items-center gap-2 shrink-0">
-          <button id="btn-plans" type="button" class="btn b-ghost !py-1.5 !px-3 text-xs shrink-0">Plans</button>
+          <button id="btn-plans" type="button" class="btn b-ghost !py-1.5 !px-3 text-xs shrink-0">Events</button>
           <select id="plan-select" class="inp !w-auto !py-1.5 text-xs max-w-[110px] sm:max-w-[160px] truncate"></select>
           <button id="btn-admin-lock" type="button" class="btn b-lime !py-1.5 !px-3 text-xs shrink-0">Lock Admin</button>
         </div>
@@ -244,8 +244,6 @@ nav button.on { background: #fff; color: #000; }
           <span class="w-2 h-2 rounded-full bg-lime-400 animate-pulse"></span> ADMIN PANEL
         </span>
         <div class="flex items-center gap-1.5 shrink-0">
-          <button type="button" class="btn b-lime !py-1 !px-2.5 text-xs font-bold" id="btn-add-student">+ Student</button>
-          <button type="button" class="btn b-lime !py-1 !px-2.5 text-xs font-bold" id="btn-add-plan">+ Plan</button>
           <button type="button" class="btn b-ghost !py-1 !px-2.5 text-xs border-white/20" id="btn-export">Export CSV</button>
         </div>
       </div>
@@ -255,7 +253,7 @@ nav button.on { background: #fff; color: #000; }
       <section id="hero" class="rounded-[28px] p-5 border border-white/10 overflow-hidden relative" style="background:radial-gradient(110% 80% at 90% -20%,rgba(191,90,242,.5),transparent 60%),radial-gradient(90% 70% at 0% 110%,rgba(10,132,255,.45),transparent 60%),radial-gradient(70% 60% at 100% 110%,rgba(255,55,95,.3),transparent 60%),#000">
         <div class="flex justify-between items-start">
           <div>
-            <div class="text-xs font-semibold" style="color:var(--mut)">Active Plan Ledger</div>
+            <div class="text-xs font-semibold" style="color:var(--mut)">Active Event Ledger</div>
             <h1 id="hero-title" class="text-2xl sm:text-4xl font-black uppercase leading-none tracking-tight mt-1"></h1>
           </div>
           <div class="text-[10px] font-mono font-bold px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1.5 shrink-0">
@@ -329,17 +327,10 @@ nav button.on { background: #fff; color: #000; }
             </div>
             <div id="selected-student-card" class="hide"></div>
             <div class="flex gap-2 mb-2">
-              <input id="student-search-input" class="inp flex-1 min-w-0" placeholder="Search by student name or chest no" autocomplete="off">
+              <input id="student-search-input" class="inp flex-1 min-w-0" placeholder="Search by name, chest no. or phone number..." autocomplete="off">
               <button type="button" id="btn-collect-search" class="btn b-main text-xs !py-2.5 !px-3.5 shrink-0">Search</button>
             </div>
             <div id="student-dropdown-list" class="overflow-y-auto" style="position:relative;max-height:220px;border:1px solid var(--line);border-radius:16px;background:rgba(255,255,255,.03)"></div>
-          </div>
-          <div>
-            <label class="lbl" for="inp-phone">Find by Phone Number</label>
-            <div class="flex gap-2">
-              <input id="inp-phone" type="tel" inputmode="numeric" class="inp font-mono flex-1 min-w-0" placeholder="10-digit mobile number">
-              <button type="button" id="btn-phone-find" class="btn b-main text-xs !py-2.5 !px-3.5 shrink-0">Find</button>
-            </div>
           </div>
           <div id="collect-detail" class="hide">
             <div class="big-chest"><span>Chest No.</span><b id="collect-chest">—</b></div>
@@ -363,7 +354,7 @@ nav button.on { background: #fff; color: #000; }
       <div class="text-center text-[10px] font-mono pt-6 pb-24" style="color:var(--mut)">FEES · SPARK 2K26 · live sync</div>
     </main>
 
-    <!-- FLOATING ACTION BUTTON (search on Students, phone on Collect) -->
+    <!-- FLOATING ACTION BUTTON (search on Students, search on Collect) -->
     <button id="fab-action" type="button" aria-label="Search" title="Search" class="fixed right-4 z-40 w-14 h-14 rounded-full bg-white text-black shadow-[0_8px_25px_rgba(255,255,255,0.25)] flex flex-col items-center justify-center border border-black/10 active:scale-90 transition-transform" style="bottom:calc(82px + env(safe-area-inset-bottom))">
       <svg class="w-6 h-6 text-black" fill="none" stroke="currentColor" stroke-width="2.3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
     </button>
@@ -477,7 +468,7 @@ nav button.on { background: #fff; color: #000; }
 
   // ---------- state ----------
   var overview=null, curEvent=null, regs=[], history=[], curTab='students';
-  var rosterFilter='ALL', view='box', ledgerFilter='ALL', selectedId=null;
+  var rosterFilter='ALL', view='box', ledgerFilter='ALL', selectedId=null, lookupExtra=[];
   var COLOR={PAID:'#30d158', UNPAID:'#ffd60a'};
 
   // ---------- login ----------
@@ -565,6 +556,8 @@ nav button.on { background: #fff; color: #000; }
     $('collect-event').textContent='';
     setTab('students');
     selectedId=null;
+    lookupExtra=[];
+    lastPhoneLookup='';
     $('collect-detail').classList.add('hide');
     $('selected-student-card').classList.add('hide');
     renderHome();
@@ -580,8 +573,6 @@ nav button.on { background: #fff; color: #000; }
   }
   $('btn-plans').onclick=backHome;
   $('plan-select').addEventListener('change',function(){openEvent(this.value);});
-  $('btn-add-student').onclick=function(){window.open('/events','_blank');};
-  $('btn-add-plan').onclick=function(){backHome();};
 
   // ---------- tabs ----------
   function setTab(name){
@@ -711,7 +702,7 @@ nav button.on { background: #fff; color: #000; }
       el.onclick=function(){var r=findReg(el.getAttribute('data-id'));if(r&&r.paid)openReceipt(r);else if(r){selectStudent(r.id);setTab('collect');}};
     });
   }
-  function findReg(id){return regs.find(function(r){return r.id===id;})||null;}
+  function findReg(id){return regs.find(function(r){return r.id===id;})||lookupExtra.find(function(r){return r.id===id;})||null;}
 
   // ---------- history ----------
   function renderHistory(){
@@ -784,24 +775,41 @@ nav button.on { background: #fff; color: #000; }
   }
 
   // ---------- collect ----------
+  // One unified search: the top box handles name, chest no. and phone number.
+  // Name/chest/school matches come from the already-loaded event list (matchReg);
+  // a full 10-digit number ALSO hits the admin phone lookup, and any matches
+  // (e.g. a student in another event, or a list gone stale) are merged in below.
+  var collectShown=[];
   function collectListRows(list){
     return list.map(function(r){
       var due=r.paid?0:(r.feeAmount||0);
+      var otherEvt=r.eventSlug&&r.eventSlug!==curEvent;
       return '<button type="button" data-sel="'+esc(r.id)+'" class="w-full flex items-center justify-between gap-3 text-left px-4 py-3 text-sm cursor-pointer" style="border-bottom:1px solid var(--line)">'
-        +'<span class="font-semibold truncate"><span class="font-mono text-xs opacity-60 mr-2">'+esc(r.chest||'—')+'</span><span class="stu-name">'+esc(r.teamName||r.name)+'</span></span>'
+        +'<span class="font-semibold truncate"><span class="font-mono text-xs opacity-60 mr-2">'+esc(r.chest||'—')+'</span><span class="stu-name">'+esc(r.teamName||r.name)+'</span>'+(otherEvt?' <span class="text-xs font-mono" style="color:var(--cyan)">'+esc(r.event||'')+'</span>':'')+'</span>'
         +'<span class="text-xs font-bold shrink-0" style="color:'+(due>0?'var(--yellow)':'var(--green)')+'">'+(due>0?inr(due):'cleared')+'</span></button>';
     }).join('')||'<div class="p-4 text-sm" style="color:var(--mut)">No matching students found.</div>';
   }
   function renderCollectList(){
     var q=($('student-search-input')?$('student-search-input').value:'').toLowerCase().trim();
-    var list=regs.filter(function(r){return matchReg(r,q);});
+    var digits=q.replace(/\D/g,'');
+    if(digits.length!==10)lookupExtra=[]; // only a full number keeps cross-event matches
+    var list=regs.filter(function(r){return matchReg(r,q)||(digits&&String(r.phone||'').includes(digits));});
+    lookupExtra.forEach(function(x){
+      if(!list.some(function(r){return r.id===x.id;})&&(matchReg(x,q)||(digits&&String(x.phone||'').includes(digits))))list.push(x);
+    });
     list.sort(function(a,b){return (a.paid?1:0)-(b.paid?1:0);});
+    collectShown=list;
     $('student-dropdown-list').innerHTML=collectListRows(list);
     wireCollectRows();
   }
   function wireCollectRows(){
     Array.prototype.forEach.call(document.querySelectorAll('#student-dropdown-list [data-sel]'),function(b){
-      b.onclick=function(){selectStudent(b.getAttribute('data-sel'));};
+      b.onclick=function(){
+        var id=b.getAttribute('data-sel');
+        var x=collectShown.find(function(y){return y.id===id;});
+        if(x&&x.eventSlug&&x.eventSlug!==curEvent){openEvent(x.eventSlug);setTimeout(function(){selectStudent(id);},300);return;}
+        selectStudent(id);
+      };
     });
   }
   function selectStudent(id){
@@ -832,34 +840,30 @@ nav button.on { background: #fff; color: #000; }
     $('collect-msg').textContent=canWrite?'':"Read-only access — the write password is needed to collect fees.";
     $('collect-msg').className='msg'+(canWrite?'':' err');
   }
-  $('student-search-input').addEventListener('input',function(){renderCollectList();});
-  $('btn-collect-search').onclick=function(){$('student-search-input').focus();renderCollectList();};
-  $('btn-phone-find').onclick=function(){
-    var ph=($('inp-phone').value||'').replace(/\D/g,'');
-    if(ph.length!==10){$('collect-msg').textContent='Enter a valid 10-digit mobile number.';$('collect-msg').className='msg err';return;}
+  var phoneLookupTimer=null, lastPhoneLookup='';
+  function lookupByPhone(ph){
+    if(ph===lastPhoneLookup)return;
+    lastPhoneLookup=ph;
     api('/api/fees?action=lookup&phone='+encodeURIComponent(ph)).then(function(r){
       if(r.status===401){token='';localStorage.removeItem(TOKEN_KEY);showLogin();return;}
       var list=(r.data&&r.data.regs)||[];
       if(!list.length){toast('No registration found for this number',1);return;}
+      lookupExtra=list.filter(function(x){return !regs.some(function(r){return r.id===x.id;});});
       var here=list.filter(function(x){return x.eventSlug===curEvent;});
       if(here.length===1){selectStudent(here[0].id);return;}
-      // show all matches (with event name) in the dropdown
-      $('student-dropdown-list').innerHTML=list.map(function(x){
-        return '<button type="button" data-lookup="'+esc(x.id)+'" class="w-full flex items-center justify-between gap-3 text-left px-4 py-3 text-sm cursor-pointer" style="border-bottom:1px solid var(--line)">'
-          +'<span class="font-semibold truncate"><span class="font-mono text-xs opacity-60 mr-2">'+esc(x.chest||'—')+'</span><span class="stu-name">'+esc(x.teamName||x.name)+'</span> <span class="text-xs font-mono" style="color:var(--cyan)">'+esc(x.event||'')+'</span></span>'
-          +'<span class="text-xs font-bold shrink-0" style="color:'+(x.paid?'var(--green)':'var(--yellow)')+'">'+(x.paid?'cleared':inr(x.feeAmount))+'</span></button>';
-      }).join('');
-      Array.prototype.forEach.call(document.querySelectorAll('#student-dropdown-list [data-lookup]'),function(b){
-        b.onclick=function(){
-          var x=list.find(function(y){return y.id===b.getAttribute('data-lookup');});
-          if(!x)return;
-          if(x.eventSlug!==curEvent){openEvent(x.eventSlug);setTimeout(function(){selectStudent(x.id);},300);return;}
-          selectStudent(x.id);
-        };
-      });
+      renderCollectList();
       toast(list.length+' registration(s) found');
     }).catch(function(){toast('Lookup failed',1);});
-  };
+  }
+  function maybePhoneLookup(now){
+    var q=($('student-search-input')?$('student-search-input').value:'').replace(/\D/g,'');
+    if(q.length!==10){lastPhoneLookup='';return;}
+    if(now){lookupByPhone(q);return;}
+    clearTimeout(phoneLookupTimer);
+    phoneLookupTimer=setTimeout(function(){lookupByPhone(q);},400);
+  }
+  $('student-search-input').addEventListener('input',function(){renderCollectList();maybePhoneLookup(false);});
+  $('btn-collect-search').onclick=function(){$('student-search-input').focus();renderCollectList();maybePhoneLookup(true);};
   function markPaid(method){
     if(!selectedId)return;
     if(role!=='write'){toast('Write access required',1);return;}
@@ -935,7 +939,7 @@ nav button.on { background: #fff; color: #000; }
     fab.onclick=function(){
       if(name==='students'){var i=$('roster-search');if(i){i.scrollIntoView({behavior:'smooth',block:'center'});setTimeout(function(){i.focus();},200);}}
       else if(name==='ledger'){var j=$('ledger-search');if(j){j.scrollIntoView({behavior:'smooth',block:'center'});setTimeout(function(){j.focus();},200);}}
-      else if(name==='collect'){var p=$('inp-phone');if(p){p.scrollIntoView({behavior:'smooth',block:'center'});setTimeout(function(){p.focus();},200);}}
+      else if(name==='collect'){var p=$('student-search-input');if(p){p.scrollIntoView({behavior:'smooth',block:'center'});setTimeout(function(){p.focus();},200);}}
       else{window.scrollTo({top:0,behavior:'smooth'});}
     };
   }
