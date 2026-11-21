@@ -22,10 +22,10 @@ export default async function handler(req, res) {
     const rec = parseVal(raw);
     if (!rec) return res.status(404).json({ error: 'Ticket not found' });
     // Fee comes from the live event record so the ticket always shows the
-    // current fee, not a stale copy.
+    // current fee, not a stale copy. loadEvents returns the array directly.
     let fee = '';
     try {
-      const { events } = await loadEvents();
+      const events = await loadEvents();
       const ev = (events || []).find(e => e.slug === rec.eventSlug);
       if (ev && ev.fee) fee = ev.fee;
     } catch {}
