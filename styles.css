@@ -895,6 +895,7 @@ footer .f-nexus img{width:40px}
 .reg-page .field[hidden]{display:none}
 .reg-page .rg-group .field+.field{border-top:1px solid var(--rg-line)}
 .reg-page .field label{font-size:15px;font-weight:500;color:var(--rg-ink);letter-spacing:0;text-transform:none;margin:0}
+.rg-static{padding:16px 0;font-size:16px;color:var(--rg-ink);font-weight:600}
 .reg-page .field .opt{display:none}
 .reg-page .field input,.reg-page .field select,.reg-page .field textarea{background:transparent;border:0;border-radius:0;padding:16px 0;font-size:16px;color:var(--rg-ink);width:100%;min-width:0;font-family:inherit}
 .reg-page .field input::placeholder,.reg-page .field textarea::placeholder{color:#b0b0b8}

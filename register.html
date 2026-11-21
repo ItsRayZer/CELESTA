@@ -19,7 +19,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=Marcellus&display=swap">
-<link rel="stylesheet" href="/styles.css?v=63">
+<link rel="stylesheet" href="/styles.css?v=64">
 <link rel="stylesheet" href="/theme-purple.css?v=9">
 <style>#pill{display:none!important}</style>
 <style>html{background:#060608}body{background:#060608}.hp{position:absolute!important;left:-9999px!important;top:auto;width:1px;height:1px;overflow:hidden}</style>
@@ -209,8 +209,33 @@
     var fl=document.getElementById('f-line');
     if(fl&&totalEvents)fl.textContent=(totalEvents===1?'One event':({1:'One',2:'Two',3:'Three',4:'Four',5:'Five',6:'Six',7:'Seven',8:'Eight'}[totalEvents]||totalEvents)+' events')+'. One day. One campus.';
     var num=String(e.order||1).padStart(2,'0');
+    // Smart form per event: every event has a FIXED team size (min==max),
+    // so a dropdown is pointless. Solo events get no team fields at all;
+    // team events get a static size line, a team name, and exactly the
+    // right number of other-member slots.
+    var fixedSize=(e.teamMin===e.teamMax)?e.teamMin:0;
+    var isSolo=(e.teamMax===1);
     var opts='';
     for(var n=e.teamMin;n<=e.teamMax;n++)opts+='<option value="'+n+'">'+n+'</option>';
+    // Team size row: fixed size = static line + hidden input; range = dropdown.
+    var teamSizeRow='';
+    if(fixedSize===1){
+      teamSizeRow='<input type="hidden" id="in-team" value="1">';
+    }else if(fixedSize>1){
+      teamSizeRow='<div class="field" id="f-team"><label>Team size</label><span class="rg-static">'+fixedSize+' members</span></div><input type="hidden" id="in-team" value="'+fixedSize+'">';
+    }else{
+      teamSizeRow='<div class="field" id="f-team"><label for="in-team">Team size</label><select id="in-team">'+opts+'</select><div class="err">Choose your team size.</div></div>';
+    }
+    // Team name: only for team events.
+    var teamNameRow=isSolo?'':'<div class="field" id="f-teamname"><label for="in-teamname">Team name</label><input id="in-teamname" type="text" placeholder="Optional" maxlength="80"></div>';
+    // Other members: only for team events. Label fits the exact count.
+    var membersRow='';
+    if(!isSolo){
+      var others=e.teamMax-1;
+      var memLabel=(others===1)?'Partner':'Other team members ('+others+' more)';
+      var memPh=(others===1)?"Your partner's name":'Other members, one per line';
+      membersRow='<div class="field" id="f-members"><label for="in-members">'+memLabel+'</label><textarea id="in-members" placeholder="'+memPh+'"></textarea><div class="err" id="err-members">Add the names of your other team members.</div></div>';
+    }
     var closed=!e.regOpen;
     var teamMeta=(e.teamMin===1?'Solo or up to '+e.teamMax:'Teams of '+e.teamMin+'\u2013'+e.teamMax);
     app.innerHTML=
@@ -235,9 +260,9 @@
         +'<div class="field" id="f-email"><label for="in-email">Email (optional)</label><input id="in-email" type="email" autocomplete="email" placeholder="you@example.com" maxlength="254"><div class="err">Enter a valid email address.</div></div>'
         +'<div class="field hp" aria-hidden="true"><label for="in-website">Website</label><input id="in-website" type="text" autocomplete="off" tabindex="-1"></div>'
         +'</div><div class="rg-group">'
-        +'<div class="field" id="f-team"><label for="in-team">Team size</label><select id="in-team">'+opts+'</select><div class="err">Choose your team size.</div></div>'
-        +'<div class="field" id="f-teamname"><label for="in-teamname">Team name</label><input id="in-teamname" type="text" placeholder="Optional" maxlength="80"></div>'
-        +'<div class="field" id="f-members" hidden><label for="in-members">Members</label><textarea id="in-members" placeholder="Other members, one per line"></textarea><div class="err" id="err-members">Add the names of your other team members.</div></div>'
+        +teamSizeRow
+        +teamNameRow
+        +membersRow
         +'</div><div class="rg-group">'
         +'<div class="field check" id="f-agree"><label for="in-agree">I confirm these details are correct, every member will carry a valid school ID card on 27 November 2026, and I agree to the <a href="/terms">Terms &amp; Conditions</a> and to my details being used only for SPARK fest registration.</label><input id="in-agree" type="checkbox"></div>'
         +'<p class="reg-note">Privacy: your name, school, phone and email are used only to run SPARK fest and contact you about it. They are not shared or sold. Ask the organizers any time to delete them. Read the full <a href="/privacy">Privacy Policy</a>.</p>'
@@ -268,14 +293,17 @@
     // Bot check: when the form opened. A submit under 2s is flagged server-side.
     var startedAt=Date.now();
     var teamSel=document.getElementById('in-team'), mem=document.getElementById('f-members');
+    // Only a range event has a real team-size dropdown to sync. Fixed-size
+    // events render the members field already correct (or not at all).
+    var isSelect=teamSel&&teamSel.tagName==='SELECT';
     function syncMembers(){
-      if(!teamSel||!mem)return;
+      if(!isSelect||!mem)return;
       var n=parseInt(teamSel.value,10)||1;
       mem.hidden=n<2;
       var lab=mem.querySelector('label');
       if(lab)lab.textContent=n<2?'Other team members':'Other team members ('+(n-1)+' more)';
     }
-    if(teamSel){teamSel.addEventListener('change',syncMembers);syncMembers();}
+    if(isSelect){teamSel.addEventListener('change',syncMembers);syncMembers();}
     form.addEventListener('input',function(ev){
       var f=ev.target.closest&&ev.target.closest('.field');
       if(f)f.classList.remove('invalid');
