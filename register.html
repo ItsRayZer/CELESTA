@@ -54,6 +54,7 @@
 </footer>
 
 <script src="/app.js?v=33" defer></script>
+<script src="/assets/qrcode.min.js?v=1" defer></script>
 <script>
 (function(){
   var app=document.getElementById('reg-app');
@@ -78,7 +79,34 @@
       });
     });
   }
-  function downloadTicket(e,regId,posterSrc){
+  // Spark dot QR: a real QR code (Registration ID) drawn as dots, with the
+  // three finder squares kept solid so it still scans. Returns SVG shape
+  // elements positioned at (x0,y0) with the given size, so the same code
+  // feeds both the on-screen ticket and the downloaded ticket.
+  function dotQRshapes(text,x0,y0,size){
+    if(typeof qrcode==='undefined'||!text)return '';
+    var qr=qrcode(0,'M');
+    qr.addData(text);
+    qr.make();
+    var n=qr.getModuleCount(), q=4, total=n+2*q, cell=size/total, s='';
+    function isFinder(r,c){return (r<7&&c<7)||(r<7&&c>=n-7)||(r>=n-7&&c<7);}
+    for(var r=0;r<n;r++){
+      for(var c=0;c<n;c++){
+        if(!qr.isDark(r,c))continue;
+        var x=x0+(c+q)*cell, y=y0+(r+q)*cell;
+        if(isFinder(r,c)){
+          s+='<rect x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+cell.toFixed(1)+'" height="'+cell.toFixed(1)+'" fill="#1a0b2e"/>';
+        }else{
+          s+='<circle cx="'+(x+cell/2).toFixed(1)+'" cy="'+(y+cell/2).toFixed(1)+'" r="'+(cell*0.42).toFixed(1)+'" fill="#1a0b2e"/>';
+        }
+      }
+    }
+    return s;
+  }
+  function dotQRsvg(text,size){
+    return '<svg xmlns="http://www.w3.org/2000/svg" width="'+size+'" height="'+size+'" viewBox="0 0 '+size+' '+size+'"><rect width="'+size+'" height="'+size+'" rx="16" fill="#fff"/>'+dotQRshapes(text,0,0,size)+'</svg>';
+  }
+  function downloadTicket(e,regId,posterSrc,qrText){
     var btn=document.getElementById('tk-dl');
     if(btn){btn.disabled=true;btn.textContent='Preparing ticket…';}
     // Read the rendered ticket details back from the page so the download
@@ -94,7 +122,7 @@
     }
     // Minimal ticket, no poster: compact SVG, height fits the content.
     var W=1080,px=72,rowH=58;
-    var H=px+40+64+88+44+28+rows.length*rowH+16+(regId?130:0)+44+44+60;
+    var H=698+rows.length*rowH;
     var y=px, svg='';
     svg+='<svg xmlns="http://www.w3.org/2000/svg" width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'">';
     svg+='<defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7b3dff"/><stop offset=".45" stop-color="#8f47e6"/><stop offset="1" stop-color="#3d1596"/></linearGradient></defs>';
@@ -107,18 +135,23 @@
     y+=44;
     svg+='<line x1="'+px+'" y1="'+y+'" x2="'+(W-px)+'" y2="'+y+'" stroke="rgba(255,255,255,.35)" stroke-width="2" stroke-dasharray="10 8"/>';
     y+=28;
+    // QR + Registration ID side by side
+    var qrSize=210, qrX=px, qrY=y;
+    if(regId){
+      svg+='<rect x="'+qrX+'" y="'+qrY+'" width="'+qrSize+'" height="'+qrSize+'" rx="16" fill="#fff"/>';
+      svg+=dotQRshapes(qrText||regId,qrX,qrY,qrSize);
+      var tx=qrX+qrSize+36;
+      svg+='<text x="'+tx+'" y="'+(qrY+52)+'" font-family="Arial,sans-serif" font-size="26" letter-spacing="3" fill="rgba(255,255,255,.75)">REGISTRATION ID</text>';
+      svg+='<text x="'+tx+'" y="'+(qrY+102)+'" font-family="monospace" font-size="34" font-weight="700" letter-spacing="1" fill="#fff">'+svgEsc(regId)+'</text>';
+      svg+='<text x="'+tx+'" y="'+(qrY+148)+'" font-family="Arial,sans-serif" font-size="26" fill="rgba(255,255,255,.85)">Scan at the desk</text>';
+    }
+    y+=qrSize+28;
     rows.forEach(function(r){
       svg+='<text x="'+px+'" y="'+(y+10)+'" font-family="Arial,sans-serif" font-size="30" fill="rgba(255,255,255,.75)">'+svgEsc(r.k)+'</text>';
       svg+='<text x="'+(W-px)+'" y="'+(y+10)+'" text-anchor="end" font-family="Arial,sans-serif" font-size="30" font-weight="700" fill="#fff">'+svgEsc(r.v)+'</text>';
       y+=rowH;
     });
     y+=16;
-    if(regId){
-      svg+='<rect x="'+px+'" y="'+y+'" width="'+(W-2*px)+'" height="96" rx="18" fill="rgba(14,5,38,.85)" stroke="rgba(255,255,255,.4)" stroke-dasharray="10 8"/>';
-      svg+='<text x="'+(W/2)+'" y="'+(y+38)+'" text-anchor="middle" font-family="Arial,sans-serif" font-size="26" letter-spacing="3" fill="rgba(255,255,255,.8)">REGISTRATION ID</text>';
-      svg+='<text x="'+(W/2)+'" y="'+(y+76)+'" text-anchor="middle" font-family="monospace" font-size="36" font-weight="700" letter-spacing="2" fill="#fff">'+svgEsc(regId)+'</text>';
-      y+=130;
-    }
     svg+='<text x="'+(W/2)+'" y="'+(y+10)+'" text-anchor="middle" font-family="Arial,sans-serif" font-size="26" fill="rgba(255,255,255,.85)">Show this ticket at the registration desk · Carry a valid school ID</text>';
     y+=44;
     svg+='<text x="'+(W/2)+'" y="'+(y+10)+'" text-anchor="middle" font-family="Arial,sans-serif" font-size="26" fill="rgba(255,255,255,.85)">Report by 9:30 AM · 27 November 2026</text>';
@@ -281,36 +314,14 @@
         var r=await fetch('/api/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),signal:ctl?ctl.signal:undefined});
         var d=await r.json().catch(function(){return {};});
         if(!r.ok)throw new Error(d.error||'Registration failed');
+        // Registration saved: the ticket lives on its own page.
+        var regId=d.id||'';
+        if(regId){location.href='/ticket?id='+encodeURIComponent(regId);return;}
         var box=document.getElementById('ok-msg');
         if(box){
-          var regId=d.id||'';
-          var posterSrc=e.poster?'/api/poster?event='+esc(e.slug):'/assets/poster-'+esc(e.slug)+'.webp';
-          var teamMeta=(e.teamMin===1?'Solo or up to '+e.teamMax:'Teams of '+e.teamMin+'\u2013'+e.teamMax);
-          var memberList=[name].concat(list);
-          var rows='';
-          rows+='<div class="tk-row"><span class="tk-k">Event</span><span class="tk-v">'+esc(e.name)+'</span></div>';
-          if(teamname)rows+='<div class="tk-row"><span class="tk-k">Team</span><span class="tk-v">'+esc(teamname)+'</span></div>';
-          rows+='<div class="tk-row"><span class="tk-k">Leader</span><span class="tk-v">'+esc(name)+'</span></div>';
-          rows+='<div class="tk-row"><span class="tk-k">School</span><span class="tk-v">'+esc(school)+'</span></div>';
-          rows+='<div class="tk-row"><span class="tk-k">Members</span><span class="tk-v">'+memberList.map(function(m){return esc(m);}).join('<br>')+'<small>Team of '+esc(team)+'</small></span></div>';
-          rows+='<div class="tk-row"><span class="tk-k">Phone</span><span class="tk-v">'+esc(phone)+'</span></div>';
-          if(e.fee)rows+='<div class="tk-row"><span class="tk-k">Fee</span><span class="tk-v">'+esc(e.fee)+'<small>Pay at the venue</small></span></div>';
-          box.innerHTML='<div class="tk-wrap tk-mini-wrap" id="reg-ticket"><div class="tk tk-mini">'
-            +'<p class="tk-mini-head">SPARK 2K26 · Registered</p>'
-            +'<p class="tk-mini-event">'+esc(e.name)+'</p>'
-            +'<p class="tk-mini-date">Fri, 27 Nov 2026 · 10 AM · Mar Augusthinose College, Ramapuram</p>'
-            +'<div class="tk-details">'
-            +rows
-            +(regId?'<div class="tk-id">Registration ID<b>'+esc(regId)+'</b></div>':'')
-            +'<p class="tk-note">Show this ticket at the registration desk. Carry a valid school ID card for every member. Report by 9:30 AM.</p>'
-            +'</div></div></div>'
-            +'<div class="tk-actions"><button class="tk-dl" id="tk-dl" type="button">Download ticket</button>'
-            +'<a class="tk-back" href="/events">See all events</a></div>'
-            +'<p class="tk-dl-note">Keep this ticket safe. You will need it at the venue.</p>';
+          box.innerHTML='<h3>Registered</h3><p>Your registration is saved. Your ticket link will be shared with you.</p>';
           box.classList.add('show');
           box.scrollIntoView({behavior:'smooth',block:'center'});
-          var dl=document.getElementById('tk-dl');
-          if(dl)dl.addEventListener('click',function(){downloadTicket(e,regId,posterSrc);});
         }
         form.reset();syncMembers();
       }catch(err){

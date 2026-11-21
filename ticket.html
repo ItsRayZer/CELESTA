@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
+<title>Your Ticket — SPARK 2K26</title>
+<meta name="description" content="Your SPARK 2K26 registration ticket. Show it at the registration desk on 27 November 2026.">
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/png" href="/assets/logo.webp">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=Marcellus&display=swap">
+<link rel="stylesheet" href="/styles.css?v=63">
+<link rel="stylesheet" href="/theme-purple.css?v=8">
+<noscript><style>.reveal{opacity:1 !important;transform:none !important}</style></noscript>
+<style>
+  html{background:#060608}body{background:#060608}
+  .tk-page{min-height:100svh;display:flex;flex-direction:column;align-items:center;padding:20px 16px 48px}
+  .tk-page .tk-top{width:100%;max-width:520px;display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+  .tk-page .tk-top a{color:rgba(255,255,255,.75);text-decoration:none;font-size:14px}
+  .tk-page .tk-top b{color:#fff;font-size:13px;letter-spacing:.22em;text-transform:uppercase}
+  .tk-page .tk-state{width:100%;max-width:520px;color:rgba(255,255,255,.8);text-align:center;padding:60px 0;line-height:1.6}
+  .tk-page .tk-state h1{color:#fff;font-size:24px;margin-bottom:8px}
+  .tk-page .tk-state p{font-size:15px}
+  .tk-page .tk-wrap{width:100%;max-width:520px}
+  .tk-page .tk-actions{width:100%;max-width:520px}
+  .tk-page .tk-dl-note{width:100%;max-width:520px;text-align:center}
+</style>
+</head>
+<body class="dark-page">
+<div class="tk-page">
+  <div class="tk-top">
+    <a href="/events">&larr; Events</a>
+    <b>SPARK 2K26</b>
+  </div>
+  <div class="tk-state" id="tk-state"><p>Loading your ticket…</p></div>
+  <div id="tk-slot"></div>
+</div>
+<script src="/assets/qrcode.min.js?v=1" defer></script>
+<script>
+(function(){
+  function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+  function svgEsc(s){return esc(s);}
+  // Spark dot QR: a real QR code drawn as dots, finder squares kept solid so
+  // it still scans. Returns SVG shape elements at (x0,y0) with the size.
+  function dotQRshapes(text,x0,y0,size){
+    if(typeof qrcode==='undefined'||!text)return '';
+    var qr=qrcode(0,'M');
+    qr.addData(text);
+    qr.make();
+    var n=qr.getModuleCount(), q=4, total=n+2*q, cell=size/total, s='';
+    function isFinder(r,c){return (r<7&&c<7)||(r<7&&c>=n-7)||(r>=n-7&&c<7);}
+    for(var r=0;r<n;r++){
+      for(var c=0;c<n;c++){
+        if(!qr.isDark(r,c))continue;
+        var x=x0+(c+q)*cell, y=y0+(r+q)*cell;
+        if(isFinder(r,c)){
+          s+='<rect x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+cell.toFixed(1)+'" height="'+cell.toFixed(1)+'" fill="#1a0b2e"/>';
+        }else{
+          s+='<circle cx="'+(x+cell/2).toFixed(1)+'" cy="'+(y+cell/2).toFixed(1)+'" r="'+(cell*0.42).toFixed(1)+'" fill="#1a0b2e"/>';
+        }
+      }
+    }
+    return s;
+  }
+  function dotQRsvg(text,size){
+    return '<svg xmlns="http://www.w3.org/2000/svg" width="'+size+'" height="'+size+'" viewBox="0 0 '+size+' '+size+'"><rect width="'+size+'" height="'+size+'" rx="16" fill="#fff"/>'+dotQRshapes(text,0,0,size)+'</svg>';
+  }
+  function downloadTicket(t){
+    var btn=document.getElementById('tk-dl');
+    if(btn){btn.disabled=true;btn.textContent='Preparing ticket…';}
+    var rows=[];
+    var els=document.querySelectorAll('#reg-ticket .tk-row');
+    els.forEach(function(r){
+      var k=r.querySelector('.tk-k'), v=r.querySelector('.tk-v');
+      if(k&&v)rows.push({k:k.textContent.trim(),v:v.textContent.trim().replace(/\s+/g,' ')});
+    });
+    var qrText='SPARK 2K26\nEvent: '+t.event+'\nID: '+t.id+'\nLeader: '+t.name+'\nSchool: '+t.school+'\nMembers: '+([t.name].concat(t.members||[])).join(', ')+'\nPhone: '+t.phone+(t.fee?'\nFee: '+t.fee+' (pay at venue)':'');
+    var W=1080,px=72,rowH=58;
+    var H=698+rows.length*rowH;
+    var y=px, svg='';
+    svg+='<svg xmlns="http://www.w3.org/2000/svg" width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'">';
+    svg+='<defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7b3dff"/><stop offset=".45" stop-color="#8f47e6"/><stop offset="1" stop-color="#3d1596"/></linearGradient></defs>';
+    svg+='<rect width="'+W+'" height="'+H+'" rx="48" fill="url(#bg)"/>';
+    svg+='<text x="'+px+'" y="'+(y+26)+'" font-family="Arial,sans-serif" font-size="28" letter-spacing="5" fill="rgba(255,255,255,.75)">SPARK 2K26 · REGISTERED</text>';
+    y+=64;
+    svg+='<text x="'+px+'" y="'+(y+40)+'" font-family="Georgia,serif" font-size="58" font-weight="700" fill="#fff">'+svgEsc(t.event)+'</text>';
+    y+=88;
+    svg+='<text x="'+px+'" y="'+(y+10)+'" font-family="Arial,sans-serif" font-size="28" fill="rgba(255,255,255,.85)">Fri, 27 Nov 2026 · 10 AM · Mar Augusthinose College, Ramapuram</text>';
+    y+=44;
+    svg+='<line x1="'+px+'" y1="'+y+'" x2="'+(W-px)+'" y2="'+y+'" stroke="rgba(255,255,255,.35)" stroke-width="2" stroke-dasharray="10 8"/>';
+    y+=28;
+    var qrSize=210, qrX=px, qrY=y;
+    svg+='<rect x="'+qrX+'" y="'+qrY+'" width="'+qrSize+'" height="'+qrSize+'" rx="16" fill="#fff"/>';
+    svg+=dotQRshapes(qrText,qrX,qrY,qrSize);
+    var tx=qrX+qrSize+36;
+    svg+='<text x="'+tx+'" y="'+(qrY+52)+'" font-family="Arial,sans-serif" font-size="26" letter-spacing="3" fill="rgba(255,255,255,.75)">REGISTRATION ID</text>';
+    svg+='<text x="'+tx+'" y="'+(qrY+102)+'" font-family="monospace" font-size="34" font-weight="700" letter-spacing="1" fill="#fff">'+svgEsc(t.id)+'</text>';
+    svg+='<text x="'+tx+'" y="'+(qrY+148)+'" font-family="Arial,sans-serif" font-size="26" fill="rgba(255,255,255,.85)">Scan at the desk</text>';
+    y+=qrSize+28;
+    rows.forEach(function(r){
+      svg+='<text x="'+px+'" y="'+(y+10)+'" font-family="Arial,sans-serif" font-size="30" fill="rgba(255,255,255,.75)">'+svgEsc(r.k)+'</text>';
+      svg+='<text x="'+(W-px)+'" y="'+(y+10)+'" text-anchor="end" font-family="Arial,sans-serif" font-size="30" font-weight="700" fill="#fff">'+svgEsc(r.v)+'</text>';
+      y+=rowH;
+    });
+    y+=16;
+    svg+='<text x="'+(W/2)+'" y="'+(y+10)+'" text-anchor="middle" font-family="Arial,sans-serif" font-size="26" fill="rgba(255,255,255,.85)">Show this ticket at the registration desk · Carry a valid school ID</text>';
+    y+=44;
+    svg+='<text x="'+(W/2)+'" y="'+(y+10)+'" text-anchor="middle" font-family="Arial,sans-serif" font-size="26" fill="rgba(255,255,255,.85)">Report by 9:30 AM · 27 November 2026</text>';
+    svg+='<text x="'+(W/2)+'" y="'+(H-36)+'" text-anchor="middle" font-family="Arial,sans-serif" font-size="24" letter-spacing="4" fill="rgba(255,255,255,.6)">NEXUS · SPARK 2K26</text>';
+    svg+='</svg>';
+    var img=new Image();
+    var url='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
+    img.onload=function(){
+      try{
+        var c=document.createElement('canvas');c.width=W;c.height=H;
+        var cx=c.getContext('2d');cx.drawImage(img,0,0,W,H);
+        c.toBlob(function(b){
+          if(!b){saveSVG();return;}
+          var a=document.createElement('a');
+          a.href=URL.createObjectURL(b);
+          a.download='SPARK-2K26-ticket-'+t.id+'.png';
+          document.body.appendChild(a);a.click();a.remove();
+          setTimeout(function(){URL.revokeObjectURL(a.href);},4000);
+          if(btn){btn.disabled=false;btn.textContent='Download ticket';}
+        },'image/png');
+      }catch(err){saveSVG();}
+    };
+    img.onerror=function(){saveSVG();};
+    function saveSVG(){
+      var blob=new Blob([svg],{type:'image/svg+xml'});
+      var a=document.createElement('a');
+      a.href=URL.createObjectURL(blob);
+      a.download='SPARK-2K26-ticket-'+t.id+'.svg';
+      document.body.appendChild(a);a.click();a.remove();
+      setTimeout(function(){URL.revokeObjectURL(a.href);},4000);
+      if(btn){btn.disabled=false;btn.textContent='Download ticket';}
+    }
+    img.src=url;
+  }
+  var id=new URLSearchParams(location.search).get('id')||'';
+  var state=document.getElementById('tk-state');
+  var slot=document.getElementById('tk-slot');
+  if(!id){
+    state.innerHTML='<h1>Ticket not found</h1><p>This ticket link is missing its ID. Please open the ticket from your registration confirmation.</p>';
+    return;
+  }
+  fetch('/api/ticket?id='+encodeURIComponent(id)).then(function(r){return r.json();}).then(function(d){
+    if(!d||!d.ok||!d.ticket){
+      state.innerHTML='<h1>Ticket not found</h1><p>We could not find a registration with this ID. It may have been removed, or the link is wrong.</p>';
+      return;
+    }
+    var t=d.ticket;
+    var memberList=[t.name].concat(t.members||[]);
+    var qrText='SPARK 2K26\nEvent: '+t.event+'\nID: '+t.id+'\nLeader: '+t.name+'\nSchool: '+t.school+'\nMembers: '+memberList.join(', ')+'\nPhone: '+t.phone+(t.fee?'\nFee: '+t.fee+' (pay at venue)':'');
+    var rows='';
+    rows+='<div class="tk-row"><span class="tk-k">Event</span><span class="tk-v">'+esc(t.event)+'</span></div>';
+    if(t.teamName)rows+='<div class="tk-row"><span class="tk-k">Team</span><span class="tk-v">'+esc(t.teamName)+'</span></div>';
+    rows+='<div class="tk-row"><span class="tk-k">Leader</span><span class="tk-v">'+esc(t.name)+'</span></div>';
+    rows+='<div class="tk-row"><span class="tk-k">School</span><span class="tk-v">'+esc(t.school)+'</span></div>';
+    rows+='<div class="tk-row"><span class="tk-k">Members</span><span class="tk-v">'+memberList.map(function(m){return esc(m);}).join('<br>')+'<small>Team of '+esc(t.team)+'</small></span></div>';
+    rows+='<div class="tk-row"><span class="tk-k">Phone</span><span class="tk-v">'+esc(t.phone)+'</span></div>';
+    if(t.fee)rows+='<div class="tk-row"><span class="tk-k">Fee</span><span class="tk-v">'+esc(t.fee)+'<small>Pay at the venue</small></span></div>';
+    state.style.display='none';
+    slot.innerHTML='<div class="tk-wrap tk-mini-wrap" id="reg-ticket"><div class="tk tk-mini">'
+      +'<p class="tk-mini-head">SPARK 2K26 · Registered</p>'
+      +'<p class="tk-mini-event">'+esc(t.event)+'</p>'
+      +'<p class="tk-mini-date">Fri, 27 Nov 2026 · 10 AM · Mar Augusthinose College, Ramapuram</p>'
+      +'<div class="tk-qr-row">'
+      +'<div class="tk-qr">'+dotQRsvg(qrText,180)+'</div><div class="tk-qr-side"><span>Registration ID</span><b>'+esc(t.id)+'</b><em>Scan at the desk</em></div>'
+      +'</div>'
+      +'<div class="tk-details">'
+      +rows
+      +'<p class="tk-note">Show this ticket at the registration desk. Carry a valid school ID card for every member. Report by 9:30 AM.</p>'
+      +'</div></div></div>'
+      +'<div class="tk-actions"><button class="tk-dl" id="tk-dl" type="button">Download ticket</button>'
+      +'<a class="tk-back" href="/events">See all events</a></div>'
+      +'<p class="tk-dl-note">Keep this ticket safe. You will need it at the venue.</p>';
+    document.title=t.event+' — Your Ticket | SPARK 2K26';
+    var dl=document.getElementById('tk-dl');
+    if(dl)dl.addEventListener('click',function(){downloadTicket(t);});
+  }).catch(function(){
+    state.innerHTML='<h1>Could not load ticket</h1><p>Please check your connection and try again.</p>';
+  });
+})();
+</script>
+</body>
+</html>

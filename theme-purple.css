@@ -145,11 +145,20 @@ body.premium-page,body.light-page,body.reg-page,body.dark-page{background:transp
 .tk-mini-head{margin:0;font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:rgba(255,255,255,.75)}
 .tk-mini-event{margin:6px 0 0;font-size:24px;font-weight:700;line-height:1.2;color:#fff}
 .tk-mini-date{margin:6px 0 0;font-size:13px;line-height:1.5;color:rgba(255,255,255,.8)}
-.tk-mini .tk-details{margin-top:14px;padding-top:12px;border-top:1px dashed rgba(255,255,255,.35)}
-.tk-mini .tk-row{padding:8px 0;font-size:15px}
-.tk-mini .tk-id{margin:12px 0 0;padding:12px;font-size:13px}
-.tk-mini .tk-id b{font-size:18px}
-.tk-mini .tk-note{margin:12px 0 0;font-size:13px}
+.tk-qr-row{display:flex;align-items:center;gap:16px;margin:16px 0 0;padding:14px 0 0;border-top:1px dashed rgba(255,255,255,.35)}
+.tk-qr{flex:none;width:180px;height:180px;border-radius:14px;overflow:hidden;background:#fff}
+.tk-qr svg{display:block;width:180px;height:180px}
+.tk-qr-side{display:flex;flex-direction:column;gap:4px;min-width:0}
+.tk-qr-side span{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.7)}
+.tk-qr-side b{font-size:15px;font-weight:700;letter-spacing:.04em;color:#fff;word-break:break-all}
+.tk-qr-side em{font-style:normal;font-size:12px;color:rgba(255,255,255,.75)}
+.tk-mini .tk-details{margin-top:14px;padding-top:4px;border-top:0}
+.tk-mini .tk-row{display:flex;justify-content:space-between;align-items:baseline;gap:16px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.12);font-size:15px;line-height:1.45}
+.tk-mini .tk-row:last-child{border-bottom:0}
+.tk-mini .tk-row .tk-k{flex:none;color:rgba(255,255,255,.72)}
+.tk-mini .tk-row .tk-v{font-weight:600;text-align:right;word-break:break-word}
+.tk-mini .tk-row .tk-v small{display:block;font-weight:400;color:rgba(255,255,255,.78);font-size:12px}
+.tk-mini .tk-note{margin:12px 0 0;font-size:13px;line-height:1.6;text-align:center;color:rgba(255,255,255,.85)}
 .tk-actions .tk-dl{appearance:none;border:0;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;height:52px;border-radius:99px;background:#fff;color:#2a0f66;font-weight:700;font-size:16px;box-shadow:0 10px 30px rgba(20,0,70,.45)}
 .tk-actions .tk-dl:active{transform:scale(.98)}
 .tk-actions .tk-dl[disabled]{opacity:.6;cursor:wait}

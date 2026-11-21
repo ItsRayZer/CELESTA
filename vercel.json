@@ -209,12 +209,20 @@
       "source": "/admin"
     },
     {
+      "destination": "/admin.html",
+      "source": "/dashboard"
+    },
+    {
       "source": "/terms",
       "destination": "/terms.html"
     },
     {
       "source": "/privacy",
       "destination": "/privacy.html"
+    },
+    {
+      "source": "/ticket",
+      "destination": "/ticket.html"
     }
   ],
   "trailingSlash": false
