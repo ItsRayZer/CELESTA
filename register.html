@@ -196,9 +196,12 @@
         if(!r.ok)throw new Error(d.error||'Registration failed');
         var box=document.getElementById('ok-msg');
         if(box){
+          var cardUrl='/api/confirmation-card?id='+encodeURIComponent(d.id||'')+'&download=1';
           box.innerHTML='<h3>Registered</h3><p><strong>'+esc(e.name)+'</strong><br>'
             +(teamname?esc(teamname)+' · ':'')+esc(name)+' · '+esc(school)+' · Team of '+esc(team)+'</p>'
-            +(e.fee?'<p class="reg-note">Saved with the organizers. Fee: '+esc(e.fee)+' — pay at the venue on 27 November 2026. Carry a valid ID card and report by 9:30 AM. Please keep a screenshot.</p>':'<p class="reg-note">Saved with the organizers. Carry a valid ID card and report by 9:30 AM on 27 November 2026. Please keep a screenshot.</p>');
+            +(e.fee?'<p class="reg-note">Saved with the organizers. Fee: '+esc(e.fee)+' — pay at the venue on 27 November 2026. Carry a valid ID card and report by 9:30 AM.</p>':'<p class="reg-note">Saved with the organizers. Carry a valid ID card and report by 9:30 AM on 27 November 2026.</p>')
+            +(d.emailSent&&email?'<p class="reg-note">A confirmation email with your card is on its way to '+esc(email)+'.</p>':'')
+            +'<p style="margin-top:14px"><a class="gz-btn" href="'+cardUrl+'" download>Download confirmation</a></p>';
           box.classList.add('show');
           box.scrollIntoView({behavior:'smooth',block:'center'});
         }
