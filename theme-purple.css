@@ -119,7 +119,6 @@ body.premium-page,body.light-page,body.reg-page,body.dark-page{background:transp
   box-shadow:0 2.4cqw 7cqw rgba(15,0,60,.6),0 0 0 1px rgba(255,255,255,.14);margin-bottom:calc(var(--g) * 2);animation:tkFloat 6.5s ease-in-out infinite}
 @keyframes tkFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-1.4cqw)}}
 /* perforation between poster and stub */
-.tk-perf{position:absolute;left:calc(var(--r) + 3cqw);right:calc(var(--r) + 3cqw);top:var(--ny);height:0;border-top:.5cqw dashed rgba(255,255,255,.38);pointer-events:none;z-index:1}
 .tk-pill{position:relative;z-index:1;display:inline-flex;align-items:center;gap:2cqw;height:10.5cqw;padding:0 5.5cqw;border-radius:99px;background:rgba(14,5,38,.9);border:1px solid rgba(255,255,255,.14);font-size:4.6cqw;font-weight:500;letter-spacing:.01em;box-shadow:0 1.2cqw 4cqw rgba(10,0,40,.4)}
 .tk-pill i{width:2cqw;height:2cqw;border-radius:50%;background:#ffb347;box-shadow:0 0 2.4cqw #ffb347;display:block}
 .tk-date{position:relative;z-index:1;margin:5cqw 0 0;font-family:var(--display,"Marcellus",serif);font-weight:400;font-size:17cqw;line-height:1;letter-spacing:.01em;text-transform:uppercase;
