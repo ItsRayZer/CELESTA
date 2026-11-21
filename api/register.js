@@ -14,6 +14,7 @@
 // Flagged records never block a real student — only a filled honeypot,
 // a bad phone, a duplicate, or the rate limit reject a submit.
 import { Redis } from '@upstash/redis';
+import { randomBytes } from 'crypto';
 import { loadEvents } from './events.js';
 import { normPhone, validPhone, regMarkerKeys, MARKER_TTL } from './admin-login.js';
 import { sendMail, buildConfirmationEmail } from '../lib/email.js';
@@ -188,7 +189,10 @@ export default async function handler(req, res) {
   if (!started || isNaN(started)) reasons.push('no form timing');
   else { const elapsed = Date.now() - started; if (elapsed >= 0 && elapsed < 2000) reasons.push('submitted too fast'); }
 
-  const id = 'reg_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  // Registration ID: cryptographically random (96 bits), NOT time-based.
+  // The old form (timestamp + 5 Math.random chars) was guessable in part,
+  // and the ticket link is the only thing protecting a registration.
+  const id = 'reg_' + randomBytes(12).toString('base64url');
   const record = {
     id, event: ev.name, eventSlug: ev.slug, name, school, phone: phoneNorm, email: emailNorm, team: teamSize,
     teamName: teamName || '', members: Array.isArray(members) ? members.map(String) : [],

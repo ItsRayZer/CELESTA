@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
 <title>My Registrations — SPARK 2K26</title>
-<meta name="description" content="See all your SPARK 2K26 registrations and whether each one is paid. Look them up by your phone number.">
+<meta name="description" content="See all your SPARK 2K26 registrations and whether each one is paid. Registrations are saved on this device when you open your ticket.">
 <meta name="robots" content="noindex">
 <link rel="icon" type="image/png" href="/assets/logo.webp">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -22,14 +22,6 @@
   .mr-box{width:100%;max-width:560px}
   .mr-box h1{color:#fff;font-family:Georgia,serif;font-size:32px;font-weight:700;margin:4px 0 8px}
   .mr-box .mr-sub{color:rgba(255,255,255,.72);font-size:15px;line-height:1.6;margin:0 0 20px}
-  .mr-form{display:flex;gap:10px;margin-bottom:8px}
-  .mr-form input{flex:1;min-width:0;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.18);border-radius:12px;padding:13px 14px;font-size:16px;color:#fff;font-family:inherit;outline:none}
-  .mr-form input:focus{border-color:#8f47e6}
-  .mr-form input::placeholder{color:rgba(255,255,255,.4)}
-  .mr-form button{flex:none;background:linear-gradient(135deg,#7b3dff,#8f47e6);border:0;border-radius:12px;padding:13px 16px;font-size:15px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit}
-  .mr-form button:disabled{opacity:.6;cursor:default}
-  .mr-hint{color:rgba(255,255,255,.5);font-size:13px;line-height:1.5;margin:0 0 24px}
-  .mr-hint.err{color:#f87171}
   .mr-sec{width:100%;max-width:560px;margin-top:8px}
   .mr-sec h2{color:rgba(255,255,255,.85);font-size:13px;letter-spacing:.16em;text-transform:uppercase;margin:0 0 12px}
   .mr-card{background:linear-gradient(135deg,rgba(123,61,255,.16),rgba(143,71,230,.08));border:1px solid rgba(255,255,255,.14);border-radius:16px;padding:16px;margin-bottom:12px}
@@ -59,18 +51,9 @@
   </div>
   <div class="mr-box">
     <h1>My Registrations</h1>
-    <p class="mr-sub">Your registrations are saved on this device. Enter your phone number to find them on any device.</p>
-    <form class="mr-form" id="mr-form">
-      <input id="mr-phone" type="tel" inputmode="numeric" autocomplete="tel" maxlength="13" placeholder="10-digit mobile number" aria-label="Phone number">
-      <button type="submit" id="mr-go">Find mine</button>
-    </form>
-    <p class="mr-hint" id="mr-hint">We look up registrations by the phone number you gave at registration.</p>
+    <p class="mr-sub">Your registrations are saved on this device when you open your ticket. On another phone, open your ticket link and it will appear here too.</p>
   </div>
-  <div class="mr-sec" id="mr-results" hidden>
-    <h2 id="mr-results-h">Registrations</h2>
-    <div id="mr-results-list"></div>
-  </div>
-  <div class="mr-sec" id="mr-saved" hidden>
+  <div class="mr-sec" id="mr-saved">
     <h2>Saved on this device</h2>
     <div id="mr-saved-list"></div>
   </div>
@@ -79,7 +62,7 @@
 <script src="/assets/spark-bot.js?v=26"></script>
 <script>
 (function(){
-  var REGS_KEY='spark_my_regs', PHONE_KEY='spark_my_phone';
+  var REGS_KEY='spark_my_regs';
   function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
   function loadIds(){
     try{var a=JSON.parse(localStorage.getItem(REGS_KEY)||'[]');return Array.isArray(a)?a:[];}
@@ -89,25 +72,12 @@
     try{localStorage.setItem(REGS_KEY,JSON.stringify(ids.slice(0,20)));}catch(e){}
     refreshBadge();
   }
-  // Merge new IDs in front, deduped, capped at 20.
-  function mergeIds(newIds){
-    var cur=loadIds();
-    var merged=newIds.concat(cur.filter(function(x){return newIds.indexOf(x)===-1;}));
-    saveIds(merged);
-    return merged;
-  }
   function refreshBadge(){
     var b=document.querySelector('.myregs-count');
     if(!b)return;
     var n=loadIds().length;
     b.textContent=n>99?'99+':String(n);
     b.hidden=n===0;
-  }
-  function normPhone(p){
-    var d=String(p||'').replace(/\D/g,'');
-    if(d.indexOf('91')===0&&d.length===12)d=d.slice(2);
-    if(d.charAt(0)==='0'&&d.length===11)d=d.slice(1);
-    return d;
   }
   function cardHTML(t){
     var memberList=[t.name].concat(t.members||[]);
@@ -132,18 +102,13 @@
     return fetch('/api/ticket?id='+encodeURIComponent(id)).then(function(r){return r.json();})
       .then(function(d){return (d&&d.ok&&d.ticket)?d.ticket:null;}).catch(function(){return null;});
   }
-  var savedSec=document.getElementById('mr-saved');
   var savedList=document.getElementById('mr-saved-list');
-  var resSec=document.getElementById('mr-results');
-  var resList=document.getElementById('mr-results-list');
-  var resH=document.getElementById('mr-results-h');
-  var hint=document.getElementById('mr-hint');
-  var phoneInput=document.getElementById('mr-phone');
-  var goBtn=document.getElementById('mr-go');
-  function renderSaved(excludeIds){
-    var ids=loadIds().filter(function(x){return excludeIds.indexOf(x)===-1;});
-    if(!ids.length){savedSec.hidden=true;savedList.innerHTML='';return;}
-    savedSec.hidden=false;
+  function renderSaved(){
+    var ids=loadIds();
+    if(!ids.length){
+      savedList.innerHTML='<p class="mr-empty">No registrations saved on this device yet. <a href="/events">Browse events to register</a>, or open your ticket link on this phone and it will appear here.</p>';
+      return;
+    }
     savedList.innerHTML='<p class="mr-loading">Loading your saved registrations…</p>';
     Promise.all(ids.map(fetchTicket)).then(function(ts){
       var found=ts.filter(Boolean);
@@ -151,52 +116,14 @@
       if(found.length!==ids.length){
         saveIds(found.map(function(t){return t.id;}));
       }
-      if(!found.length){savedSec.hidden=true;savedList.innerHTML='';return;}
+      if(!found.length){
+        savedList.innerHTML='<p class="mr-empty">No registrations saved on this device yet. <a href="/events">Browse events to register</a>, or open your ticket link on this phone and it will appear here.</p>';
+        return;
+      }
       savedList.innerHTML=found.map(cardHTML).join('');
     });
   }
-  // On load: show what is saved on this device, and pre-fill the phone.
-  try{var savedPhone=localStorage.getItem(PHONE_KEY);if(savedPhone)phoneInput.value=savedPhone;}catch(e){}
-  renderSaved([]);
-  document.getElementById('mr-form').addEventListener('submit',function(ev){
-    ev.preventDefault();
-    var phone=normPhone(phoneInput.value);
-    hint.classList.remove('err');
-    if(!/^[6-9]\d{9}$/.test(phone)){
-      hint.textContent='Enter a valid 10-digit mobile number.';
-      hint.classList.add('err');
-      return;
-    }
-    goBtn.disabled=true;goBtn.textContent='Searching…';
-    hint.classList.remove('err');
-    hint.textContent='Looking up registrations for '+phone+'…';
-    fetch('/api/ticket?phone='+encodeURIComponent(phone)).then(function(r){return r.json();}).then(function(d){
-      goBtn.disabled=false;goBtn.textContent='Find mine';
-      if(!d||!d.ok||!Array.isArray(d.tickets)){
-        hint.textContent='Could not load registrations. Check your connection and try again.';
-        hint.classList.add('err');
-        return;
-      }
-      var list=d.tickets;
-      resSec.hidden=false;
-      resH.textContent='Registrations for '+phone;
-      if(!list.length){
-        resList.innerHTML='<p class="mr-empty">No registrations found for this number. <a href="/events">Browse events to register</a>.</p>';
-        hint.textContent='No registrations found for this number.';
-      }else{
-        resList.innerHTML=list.map(cardHTML).join('');
-        hint.textContent='Found '+list.length+' registration'+(list.length>1?'s':'')+' for '+phone+'. Saved on this device.';
-        try{localStorage.setItem(PHONE_KEY,phone);}catch(e){}
-        var ids=list.map(function(t){return t.id;});
-        mergeIds(ids);
-        renderSaved(ids);
-      }
-    }).catch(function(){
-      goBtn.disabled=false;goBtn.textContent='Find mine';
-      hint.textContent='Could not load registrations. Check your connection and try again.';
-      hint.classList.add('err');
-    });
-  });
+  renderSaved();
 })();
 </script>
 </body>

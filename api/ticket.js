@@ -3,18 +3,17 @@
 // (reg_ + 16 chars), so the link itself is the ticket. Only the fields the
 // ticket needs are returned; nothing sensitive beyond what the ticket shows.
 //
-// GET /api/ticket?phone=<10-digit> — public lookup of ALL registrations for
-// one phone number, for the "My Registrations" page. No auth: the phone is
-// the identifier the student gave at registration (same as an order lookup
-// by phone). Returns {ok:true, tickets:[...]} sorted newest first, or an
-// empty list when nothing matches. The ?id= path below is unchanged.
+// There is deliberately NO phone lookup here. A phone number is a public-ish
+// identifier, so a ?phone= endpoint would let anyone with a number pull a
+// student's full details. My Registrations works from the device's own saved
+// ticket IDs instead; on another device the student opens their ticket link.
 import { Redis } from '@upstash/redis';
 
 const redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL,
   token: process.env.UPSTASH_REDIS_REST_TOKEN,
 });
-import { parseVal, normPhone, validPhone } from './admin-login.js';
+import { parseVal } from './admin-login.js';
 import { loadEvents } from './events.js';
 
 function toTicket(rec, fee) {
@@ -48,33 +47,8 @@ async function feeBySlug() {
 export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
   const id = String(req.query.id || '').trim();
-  const phoneRaw = String(req.query.phone || '').trim();
-  if (!id && !phoneRaw) {
-    return res.status(400).json({ error: 'Missing ticket id or phone' });
-  }
-  // --- Phone lookup: all registrations for one number, newest first. ---
-  if (!id && phoneRaw) {
-    const phone = normPhone(phoneRaw);
-    if (!validPhone(phone)) {
-      return res.status(400).json({ error: 'Enter a valid 10-digit mobile number.' });
-    }
-    try {
-      const all = await redis.hgetall('celesta:regs');
-      const fees = await feeBySlug();
-      const list = [];
-      if (all) {
-        Object.values(all).forEach(function (v) {
-          const rec = parseVal(v);
-          if (!rec || normPhone(rec.phone) !== phone) return;
-          list.push(toTicket(rec, fees[rec.eventSlug] || ''));
-        });
-      }
-      list.sort(function (a, b) { return String(b.at || '').localeCompare(String(a.at || '')); });
-      return res.status(200).json({ ok: true, tickets: list });
-    } catch (e) {
-      console.error('ticket phone lookup failed', e);
-      return res.status(500).json({ error: 'Storage unavailable' });
-    }
+  if (!id) {
+    return res.status(400).json({ error: 'Missing ticket id' });
   }
   // --- Single ticket by id (unchanged behaviour). ---
   if (!/^reg_[A-Za-z0-9_-]{8,32}$/.test(id)) {
