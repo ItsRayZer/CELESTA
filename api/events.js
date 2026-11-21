@@ -236,11 +236,19 @@ export const DEFAULT_EVENTS = [
 ];
 
 export async function loadEvents() {
-  let vals = await redis.hvals('celesta:events');
+  let vals;
+  try {
+    vals = await redis.hvals('celesta:events');
+  } catch {
+    // Redis down / rate-limited: serve built-in defaults so the public
+    // site and registration keep working instead of a 500.
+    return DEFAULT_EVENTS.map(e => JSON.parse(JSON.stringify(e)))
+      .sort((a, b) => (a.order || 99) - (b.order || 99) || String(a.name).localeCompare(String(b.name)));
+  }
   if (!vals || !vals.length) {
     const obj = {};
     DEFAULT_EVENTS.forEach(e => { obj[e.slug] = JSON.stringify(e); });
-    await redis.hset('celesta:events', obj);
+    try { await redis.hset('celesta:events', obj); } catch {}
     vals = Object.values(obj);
   }
   const list = vals.map(v => parseVal(v)).filter(Boolean);
@@ -275,7 +283,7 @@ export async function loadEvents() {
   if (dirty) {
     const obj = {};
     list.forEach(e => { obj[e.slug] = JSON.stringify(e); });
-    await redis.hset('celesta:events', obj);
+    try { await redis.hset('celesta:events', obj); } catch {}
     // The order migration above can change sort keys, so re-sort before return.
     list.sort((a, b) => (a.order || 99) - (b.order || 99) || String(a.name).localeCompare(String(b.name)));
   }
