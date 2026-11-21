@@ -105,10 +105,8 @@
     var grid=document.getElementById('ev-grid');
     if(grid){
       grid.innerHTML=list.map(function(e,i){
-        var num=String(e.order||i+1).padStart(2,'0');
         return '<a class="ax-card" style="--i:'+i+'" href="/registration/'+esc(e.slug)+'">'
-          +'<div class="ax-img"><img src="'+(e.poster?'/api/poster?event='+esc(e.slug):'/assets/poster-'+esc(e.slug)+'.webp')+'" alt="'+esc(e.name)+' poster" loading="lazy" decoding="async"><span class="ax-n">'+num+'</span></div>'
-          +'<div class="ax-foot"><span class="ax-prize">'+fmt(e.prize1)+'</span><span class="ax-go">'+ARROW+'</span></div></div></a>';
+          +'<div class="ax-img"><img src="'+(e.poster?'/api/poster?event='+esc(e.slug):'/assets/poster-'+esc(e.slug)+'.webp')+'" alt="'+esc(e.name)+' poster" loading="lazy" decoding="async"></div></a>';
       }).join('');
     }
     var total=list.reduce(function(s,e){return s+(e.prize1||0)+(e.prize2||0);},0);
