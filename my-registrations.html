@@ -40,6 +40,8 @@
   .mr-ticket{display:inline-block;margin-top:12px;color:#fff;font-size:14px;font-weight:700;text-decoration:none;border-bottom:1px solid rgba(255,255,255,.4);padding-bottom:2px}
   .mr-empty{color:rgba(255,255,255,.65);font-size:15px;line-height:1.6;margin:0 0 12px}
   .mr-empty a{color:#fff}
+  .mr-cta{display:block;width:100%;text-align:center;background:linear-gradient(135deg,#7b3dff,#8f47e6);border:0;border-radius:14px;padding:16px;font-size:17px;font-weight:700;color:#fff;text-decoration:none;margin:4px 0 14px;font-family:inherit}
+  .mr-note{color:rgba(255,255,255,.55);font-size:13px;line-height:1.5;margin:0}
   .mr-loading{color:rgba(255,255,255,.6);font-size:14px;padding:12px 0}
 </style>
 </head>
@@ -102,11 +104,16 @@
     return fetch('/api/ticket?id='+encodeURIComponent(id)).then(function(r){return r.json();})
       .then(function(d){return (d&&d.ok&&d.ticket)?d.ticket:null;}).catch(function(){return null;});
   }
+  function emptyHTML(){
+    return '<p class="mr-empty">No registrations here yet.</p>'
+      +'<a class="mr-cta" href="/events">Register Now</a>'
+      +'<p class="mr-note">Or open your ticket link on this phone and it will appear here.</p>';
+  }
   var savedList=document.getElementById('mr-saved-list');
   function renderSaved(){
     var ids=loadIds();
     if(!ids.length){
-      savedList.innerHTML='<p class="mr-empty">No registrations saved on this device yet. <a href="/events">Browse events to register</a>, or open your ticket link on this phone and it will appear here.</p>';
+      savedList.innerHTML=emptyHTML();
       return;
     }
     savedList.innerHTML='<p class="mr-loading">Loading your saved registrations…</p>';
@@ -117,7 +124,7 @@
         saveIds(found.map(function(t){return t.id;}));
       }
       if(!found.length){
-        savedList.innerHTML='<p class="mr-empty">No registrations saved on this device yet. <a href="/events">Browse events to register</a>, or open your ticket link on this phone and it will appear here.</p>';
+        savedList.innerHTML=emptyHTML();
         return;
       }
       savedList.innerHTML=found.map(cardHTML).join('');
