@@ -225,5 +225,11 @@
       "destination": "/ticket.html"
     }
   ],
-  "trailingSlash": false
+  "trailingSlash": false,
+  "crons": [
+    {
+      "path": "/api/remind",
+      "schedule": "0 1 * * *"
+    }
+  ]
 }

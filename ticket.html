@@ -176,6 +176,10 @@
     rows+='<div class="tk-row"><span class="tk-k">Members</span><span class="tk-v">'+memberList.map(function(m){return esc(m);}).join(', ')+'<small>Team of '+esc(t.team)+'</small></span></div>';
     rows+='<div class="tk-row"><span class="tk-k">Phone</span><span class="tk-v">'+esc(t.phone)+'</span></div>';
     if(t.fee)rows+='<div class="tk-row"><span class="tk-k">Fee</span><span class="tk-v">'+esc(t.fee)+'<small>Pay at the venue</small></span></div>';
+    // Confirmation email note: register.html stashes the address here when
+    // the confirmation is on its way. Shown once, then cleared.
+    var emailed=null;
+    try{emailed=sessionStorage.getItem('spark_emailed');sessionStorage.removeItem('spark_emailed');}catch(e){}
     state.style.display='none';
     slot.innerHTML='<div class="tk-wrap tk-mini-wrap" id="reg-ticket"><div class="tk tk-mini">'
       +'<p class="tk-mini-head">SPARK 2K26 · Registered</p>'
@@ -192,7 +196,8 @@
       +'</div></div>'
       +'<div class="tk-actions"><button class="tk-dl" id="tk-dl" type="button">Download ticket</button>'
       +'<a class="tk-back" href="/events">See all events</a></div>'
-      +'<p class="tk-dl-note">Keep this ticket safe. You will need it at the venue.</p>';
+      +'<p class="tk-dl-note">Keep this ticket safe. You will need it at the venue.</p>'
+      +(emailed?'<p class="tk-dl-note">Confirmation email on its way to '+esc(emailed)+'.</p>':'');
     document.title=t.event+' — Your Ticket | SPARK 2K26';
     var dl=document.getElementById('tk-dl');
     if(dl)dl.addEventListener('click',function(){downloadTicket(t);});

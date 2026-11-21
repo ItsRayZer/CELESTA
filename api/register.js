@@ -16,6 +16,7 @@
 import { Redis } from '@upstash/redis';
 import { loadEvents } from './events.js';
 import { normPhone, validPhone, regMarkerKeys, MARKER_TTL } from './admin-login.js';
+import { sendMail, buildConfirmationEmail } from '../lib/email.js';
 export { normPhone, validPhone, regMarkerKeys, MARKER_TTL } from './admin-login.js';
 
 // Redis client (was missing: every redis.* call threw ReferenceError and
@@ -216,7 +217,6 @@ export default async function handler(req, res) {
   try {
     await redis.hset('celesta:regs', { [id]: JSON.stringify(record) });
     await redis.zadd('celesta:reglist', { score: Date.now(), member: id });
-    return res.status(200).json({ ok: true, id });
   } catch (e) {
     console.error('register write failed', e);
     // Roll the markers back so a failed write doesn't block the student.
@@ -227,4 +227,22 @@ export default async function handler(req, res) {
     try { await redis.hdel('celesta:regs', id); } catch {}
     return res.status(500).json({ error: 'Storage unavailable' });
   }
+
+  // Confirmation email, best-effort: it is awaited (with an 8s cap inside
+  // sendMail) so Vercel never kills it mid-send, but a mail failure NEVER
+  // fails the registration or changes the ticket the student gets.
+  // When Gmail is not configured, sendMail returns false immediately.
+  let emailSent = false;
+  if (emailNorm) {
+    try {
+      const mail = buildConfirmationEmail({
+        event: ev.name, name, school, members: record.members,
+        phone: phoneNorm, fee: ev.fee || '', id, team: teamSize,
+      });
+      emailSent = await sendMail({ to: emailNorm, ...mail });
+    } catch (e) {
+      console.error('confirmation email failed', e);
+    }
+  }
+  return res.status(200).json(emailNorm ? { ok: true, id, emailSent } : { ok: true, id });
 }

@@ -343,11 +343,15 @@
         var d=await r.json().catch(function(){return {};});
         if(!r.ok)throw new Error(d.error||'Registration failed');
         // Registration saved: the ticket lives on its own page.
+        // If a confirmation email is on its way, the ticket page shows the
+        // line (this page redirects away too fast to show it here).
+        if(d.emailSent){try{sessionStorage.setItem('spark_emailed',email);}catch(e){}}
         var regId=d.id||'';
         if(regId){location.href='/ticket?id='+encodeURIComponent(regId);return;}
         var box=document.getElementById('ok-msg');
         if(box){
-          box.innerHTML='<h3>Registered</h3><p>Your registration is saved. Your ticket link will be shared with you.</p>';
+          box.innerHTML='<h3>Registered</h3><p>Your registration is saved. Your ticket link will be shared with you.</p>'
+            +(d.emailSent?'<p>Confirmation email on its way to '+esc(email)+'.</p>':'');
           box.classList.add('show');
           box.scrollIntoView({behavior:'smooth',block:'center'});
         }
