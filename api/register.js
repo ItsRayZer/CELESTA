@@ -18,6 +18,13 @@ import { loadEvents } from './events.js';
 import { normPhone, validPhone, regMarkerKeys, MARKER_TTL } from './admin-login.js';
 export { normPhone, validPhone, regMarkerKeys, MARKER_TTL } from './admin-login.js';
 
+// Redis client (was missing: every redis.* call threw ReferenceError and
+// every registration failed with "Storage unavailable").
+const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN,
+});
+
 // 300 per 10 min per IP: the whole venue shares one public IP, and the
 // 9:30-10:00 rush is ~135-150 submissions. 100 would 429 students past #100.
 // Duplicates are already blocked per phone+email, and junk is flagged.
