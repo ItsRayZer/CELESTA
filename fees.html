@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
+<title>Fees — SPARK 2K26</title>
+<meta name="description" content="Fees collection for SPARK 2K26. Admin only.">
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/png" href="/assets/logo.webp">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
+<style>
+  :root{
+    --lime:#d6ff3f; --purple:#bf5af2; --blue:#0a84ff; --green:#30d158; --pink:#ff375f;
+    --yellow:#ffd60a; --cyan:#64d2ff;
+    --bg:#000; --card:#0c0c10; --card2:rgba(255,255,255,.05); --card3:rgba(255,255,255,.07);
+    --stroke:rgba(255,255,255,.09); --txt:#fff; --mut:rgba(255,255,255,.6); --mut2:rgba(255,255,255,.4);
+  }
+  *{box-sizing:border-box}
+  html{background:#000}
+  body{margin:0;background:#000;color:var(--txt);font-family:'Plus Jakarta Sans',system-ui,sans-serif;min-height:100svh}
+  a{color:inherit}
+  button{font-family:inherit}
+  .hidden{display:none !important}
+  /* ---------- login ---------- */
+  #login{min-height:92vh;min-height:92dvh;display:flex;align-items:center;justify-content:center;padding:24px}
+  .login-card{width:100%;max-width:340px;text-align:center}
+  .login-card .mark{font-size:10px;font-weight:600;letter-spacing:.34em;color:var(--mut);margin-bottom:20px}
+  .login-card h1{font-size:28px;font-weight:800;letter-spacing:-.02em;margin:0 0 8px}
+  .login-card p{color:var(--mut);font-size:14px;line-height:1.6;margin:0 0 24px}
+  .login-card input{width:100%;background:var(--card2);border:1px solid var(--stroke);border-radius:12px;padding:15px 16px;font-size:16px;color:var(--txt);font-family:inherit;margin-bottom:12px;outline:none}
+  .login-card input:focus{border-color:var(--lime)}
+  .login-card button{width:100%;background:var(--lime);border:none;border-radius:12px;padding:15px;font-size:15px;font-weight:800;cursor:pointer;color:#000}
+  .login-card button:active{transform:scale(.98);opacity:.85}
+  #loginErr{color:var(--pink);font-size:13px;min-height:20px;margin-top:12px}
+  .login-card .backlink{display:inline-block;margin-top:20px;font-size:13px;color:var(--mut);text-decoration:none}
+  /* ---------- app shell ---------- */
+  .wrap{max-width:720px;margin:0 auto;padding:18px 16px 120px}
+  .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:6px}
+  .brand{font-size:15px;font-weight:800;letter-spacing:.18em}
+  .brand small{display:block;font-size:10px;font-weight:700;letter-spacing:.28em;color:var(--lime);margin-top:3px}
+  .sync{font-size:11px;color:var(--mut);text-align:right;line-height:1.5}
+  .sync b{color:var(--green)}
+  .iconbtn{background:var(--card2);border:1px solid var(--stroke);color:var(--txt);border-radius:10px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer}
+  /* hero */
+  .hero{background:radial-gradient(60% 40% at 95% 0%, rgba(191,90,242,.22), transparent 70%),var(--card);border:1px solid var(--stroke);border-radius:20px;padding:20px;margin:14px 0}
+  .hero .row{display:flex;justify-content:space-between;gap:12px}
+  .hero .cell small{display:block;font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--mut);text-transform:uppercase;margin-bottom:6px}
+  .hero .cell b{font-size:28px;font-weight:800;letter-spacing:-.02em}
+  .hero .cell b.g{color:var(--green)}
+  .hero .cell b.y{color:var(--yellow)}
+  .hero .sub{display:flex;gap:16px;margin-top:14px;padding-top:14px;border-top:1px solid var(--stroke);font-size:13px;color:var(--mut)}
+  .hero .sub b{color:var(--txt)}
+  /* section titles */
+  .secttl{font-size:12px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--mut);margin:22px 0 10px}
+  /* event cards */
+  .evcard{display:block;width:100%;text-align:left;background:var(--card);border:1px solid var(--stroke);border-radius:16px;padding:16px;margin-bottom:10px;cursor:pointer;color:var(--txt)}
+  .evcard:active{transform:scale(.99)}
+  .evcard .top{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+  .evcard .name{font-size:19px;font-weight:800}
+  .evcard .code{font-family:monospace,monospace;font-size:12px;color:var(--mut)}
+  .evcard .fee{font-size:13px;color:var(--mut);margin-top:2px}
+  .evcard .nums{display:flex;gap:18px;margin-top:12px;font-size:13px;color:var(--mut)}
+  .evcard .nums b{display:block;font-size:17px;color:var(--txt);margin-top:2px}
+  .evcard .nums b.g{color:var(--green)}
+  .evcard .nums b.y{color:var(--yellow)}
+  /* tabs */
+  .tabs{display:flex;gap:8px;margin:14px 0;overflow-x:auto;padding-bottom:2px}
+  .tabs button{flex:1;min-width:0;border:1px solid var(--stroke);background:var(--card2);color:var(--mut);border-radius:99px;padding:10px 12px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap}
+  .tabs button.on{background:var(--lime);border-color:var(--lime);color:#000}
+  /* toolbar */
+  .toolbar{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+  .toolbar input{flex:1;min-width:140px;background:var(--card2);border:1px solid var(--stroke);border-radius:12px;padding:12px 14px;font-size:15px;color:var(--txt);font-family:inherit;outline:none}
+  .toolbar input:focus{border-color:var(--lime)}
+  .toolbar select{background:var(--card2);border:1px solid var(--stroke);border-radius:12px;padding:12px 10px;font-size:14px;color:var(--txt);font-family:inherit;outline:none}
+  /* student rows */
+  .srow{display:flex;gap:12px;align-items:flex-start;background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:14px;margin-bottom:8px;cursor:pointer;width:100%;text-align:left;color:var(--txt)}
+  .srow:active{transform:scale(.99)}
+  .chest{flex:none;width:64px;text-align:center}
+  .chest b{display:block;font-family:monospace,monospace;font-size:19px;font-weight:800;color:var(--lime)}
+  .chest span{font-size:9px;letter-spacing:.12em;color:var(--mut2);text-transform:uppercase}
+  .srow .info{flex:1;min-width:0}
+  .srow .nm{font-size:16px;font-weight:700}
+  .srow .meta{font-size:13px;color:var(--mut);margin-top:3px;line-height:1.5;word-break:break-word}
+  .badge{flex:none;font-size:11px;font-weight:800;padding:5px 9px;border-radius:99px;white-space:nowrap}
+  .badge.paid{background:rgba(48,209,88,.16);color:var(--green);border:1px solid rgba(48,209,88,.4)}
+  .badge.pend{background:rgba(255,214,10,.13);color:var(--yellow);border:1px solid rgba(255,214,10,.4)}
+  /* collect */
+  .collect-card{background:var(--card);border:1px solid var(--stroke);border-radius:16px;padding:16px;margin-top:12px}
+  .collect-card .big-chest{text-align:center;margin:6px 0 14px}
+  .collect-card .big-chest span{display:block;font-size:11px;letter-spacing:.2em;color:var(--mut);text-transform:uppercase}
+  .collect-card .big-chest b{font-family:monospace,monospace;font-size:44px;font-weight:800;color:var(--lime);letter-spacing:.04em}
+  .collect-card dl{margin:0 0 14px}
+  .collect-card dl div{display:flex;justify-content:space-between;gap:14px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.07);font-size:14px}
+  .collect-card dl div:last-child{border-bottom:0}
+  .collect-card dt{color:var(--mut)}
+  .collect-card dd{margin:0;font-weight:700;text-align:right;word-break:break-word}
+  .payrow{display:flex;gap:10px}
+  .paybtn{flex:1;padding:16px;border-radius:14px;font-size:16px;font-weight:800;cursor:pointer;border:1px solid var(--stroke);background:var(--card3);color:var(--txt)}
+  .paybtn.cash{background:var(--lime);border-color:var(--lime);color:#000}
+  .paybtn.gpay{background:var(--blue);border-color:var(--blue);color:#fff}
+  .paybtn:active{transform:scale(.97)}
+  .paybtn:disabled{opacity:.45;cursor:default}
+  .unpay{width:100%;margin-top:10px;background:none;border:1px solid rgba(255,55,95,.5);color:var(--pink);border-radius:12px;padding:12px;font-size:13px;font-weight:700;cursor:pointer}
+  .msg{font-size:13px;line-height:1.5;margin:10px 0 0;min-height:18px}
+  .msg.ok{color:var(--green)}
+  .msg.err{color:var(--pink)}
+  /* history */
+  .hrow{display:flex;gap:12px;background:var(--card);border:1px solid var(--stroke);border-radius:12px;padding:12px 14px;margin-bottom:8px;font-size:14px}
+  .hrow .amt{flex:none;font-weight:800;color:var(--green);min-width:64px;text-align:right}
+  .hrow .who{flex:1;min-width:0}
+  .hrow .who b{display:block}
+  .hrow .who span{font-size:12px;color:var(--mut)}
+  .hrow .m{flex:none;font-size:11px;font-weight:800;padding:4px 8px;border-radius:99px;height:fit-content}
+  .hrow .m.cash{background:rgba(214,255,63,.14);color:var(--lime)}
+  .hrow .m.gpay{background:rgba(10,132,255,.16);color:var(--cyan)}
+  /* funds */
+  .fundgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+  .fund{background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:14px}
+  .fund small{display:block;font-size:11px;font-weight:700;letter-spacing:.12em;color:var(--mut);text-transform:uppercase;margin-bottom:5px}
+  .fund b{font-size:22px;font-weight:800}
+  .fund b.g{color:var(--green)}
+  .fund b.y{color:var(--yellow)}
+  .fund b.l{color:var(--lime)}
+  .fund b.c{color:var(--cyan)}
+  .empty{color:var(--mut);font-size:14px;line-height:1.6;padding:14px 0}
+  .backbtn{background:var(--card2);border:1px solid var(--stroke);color:var(--txt);border-radius:10px;padding:9px 14px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:4px}
+  .evtitle{font-size:24px;font-weight:800;margin:8px 0 2px}
+  .evsub{font-size:13px;color:var(--mut);margin:0 0 4px}
+</style>
+</head>
+<body>
+<div id="login">
+  <div class="login-card">
+    <div class="mark">SPARK 2K26 · ADMIN</div>
+    <h1>Fees</h1>
+    <p>Collect fees, track who came, and see funds live. Admin only.</p>
+    <input id="pw" type="password" placeholder="Admin password" autocomplete="current-password">
+    <button id="loginBtn">Unlock Fees</button>
+    <div id="loginErr"></div>
+    <a class="backlink" href="/admin">Back to dashboard</a>
+  </div>
+</div>
+
+<div id="app" class="hidden">
+  <div class="wrap">
+    <div class="topbar">
+      <div class="brand">FEES<small>SPARK 2K26 · LIVE SYNC</small></div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span class="sync" id="sync">Updated <b>—</b></span>
+        <button class="iconbtn" id="logoutBtn">Logout</button>
+      </div>
+    </div>
+
+    <div class="hero">
+      <div class="row">
+        <div class="cell"><small>Collected</small><b class="g" id="hCollected">₹0</b></div>
+        <div class="cell" style="text-align:right"><small>Remaining</small><b class="y" id="hRemaining">₹0</b></div>
+      </div>
+      <div class="sub">
+        <span>Paid <b id="hPaid">0</b></span>
+        <span>Pending <b id="hPend">0</b></span>
+        <span>Cash <b id="hCash">₹0</b></span>
+        <span>GPay <b id="hGpay">₹0</b></span>
+      </div>
+    </div>
+
+    <div id="eventsView">
+      <div class="secttl">Events</div>
+      <div id="evList"><p class="empty">Loading…</p></div>
+    </div>
+
+    <div id="eventView" class="hidden">
+      <button class="backbtn" id="evBack">← All events</button>
+      <h2 class="evtitle" id="evName">Event</h2>
+      <p class="evsub" id="evSub"></p>
+      <div class="tabs">
+        <button data-tab="students" class="on">Students</button>
+        <button data-tab="collect">Collect</button>
+        <button data-tab="history">History</button>
+        <button data-tab="funds">Funds</button>
+      </div>
+
+      <div id="tab-students">
+        <div class="toolbar">
+          <input id="q" placeholder="Search name, chest, phone…">
+          <select id="fPay"><option value="">All</option><option value="paid">Came</option><option value="unpaid">Pending</option></select>
+        </div>
+        <div id="stuList"><p class="empty">Loading…</p></div>
+      </div>
+
+      <div id="tab-collect" class="hidden">
+        <div class="toolbar">
+          <input id="cPhone" type="tel" inputmode="numeric" placeholder="Student phone number" maxlength="13">
+          <button class="iconbtn" id="cFind" style="padding:12px 18px">Find</button>
+        </div>
+        <p class="msg" id="cMsg"></p>
+        <div id="cCard"></div>
+      </div>
+
+      <div id="tab-history" class="hidden">
+        <div id="histList"><p class="empty">Loading…</p></div>
+      </div>
+
+      <div id="tab-funds" class="hidden">
+        <div class="fundgrid">
+          <div class="fund"><small>Collected</small><b class="g" id="fCollected">₹0</b></div>
+          <div class="fund"><small>Remaining</small><b class="y" id="fRemaining">₹0</b></div>
+          <div class="fund"><small>Cash</small><b class="l" id="fCash">₹0</b></div>
+          <div class="fund"><small>GPay</small><b class="c" id="fGpay">₹0</b></div>
+        </div>
+        <p class="empty" id="fNote"></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var TOKEN_KEY='celesta_admin_tok', ROLE_KEY='celesta_admin_role';
+  var token=localStorage.getItem(TOKEN_KEY)||'';
+  var $=function(id){return document.getElementById(id);};
+  function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+  function inr(n){return '₹'+Number(n||0).toLocaleString('en-IN');}
+  function fmtTime(d){var h=d.getHours(),m=d.getMinutes(),s=d.getSeconds();function p(x){return (x<10?'0':'')+x;}return p(h)+':'+p(m)+':'+p(s);}
+  function fmtWhen(iso){try{var d=new Date(iso);return d.toLocaleDateString('en-IN',{day:'numeric',month:'short'})+' '+fmtTime(d);}catch(e){return '';}}
+
+  function api(path, opts){
+    opts=opts||{};
+    opts.headers=Object.assign({'Authorization':'Bearer '+token}, opts.headers||{});
+    return fetch(path, opts).then(function(r){return r.json().then(function(d){return {status:r.status, data:d};});});
+  }
+
+  var overview=null, curEvent=null, curStudents=[], curHistory=[], curCollect=null;
+
+  function showLogin(){$('login').classList.remove('hidden');$('app').classList.add('hidden');}
+  function showApp(){$('login').classList.add('hidden');$('app').classList.remove('hidden');}
+
+  function doLogin(){
+    var pw=$('pw').value;
+    if(!pw){$('loginErr').textContent='Enter password';return;}
+    $('loginBtn').textContent='Checking…';
+    fetch('/api/admin-login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})})
+      .then(function(r){return r.json();})
+      .then(function(d){
+        if(d.ok){token=d.token;localStorage.setItem(TOKEN_KEY,token);localStorage.setItem(ROLE_KEY,d.role);$('pw').value='';showApp();refreshAll();}
+        else $('loginErr').textContent=d.error||'Wrong password';
+      })
+      .catch(function(){$('loginErr').textContent='Connection failed';})
+      .finally(function(){$('loginBtn').textContent='Unlock Fees';});
+  }
+  $('loginBtn').onclick=doLogin;
+  $('pw').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();});
+  $('logoutBtn').onclick=function(){localStorage.removeItem(TOKEN_KEY);localStorage.removeItem(ROLE_KEY);token='';location.reload();};
+
+  function renderOverview(){
+    if(!overview)return;
+    var t=overview.totals||{};
+    $('hCollected').textContent=inr(t.collected);
+    $('hRemaining').textContent=inr(t.remaining);
+    $('hPaid').textContent=t.paid||0;
+    $('hPend').textContent=t.pending||0;
+    $('hCash').textContent=inr(overview.cash);
+    $('hGpay').textContent=inr(overview.gpay);
+    $('sync').innerHTML='Updated <b>'+fmtTime(new Date())+'</b>';
+    var evs=overview.events||[];
+    $('evList').innerHTML=evs.map(function(e){
+      return '<button class="evcard" data-slug="'+esc(e.slug)+'">'
+        +'<div class="top"><span class="name">'+esc(e.name)+'</span><span class="code">'+esc(e.slug==='prompting'?'01':e.slug==='quiz'?'02':e.slug==='treasure-hunt'?'03':'04')+'</span></div>'
+        +'<div class="fee">'+esc(e.fee||'')+'</div>'
+        +'<div class="nums"><span>Registered<b>'+e.registered+'</b></span><span>Came<b class="g">'+e.paid+'</b></span><span>Pending<b class="y">'+e.pending+'</b></span><span>Collected<b>'+inr(e.collected)+'</b></span></div>'
+        +'</button>';
+    }).join('') || '<p class="empty">No events.</p>';
+    Array.prototype.forEach.call(document.querySelectorAll('.evcard'),function(b){
+      b.onclick=function(){openEvent(b.getAttribute('data-slug'));};
+    });
+  }
+
+  function loadOverview(){
+    return api('/api/fees?action=overview').then(function(r){
+      if(r.status===401){token='';localStorage.removeItem(TOKEN_KEY);showLogin();return false;}
+      if(r.data&&r.data.ok){overview=r.data;renderOverview();return true;}
+      return false;
+    }).catch(function(){return false;});
+  }
+
+  function openEvent(slug){
+    curEvent=slug;curCollect=null;$('cCard').innerHTML='';$('cMsg').textContent='';$('cPhone').value='';
+    $('eventsView').classList.add('hidden');
+    $('eventView').classList.remove('hidden');
+    var ev=(overview&&overview.events||[]).find(function(e){return e.slug===slug;});
+    $('evName').textContent=ev?ev.name:slug;
+    $('evSub').textContent=ev?(ev.fee||''):'';
+    setTab('students');
+    refreshEvent();
+  }
+  $('evBack').onclick=function(){
+    curEvent=null;$('eventView').classList.add('hidden');$('eventsView').classList.remove('hidden');
+    loadOverview();
+  };
+
+  function setTab(name){
+    Array.prototype.forEach.call(document.querySelectorAll('.tabs button'),function(b){
+      b.classList.toggle('on',b.getAttribute('data-tab')===name);
+    });
+    ['students','collect','history','funds'].forEach(function(t){
+      $('tab-'+t).classList.toggle('hidden',t!==name);
+    });
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('.tabs button'),function(b){
+    b.onclick=function(){setTab(b.getAttribute('data-tab'));};
+  });
+
+  function renderStudents(){
+    var q=($('q').value||'').trim().toLowerCase();
+    var f=$('fPay').value;
+    var list=curStudents.filter(function(r){
+      if(f==='paid'&&!r.paid)return false;
+      if(f==='unpaid'&&r.paid)return false;
+      if(!q)return true;
+      var hay=[r.name,r.school,r.chest,r.phone,r.teamName].concat(r.members||[]).join(' ').toLowerCase();
+      return hay.indexOf(q)>-1;
+    });
+    if(!list.length){$('stuList').innerHTML='<p class="empty">No students match.</p>';return;}
+    $('stuList').innerHTML=list.map(function(r){
+      var members=[r.name].concat(r.members||[]).join(', ');
+      var badge=r.paid
+        ?'<span class="badge paid">Paid · '+esc(r.paidMethod||'')+'</span>'
+        :'<span class="badge pend">Pending</span>';
+      return '<button class="srow" data-id="'+esc(r.id)+'">'
+        +'<span class="chest"><b>'+esc(r.chest||'—')+'</b><span>Chest</span></span>'
+        +'<span class="info"><span class="nm">'+esc(r.name)+'</span>'
+        +'<span class="meta">'+esc(r.school)+' · Team of '+esc(r.team)+(r.teamName?' · '+esc(r.teamName):'')+'<br>'+esc(members)+'<br>'+esc(r.phone)+' · '+esc(r.fee||'')+'</span></span>'
+        +badge+'</button>';
+    }).join('');
+    Array.prototype.forEach.call(document.querySelectorAll('.srow'),function(b){
+      b.onclick=function(){
+        var r=curStudents.find(function(x){return x.id===b.getAttribute('data-id');});
+        if(r){showCollect(r);setTab('collect');}
+      };
+    });
+  }
+  $('q').addEventListener('input',renderStudents);
+  $('fPay').addEventListener('change',renderStudents);
+
+  function renderHistory(){
+    var list=curHistory;
+    if(!list.length){$('histList').innerHTML='<p class="empty">No payments yet for this event.</p>';return;}
+    $('histList').innerHTML=list.map(function(h){
+      return '<div class="hrow"><span class="who"><b>'+esc(h.name)+'</b><span>'+esc(h.chest||'')+' · '+fmtWhen(h.at)+'</span></span>'
+        +'<span class="m '+(h.method==='gpay'?'gpay':'cash')+'">'+esc(h.method==='gpay'?'GPay':'Cash')+'</span>'
+        +'<span class="amt">'+inr(h.amount)+'</span></div>';
+    }).join('');
+  }
+
+  function renderFunds(){
+    var ev=(overview&&overview.events||[]).find(function(e){return e.slug===curEvent;});
+    if(!ev)return;
+    $('fCollected').textContent=inr(ev.collected);
+    $('fRemaining').textContent=inr(ev.remaining);
+    $('fCash').textContent=inr(ev.cash);
+    $('fGpay').textContent=inr(ev.gpay);
+    $('fNote').textContent=ev.name+' — '+ev.registered+' registered, '+ev.paid+' came, '+ev.pending+' pending. Fee '+ (ev.fee||'') +' per team.';
+  }
+
+  function refreshEvent(){
+    if(!curEvent)return;
+    var slug=curEvent;
+    api('/api/fees?action=students&event='+encodeURIComponent(slug)).then(function(r){
+      if(r.data&&r.data.ok&&r.data.event&&r.data.event.slug===slug){curStudents=r.data.regs||[];renderStudents();}
+    });
+    api('/api/fees?action=history&event='+encodeURIComponent(slug)).then(function(r){
+      if(r.data&&r.data.ok){curHistory=r.data.entries||[];renderHistory();}
+    });
+    loadOverview().then(function(){renderFunds();});
+  }
+
+  // ---------- collect ----------
+  function showCollect(r){
+    curCollect=r;
+    var members=[r.name].concat(r.members||[]).join(', ');
+    var badge=r.paid
+      ?'<span class="badge paid">Paid · '+esc(r.paidMethod||'')+' '+(r.paidAt?fmtWhen(r.paidAt):'')+'</span>'
+      :'<span class="badge pend">Pending</span>';
+    $('cCard').innerHTML='<div class="collect-card">'
+      +(r.chest?'<div class="big-chest"><span>Chest No.</span><b>'+esc(r.chest)+'</b></div>':'<div class="big-chest"><span>Chest No.</span><b>—</b></div>')
+      +'<dl>'
+      +'<div><dt>Event</dt><dd>'+esc(r.event)+'</dd></div>'
+      +'<div><dt>Leader</dt><dd>'+esc(r.name)+'</dd></div>'
+      +'<div><dt>School</dt><dd>'+esc(r.school)+'</dd></div>'
+      +'<div><dt>Members</dt><dd>'+esc(members)+'<br><span style="color:var(--mut);font-weight:400">Team of '+esc(r.team)+'</span></dd></div>'
+      +'<div><dt>Phone</dt><dd>'+esc(r.phone)+'</dd></div>'
+      +'<div><dt>Fee</dt><dd>'+esc(r.fee||'')+'</dd></div>'
+      +'<div><dt>Status</dt><dd>'+badge+'</dd></div>'
+      +'</dl>'
+      +'<div class="payrow">'
+      +'<button class="paybtn cash" id="payCash"'+(r.paid?' disabled':'')+'>Cash</button>'
+      +'<button class="paybtn gpay" id="payGpay"'+(r.paid?' disabled':'')+'>GPay</button>'
+      +'</div>'
+      +(r.paid?'<button class="unpay" id="payUndo">Mark unpaid (undo)</button>':'')
+      +'</div>';
+    var cash=$('payCash'), gpay=$('payGpay'), undo=$('payUndo');
+    if(cash)cash.onclick=function(){markPaid('cash');};
+    if(gpay)gpay.onclick=function(){markPaid('gpay');};
+    if(undo)undo.onclick=function(){markUnpaid();};
+  }
+
+  function normPhone(p){
+    var d=String(p||'').replace(/\D/g,'');
+    if(d.indexOf('91')===0&&d.length===12)d=d.slice(2);
+    if(d.charAt(0)==='0'&&d.length===11)d=d.slice(1);
+    return d;
+  }
+
+  function findByPhone(){
+    var phone=normPhone($('cPhone').value);
+    var msg=$('cMsg');msg.className='msg';msg.textContent='';
+    if(!/^[6-9]\d{9}$/.test(phone)){msg.classList.add('err');msg.textContent='Enter a valid 10-digit mobile number.';return;}
+    $('cFind').disabled=true;$('cFind').textContent='Finding…';
+    api('/api/fees?action=lookup&phone='+encodeURIComponent(phone)).then(function(r){
+      $('cFind').disabled=false;$('cFind').textContent='Find';
+      if(r.status===401){token='';localStorage.removeItem(TOKEN_KEY);showLogin();return;}
+      var list=(r.data&&r.data.regs)||[];
+      if(!list.length){msg.classList.add('err');msg.textContent='No registration found for this number.';$('cCard').innerHTML='';return;}
+      msg.classList.add('ok');msg.textContent='Found '+list.length+' registration'+(list.length>1?'s':'')+'.';
+      // If the student has several events, show the one for the open event first.
+      var pick=list.find(function(x){return x.eventSlug===curEvent;})||list[0];
+      showCollect(pick);
+    }).catch(function(){
+      $('cFind').disabled=false;$('cFind').textContent='Find';
+      msg.classList.add('err');msg.textContent='Could not look up. Check your connection.';
+    });
+  }
+  $('cFind').onclick=findByPhone;
+  $('cPhone').addEventListener('keydown',function(e){if(e.key==='Enter')findByPhone();});
+
+  function markPaid(method){
+    if(!curCollect)return;
+    var msg=$('cMsg');
+    api('/api/fees?action=mark-paid',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:curCollect.id,method:method})})
+      .then(function(r){
+        if(r.status===401){token='';localStorage.removeItem(TOKEN_KEY);showLogin();return;}
+        if(r.data&&r.data.ok){
+          curCollect=r.data.reg;
+          showCollect(curCollect);
+          msg.className='msg ok';
+          msg.textContent='Paid by '+(method==='gpay'?'GPay':'Cash')+' · Chest No. '+(curCollect.chest||'—')+' — write it on the card.';
+          refreshAll();
+        }else{
+          msg.className='msg err';msg.textContent=(r.data&&r.data.error)||'Could not mark paid.';
+        }
+      })
+      .catch(function(){msg.className='msg err';msg.textContent='Connection failed.';});
+  }
+
+  function markUnpaid(){
+    if(!curCollect)return;
+    var msg=$('cMsg');
+    api('/api/fees?action=mark-unpaid',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:curCollect.id})})
+      .then(function(r){
+        if(r.status===401){token='';localStorage.removeItem(TOKEN_KEY);showLogin();return;}
+        if(r.data&&r.data.ok){
+          curCollect=r.data.reg;
+          showCollect(curCollect);
+          msg.className='msg ok';msg.textContent='Payment undone. The student is pending again.';
+          refreshAll();
+        }else{
+          msg.className='msg err';msg.textContent=(r.data&&r.data.error)||'Could not undo.';
+        }
+      })
+      .catch(function(){msg.className='msg err';msg.textContent='Connection failed.';});
+  }
+
+  // ---------- live sync: poll every 5s while visible ----------
+  // refreshEvent already reloads the overview for the funds tab, so don't
+  // fetch it twice per tick.
+  function refreshAll(){
+    if(curEvent)refreshEvent();
+    else loadOverview();
+  }
+  setInterval(function(){if(!document.hidden&&token)refreshAll();},5000);
+  document.addEventListener('visibilitychange',function(){if(!document.hidden&&token)refreshAll();});
+  window.addEventListener('focus',function(){if(token)refreshAll();});
+
+  // ---------- boot ----------
+  if(token){showApp();refreshAll();}
+  else showLogin();
+})();
+</script>
+</body>
+</html>

@@ -19,6 +19,7 @@ import { loadEvents } from './events.js';
 function toTicket(rec, fee) {
   return {
     id: rec.id,
+    chest: rec.chest || '',
     event: rec.event,
     eventSlug: rec.eventSlug,
     name: rec.name,

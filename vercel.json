@@ -227,6 +227,10 @@
     {
       "source": "/my-registrations",
       "destination": "/my-registrations.html"
+    },
+    {
+      "source": "/fees",
+      "destination": "/fees.html"
     }
   ],
   "trailingSlash": false,

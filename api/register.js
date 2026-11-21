@@ -218,6 +218,24 @@ export default async function handler(req, res) {
     }
   } catch { /* marker store unavailable — fall through to the scan-checked write */ }
 
+  // Chest number, assigned at REGISTRATION time (owner's call). Per-event
+  // atomic sequence (Redis INCR) so two simultaneous registrations never
+  // collide. Format: 2-digit event code (PDF order: Prompting 01, Quiz 02,
+  // Treasure Hunt 03, Reels 04) + 3-digit sequence, e.g. Prompting #1 =
+  // 01001, Quiz #1 = 02001. A team gets ONE chest number. This runs AFTER
+  // the duplicate/marker checks, so a rejected registration never consumes
+  // a number. If the write below then fails, the number is skipped (a gap
+  // is fine; numbers are never reused). If INCR itself fails, the
+  // registration still goes through and the fees app assigns a chest on
+  // mark-paid instead.
+  const CHEST_CODES = { 'prompting': '01', 'quiz': '02', 'treasure-hunt': '03', 'reels-competition': '04' };
+  try {
+    const seq = await redis.incr('celesta:chestseq:' + ev.slug);
+    record.chest = (CHEST_CODES[ev.slug] || '00') + String(seq).padStart(3, '0');
+  } catch (e) {
+    console.error('chest number failed', e);
+  }
+
   try {
     await redis.hset('celesta:regs', { [id]: JSON.stringify(record) });
     await redis.zadd('celesta:reglist', { score: Date.now(), member: id });

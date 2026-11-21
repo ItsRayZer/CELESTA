@@ -25,6 +25,8 @@
   .tk-page .tk-wrap{width:100%;max-width:520px}
   .tk-page .tk-actions{width:100%;max-width:520px}
   .tk-page .tk-dl-note{width:100%;max-width:520px;text-align:center}
+  .tk-chest{margin:10px 0 0;font-size:15px;letter-spacing:.14em;color:rgba(255,255,255,.85);text-transform:uppercase}
+  .tk-chest b{font-size:26px;letter-spacing:.06em;color:#fff;font-family:monospace,monospace}
 </style>
 </head>
 <body class="dark-page">
@@ -81,6 +83,7 @@
       {k:'Members',v:memberList.join(', ')+'  ·  Team of '+t.team},
       {k:'Phone',v:t.phone}
     ];
+    if(t.chest)rows.splice(1,0,{k:'Chest No.',v:t.chest});
     if(t.fee)rows.push({k:'Fee',v:t.fee+'  ·  Pay at the venue'});
     var qrText='https://spark.maraugusthinosecollege.org/ticket?id='+t.id;
     // Real ticket shape: main section, perforation with side notches, stub.
@@ -198,6 +201,7 @@
       +'<p class="tk-mini-head">SPARK 2K26 · Registered</p>'
       +'<p class="tk-mini-event">'+esc(t.event)+'</p>'
       +'<p class="tk-mini-date">Fri, 27 Nov 2026 · 10 AM · Mar Augusthinose College, Ramapuram</p>'
+      +(t.chest?'<p class="tk-chest">Chest No. <b>'+esc(t.chest)+'</b></p>':'')
       +'<div class="tk-details">'
       +rows
       +'</div>'
