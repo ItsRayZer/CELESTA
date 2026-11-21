@@ -152,9 +152,11 @@ body.premium-page,body.light-page,body.reg-page,body.dark-page{background:transp
 .tk-qr-side span{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.7)}
 .tk-qr-side b{font-size:14px;font-weight:700;letter-spacing:.02em;line-height:1.5;color:#fff;word-break:break-all}
 .tk-qr-side em{font-style:normal;font-size:12px;color:rgba(255,255,255,.75)}
-/* Real ticket perforation: dashed tear line + a punched notch on each edge. */
-.tk-perf{position:relative;height:0;margin:16px -20px 0;border-top:2px dashed rgba(255,255,255,.45)}
-.tk-perf i{position:absolute;top:-11px;width:22px;height:22px;border-radius:50%;background:#060608}
+/* Real ticket perforation: dashed tear line + a punched notch on each edge.
+   The dashes are drawn with a repeating gradient (not a border on a
+   0-height element) so they always render. */
+.tk-perf{position:relative;height:2px;margin:16px -20px 0;background-image:linear-gradient(90deg,rgba(255,255,255,.6) 0 14px,transparent 14px 26px);background-size:26px 2px;background-repeat:repeat-x}
+.tk-perf i{position:absolute;top:-10px;width:22px;height:22px;border-radius:50%;background:#060608}
 .tk-perf i:first-child{left:-11px}
 .tk-perf i:last-child{right:-11px}
 /* Narrow phones: stack the QR above the ID so nothing clips or wraps. */
