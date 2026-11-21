@@ -146,7 +146,7 @@ export function buildSystemPrompt(events, coords, lang) {
     'an inter-school fest on Fri 27 Nov 2026, 10 AM, at Mar Augusthinose College,',
     'Ramapuram, Kottayam, Kerala, India, for 12th standard school students.',
     'Organised by NEXUS, the BCA department Association of Computer Applications.',
-    'Technical Lead: Aben Sojan. Instagram: @celesta2k26.',
+    'Technical Lead: Aben Sojan. Instagram: @sparkk.2026.',
     '',
     'REGISTRATION - READ THIS FIRST:',
     '- Registration is ONLINE on this website: open the Events page, tap an event,',

@@ -1,4 +1,5 @@
-/* Spark AI v23 — Axo-style chat assistant for SPARK 2K26.
+/* Spark AI v24 — Axo-style chat assistant for SPARK 2K26.
+   v24: Instagram is now @sparkk.2026 (was @celesta2k26) in the KB.
    v23: fees synced to the official PDF (21 Nov): Prompting Rs.50 (was Rs.100),
    Quiz Rs.100 (was Rs.50); TH coordinators Abhinav Babu + Ashwin PS;
    Prompting is now Prompt Match (recreate a reference image with AI).
@@ -89,8 +90,8 @@ var KB=[
   m:"29 schools shortlist cheythittundu: Alphonsa English Medium School (Aruvithura), Govt HSS (Edakkoly), Emmanuel's HSS (Kothanalloor), St. Mary's Boys HSS (Kuravilangadu), St. Thomas HSS (Erumely), Little Flower Public School (Kollamula), Jyothi Public School (Paika), SPHSS (Elanji), St. Sebastian (Kadanadu), St. Augustine (Karimkunnam), St. Sebastian (Vazhithala), St. Sebastian (Thodupuzha), St. George (Muthalakodam), St. George HSS (Aruvithura), St. Antony's HSS (Plassanal), St. Mary's HSS (Bharananganam), ARS (Bharananganam), St. Joseph's HSS (Vilakkumadam), St. Mary's HSS (Teekoy), O.L.L.H.S.S. (Uzhavoor), St. Paul's HSS (Valiyakumaramangalam, Moonnilavu), St. Mary's HSS (Arakkulam), St. Augustine's HSS (Ramapuram), St. Michael's HSS (Pravithanam), Chavara Public School (Pala), St. Anns HSS (Kurianadu), St. Michaels HSS (Kaduthuruthy), St. Xavier's Vocational Higher Secondary School (Kuruppanthara), St. Antony's Higher Secondary School (SAHSS) (Mutholy)" },
 { k:["instagram","insta","social","follow"],
   mk:["instagram","insta","social","follow"],
-  a:"Follow the fest on Instagram: <b>@celesta2k26</b> - updates, announcements and results.<br><a href=\"https://www.instagram.com/celesta2k26\" target=\"_blank\" rel=\"noopener\">@celesta2k26 on Instagram</a>",
-  m:"Fest ne Instagram il follow cheyyuka: <b>@celesta2k26</b> - updates, announcements, results.<br><a href=\"https://www.instagram.com/celesta2k26\" target=\"_blank\" rel=\"noopener\">@celesta2k26 on Instagram</a>" },
+  a:"Follow the fest on Instagram: <b>@sparkk.2026</b> - updates, announcements and results.<br><a href=\"https://www.instagram.com/sparkk.2026\" target=\"_blank\" rel=\"noopener\">@sparkk.2026 on Instagram</a>",
+  m:"Fest ne Instagram il follow cheyyuka: <b>@sparkk.2026</b> - updates, announcements, results.<br><a href=\"https://www.instagram.com/sparkk.2026\" target=\"_blank\" rel=\"noopener\">@sparkk.2026 on Instagram</a>" },
 { k:["who","eligible","eligibility","can i join","who can join","can join","can i participate","school","student","12th","class","standard","age"],
   mk:["arokke","join","cheyyam","eligible","school","student","12th","class","pattum","pattumo"],
   a:"SPARK is an <b>inter-school</b> fest for <b>12th standard school students</b>. You need your school name and a valid school ID to register. Around 150-200 students are expected.",
@@ -157,8 +158,8 @@ var KB=[
   m:"Registration deadline site il publish cheythittilla. Fest <b>27 November 2026</b> aanu, athinu munne register cheyyuka. Last date nu Student Lead Ananthu Anil (7510142466) nod chodikkuka." },
 { k:["results","result","when results","announcement","winners announced","who won"],
   mk:["results","result","winner","announce"],
-  a:"Results will be announced at the fest and on Instagram <b>@celesta2k26</b>. For the exact result time, ask the Student Lead Ananthu Anil (7510142466).",
-  m:"Results fest il um Instagram <b>@celesta2k26</b> il um announce cheyyum. Exact time nu Student Lead Ananthu Anil (7510142466) nod chodikkuka." },
+  a:"Results will be announced at the fest and on Instagram <b>@sparkk.2026</b>. For the exact result time, ask the Student Lead Ananthu Anil (7510142466).",
+  m:"Results fest il um Instagram <b>@sparkk.2026</b> il um announce cheyyum. Exact time nu Student Lead Ananthu Anil (7510142466) nod chodikkuka." },
 { k:["sponsor","sponsors","sponsored","who sponsors"],
   mk:["sponsor","sponsors"],
   a:"SPARK sponsors include <b>SpicyJack, Cafe Classico, Ajay Electronics, KLOG and Fisat Computers</b>.",
