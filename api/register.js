@@ -16,7 +16,7 @@
 import { Redis } from '@upstash/redis';
 import nodemailer from 'nodemailer';
 import { loadEvents } from './events.js';
-import { renderCardPNG, buildConfirmationEmail } from '../lib/confirmation.js';
+import { renderCardSVG, buildConfirmationEmail } from '../lib/confirmation.js';
 import { normPhone, validPhone, regMarkerKeys, MARKER_TTL } from './admin-login.js';
 export { normPhone, validPhone, regMarkerKeys, MARKER_TTL } from './admin-login.js';
 
@@ -95,7 +95,7 @@ async function sendConfirmationEmail(record, ev) {
   if (!transport) return false;
   const base = 'https://spark.maraugusthinosecollege.org';
   const cardUrl = base + '/api/confirmation-card?id=' + encodeURIComponent(record.id) + '&download=1';
-  const png = await renderCardPNG(record, ev);
+  const svg = renderCardSVG(record, ev);
   const { subject, html, text } = buildConfirmationEmail(record, ev, cardUrl);
   const from = '"SPARK 2K26" <' + String(process.env.GMAIL_USER || 'sparkfest.mac@gmail.com').trim() + '>';
   // 8s cap so a slow SMTP handshake cannot push the function past the
@@ -107,7 +107,7 @@ async function sendConfirmationEmail(record, ev) {
       subject,
       text,
       html,
-      attachments: [{ filename: 'spark-2k26-confirmation.png', content: png, contentType: 'image/png', cid: 'confirmation-card' }],
+      attachments: [{ filename: 'spark-2k26-confirmation.svg', content: svg, contentType: 'image/svg+xml' }],
     }),
     new Promise((_, rej) => setTimeout(() => rej(new Error('email timeout')), 8000)),
   ]);

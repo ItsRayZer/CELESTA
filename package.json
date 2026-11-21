@@ -4,8 +4,6 @@
   "type": "module",
   "dependencies": {
     "@upstash/redis": "^1.28.0",
-    "@vercel/og": "^1.0.3",
-    "nodemailer": "^10.6.1",
-    "react": "^19.3.1"
+    "nodemailer": "^10.6.1"
   }
 }

@@ -1,10 +1,12 @@
 // GET /api/confirmation-card?id=<reg_id>[&download=1]
-// Returns the SPARK-designed PNG confirmation card for a registration.
+// Returns the SPARK-designed SVG confirmation card for a registration.
 // The registration ID is a random unguessable token, so no auth is needed.
 // ?download=1 serves it as an attachment (download); otherwise inline.
+// (SVG, not PNG: @vercel/og broke every API function on deploy — see
+// lib/confirmation.js. SVG is a real image, downloads and opens anywhere.)
 import { Redis } from '@upstash/redis';
 import { loadEvents } from './events.js';
-import { renderCardPNG } from '../lib/confirmation.js';
+import { renderCardSVG } from '../lib/confirmation.js';
 
 const redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL,
@@ -35,19 +37,19 @@ export default async function handler(req, res) {
   } catch { ev = null; }
   if (!ev) ev = { name: reg.event || 'SPARK 2K26', fee: '' };
 
-  let png;
+  let svg;
   try {
-    png = await renderCardPNG(reg, ev);
+    svg = renderCardSVG(reg, ev);
   } catch (e) {
     return res.status(500).json({ error: 'Could not render confirmation card' });
   }
   const download = String((req.query && req.query.download) || '') === '1';
-  res.setHeader('Content-Type', 'image/png');
+  res.setHeader('Content-Type', 'image/svg+xml');
   res.setHeader('Cache-Control', 'private, max-age=3600');
   if (download) {
-    res.setHeader('Content-Disposition', 'attachment; filename="spark-2k26-confirmation-' + id + '.png"');
+    res.setHeader('Content-Disposition', 'attachment; filename="spark-2k26-confirmation-' + id + '.svg"');
   } else {
-    res.setHeader('Content-Disposition', 'inline; filename="spark-2k26-confirmation-' + id + '.png"');
+    res.setHeader('Content-Disposition', 'inline; filename="spark-2k26-confirmation-' + id + '.svg"');
   }
-  return res.status(200).send(png);
+  return res.status(200).send(svg);
 }
