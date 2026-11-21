@@ -19,7 +19,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=Marcellus&display=swap">
-<link rel="stylesheet" href="/styles.css?v=61">
+<link rel="stylesheet" href="/styles.css?v=62">
 <link rel="stylesheet" href="/theme-purple.css?v=6">
 <style>#pill{display:none!important}</style>
 <style>html{background:#060608}body{background:#060608}.hp{position:absolute!important;left:-9999px!important;top:auto;width:1px;height:1px;overflow:hidden}</style>
@@ -126,7 +126,7 @@
         +(e.fee?'<p class="reg-note">Registration is free online. Fee: '+esc(e.fee)+', pay at the venue on 27 November 2026. Report by 9:30 AM with a valid school ID.</p>':'<p class="reg-note">Your registration is saved with the organizers.</p>')
         +'<div class="ok-msg" id="ok-msg" role="status"></div>'
         +'</form>')
-      +'<div class="rd-below"><p class="rd-about">'+esc(e.about||'')+'</p>'
+      +'<div class="rd-below"><h3 class="rd-about-h">About this event</h3><p class="rd-about">'+esc(e.about||'')+'</p>'
       +'<div class="ww-card">'
       +'<div class="ww-row"><span class="ww-k">When</span><span>'+esc(e.when||'')+'</span></div>'
       +'<div class="ww-row"><span class="ww-k">Where</span><span>'+esc(e.where||'')+'</span></div>'

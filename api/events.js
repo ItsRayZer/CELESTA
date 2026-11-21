@@ -97,7 +97,7 @@ export const DEFAULT_EVENTS = [
     "slug": "prompting",
     "name": "Prompting",
     "tagline": "Craft the sharpest prompt and make AI deliver.",
-    "about": "Show how well you can talk to AI. You receive a task and must write prompts that get the best possible output — accurate, creative and efficient.",
+    "about": "Test how well you can talk to AI. You will be given a task, and you must write a prompt that makes the AI give the best answer — accurate, creative and to the point.",
     "prize1": 1500,
     "prize2": 750,
     "teamMin": 1,
@@ -131,7 +131,7 @@ export const DEFAULT_EVENTS = [
     "order": 2,
     "visible": true,
     "regOpen": true,
-    "rulesV": 2
+    "rulesV": 3
   },
   {
     "slug": "idea-presentation",
@@ -246,7 +246,7 @@ export async function loadEvents() {
     const d = defBySlug[e.slug];
     if (d && e.rulesV !== d.rulesV) {
       e.teamMin = d.teamMin; e.teamMax = d.teamMax; e.fee = d.fee;
-      e.duration = d.duration;
+      e.duration = d.duration; e.about = d.about;
       e.how = (d.how || []).slice(); e.rules = (d.rules || []).slice(); e.reqs = (d.reqs || []).slice();
       e.rulesV = d.rulesV; dirty = true;
     }
