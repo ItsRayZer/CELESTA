@@ -14,7 +14,6 @@
 // Flagged records never block a real student — only a filled honeypot,
 // a bad phone, a duplicate, or the rate limit reject a submit.
 import { Redis } from '@upstash/redis';
-import nodemailer from 'nodemailer';
 import { loadEvents } from './events.js';
 import { normPhone, validPhone, regMarkerKeys, MARKER_TTL } from './admin-login.js';
 export { normPhone, validPhone, regMarkerKeys, MARKER_TTL } from './admin-login.js';
@@ -172,36 +171,125 @@ export function riskLevelFor(reasons) {
 // response still returns ok:true. Requires GMAIL_USER + GMAIL_APP_PASSWORD
 // (Gmail App Password for sparkfest.mac@gmail.com) in Vercel env vars;
 // when they are absent the email is skipped silently.
-function mailTransport() {
-  const user = String(process.env.GMAIL_USER || '').trim();
-  const pass = String(process.env.GMAIL_APP_PASSWORD || '').trim();
-  if (!user || !pass) return null;
-  return nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 465,
-    secure: true,
-    auth: { user, pass },
+//
+// SMTP is spoken directly over Node's built-in tls module (no npm package):
+// adding nodemailer to package.json broke EVERY api function on deploy
+// (dpl_5zrF1nsFaVDjGPkJ7h4mE6cojJo5, dpl_Au2DkSQuPe6L3cPx8Xm2UB1k9WV9,
+// dpl_2uS4bTMcvFrLuWMPNFZBy4nSPt2r, dpl_3wNjx6ByJuTLcD3ZjqQc7SquqY5i).
+// Do NOT add an email library without a canary deploy.
+import tls from 'node:tls';
+
+function b64(s) { return Buffer.from(String(s), 'utf8').toString('base64'); }
+
+// Minimal SMTP client (implicit TLS, port 465). Resolves when the server
+// accepts the message (250 after DATA), rejects on any unexpected reply.
+function sendSmtp({ user, pass, from, to, subject, text, html, attachName, attachContent, attachType }) {
+  return new Promise((resolve, reject) => {
+    const boundary = 'spark2k26-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    const lines = [
+      'From: ' + from,
+      'To: ' + to,
+      'Subject: ' + subject,
+      'MIME-Version: 1.0',
+      'Content-Type: multipart/mixed; boundary="' + boundary + '"',
+      '',
+      '--' + boundary,
+      'Content-Type: text/plain; charset="UTF-8"',
+      'Content-Transfer-Encoding: 7bit',
+      '',
+      text,
+      '--' + boundary,
+      'Content-Type: text/html; charset="UTF-8"',
+      'Content-Transfer-Encoding: 7bit',
+      '',
+      html,
+      '--' + boundary,
+      'Content-Type: ' + attachType + '; name="' + attachName + '"',
+      'Content-Transfer-Encoding: base64',
+      'Content-Disposition: attachment; filename="' + attachName + '"',
+      '',
+      Buffer.from(attachContent, 'utf8').toString('base64').replace(/(.{76})/g, '$1\r\n'),
+      '--' + boundary + '--',
+      '',
+    ];
+    // Dot-stuff any line starting with a dot (SMTP DATA rule).
+    const body = lines.join('\r\n').split('\r\n').map(l => (l.startsWith('.') ? '.' + l : l)).join('\r\n');
+
+    const socket = tls.connect(465, 'smtp.gmail.com', { servername: 'smtp.gmail.com' });
+    let buf = '';
+    let step = 0;
+    let done = false;
+    const fail = (msg) => { if (!done) { done = true; try { socket.destroy(); } catch {} reject(new Error(msg)); } };
+    const timer = setTimeout(() => fail('smtp timeout'), 8000);
+    const cleanup = () => clearTimeout(timer);
+    socket.on('error', (e) => fail('smtp error: ' + (e && e.message)));
+    socket.on('data', (chunk) => {
+      buf += chunk.toString('utf8');
+      // Process complete lines; SMTP replies end with \r\n and the last line
+      // of a multi-line reply has a space after the 3-digit code.
+      while (buf.includes('\r\n')) {
+        const idx = buf.indexOf('\r\n');
+        const line = buf.slice(0, idx);
+        buf = buf.slice(idx + 2);
+        const code = line.slice(0, 3);
+        const cont = line.charAt(3) === '-';
+        if (cont) continue; // more lines of this reply coming
+        const send = (s) => { try { socket.write(s + '\r\n'); } catch (e) { fail('smtp write failed'); } };
+        try {
+          if (step === 0) { // greeting 220
+            if (code !== '220') return fail('smtp greeting ' + code);
+            step = 1; send('EHLO spark.maraugusthinosecollege.org');
+          } else if (step === 1) { // EHLO 250
+            if (code !== '250') return fail('smtp EHLO ' + code);
+            step = 2; send('AUTH LOGIN');
+          } else if (step === 2) { // AUTH LOGIN -> 334 (username)
+            if (code !== '334') return fail('smtp AUTH ' + code);
+            step = 3; send(b64(user));
+          } else if (step === 3) { // username -> 334 (password)
+            if (code !== '334') return fail('smtp AUTH user ' + code);
+            step = 4; send(b64(pass));
+          } else if (step === 4) { // password -> 235
+            if (code !== '235') return fail('smtp AUTH pass ' + code);
+            step = 5; send('MAIL FROM:<' + user + '>');
+          } else if (step === 5) { // MAIL FROM 250
+            if (code !== '250') return fail('smtp MAIL FROM ' + code);
+            step = 6; send('RCPT TO:<' + to + '>');
+          } else if (step === 6) { // RCPT TO 250
+            if (code !== '250') return fail('smtp RCPT ' + code);
+            step = 7; send('DATA');
+          } else if (step === 7) { // DATA -> 354
+            if (code !== '354') return fail('smtp DATA ' + code);
+            step = 8; send(body + '\r\n.');
+          } else if (step === 8) { // message accepted 250
+            if (code !== '250') return fail('smtp message ' + code);
+            step = 9; send('QUIT');
+          } else if (step === 9) { // QUIT 221
+            if (!done) { done = true; cleanup(); try { socket.end(); } catch {} resolve(true); }
+          }
+        } catch (e) { fail('smtp step failed: ' + (e && e.message)); }
+      }
+    });
+    socket.on('close', () => { if (step === 9 && !done) { done = true; cleanup(); resolve(true); } });
   });
 }
 
 async function sendConfirmationEmail(record, ev) {
   const to = String(record.email || '').trim();
   if (!to || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) return false;
-  const transport = mailTransport();
-  if (!transport) return false;
+  const user = String(process.env.GMAIL_USER || '').trim();
+  const pass = String(process.env.GMAIL_APP_PASSWORD || '').trim();
+  if (!user || !pass) return false;
   const svg = renderCardSVG(record, ev);
   const { subject, html, text } = buildConfirmationEmail(record, ev);
-  const from = '"SPARK 2K26" <' + String(process.env.GMAIL_USER || 'sparkfest.mac@gmail.com').trim() + '>';
+  const from = '"SPARK 2K26" <' + user + '>';
   // 8s cap so a slow SMTP handshake cannot push the function past the
   // 10s Hobby limit and turn a saved registration into a timeout.
   await Promise.race([
-    transport.sendMail({
-      from,
-      to,
-      subject,
-      text,
-      html,
-      attachments: [{ filename: 'spark-2k26-confirmation.svg', content: svg, contentType: 'image/svg+xml' }],
+    sendSmtp({
+      user, pass, from, to, subject, text, html,
+      attachName: 'spark-2k26-confirmation.svg',
+      attachContent: svg,
+      attachType: 'image/svg+xml',
     }),
     new Promise((_, rej) => setTimeout(() => rej(new Error('email timeout')), 8000)),
   ]);
