@@ -53,19 +53,15 @@
   <div class="ax-grid" id="ev-grid">
 <a class="ax-card reveal" style="--i:0" href="/registration/reels-competition">
       <div class="ax-img"><img src="/assets/poster-reels-competition.webp" alt="Reels Competition poster" loading="lazy" decoding="async"><span class="ax-n">01</span></div>
-      <div class="ax-body"><h3>Reels Competition</h3><div class="ax-meta">2 members · Fee ₹100 per team</div><div class="ax-foot"><span class="ax-prize">₹2,000</span><span class="ax-go"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M3 11 11 3M5 3h6v6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div></div>
     </a>
     <a class="ax-card reveal" style="--i:1" href="/registration/prompting">
       <div class="ax-img"><img src="/assets/poster-prompting.webp" alt="Prompting poster" loading="lazy" decoding="async"><span class="ax-n">02</span></div>
-      <div class="ax-body"><h3>Prompting</h3><div class="ax-meta">Individual · Fee ₹50 per participant</div><div class="ax-foot"><span class="ax-prize">₹1,500</span><span class="ax-go"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M3 11 11 3M5 3h6v6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div></div>
     </a>
     <a class="ax-card reveal" style="--i:2" href="/registration/quiz">
       <div class="ax-img"><img src="/assets/poster-quiz.webp" alt="Quiz poster" loading="lazy" decoding="async"><span class="ax-n">03</span></div>
-      <div class="ax-body"><h3>Quiz</h3><div class="ax-meta">2 members · Fee ₹100 per team</div><div class="ax-foot"><span class="ax-prize">₹2,000</span><span class="ax-go"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M3 11 11 3M5 3h6v6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div></div>
     </a>
     <a class="ax-card reveal" style="--i:3" href="/registration/treasure-hunt">
       <div class="ax-img"><img src="/assets/poster-treasure-hunt.webp" alt="Treasure Hunt poster" loading="lazy" decoding="async"><span class="ax-n">04</span></div>
-      <div class="ax-body"><h3>Treasure Hunt</h3><div class="ax-meta">4 members · Fee ₹200 per team</div><div class="ax-foot"><span class="ax-prize">₹6,000</span><span class="ax-go"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M3 11 11 3M5 3h6v6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div></div>
     </a>
   </div>
 
@@ -112,7 +108,6 @@
         var num=String(e.order||i+1).padStart(2,'0');
         return '<a class="ax-card" style="--i:'+i+'" href="/registration/'+esc(e.slug)+'">'
           +'<div class="ax-img"><img src="'+(e.poster?'/api/poster?event='+esc(e.slug):'/assets/poster-'+esc(e.slug)+'.webp')+'" alt="'+esc(e.name)+' poster" loading="lazy" decoding="async"><span class="ax-n">'+num+'</span></div>'
-          +'<div class="ax-body"><h3>'+esc(e.name)+'</h3><div class="ax-meta">'+esc(teamLabel(e))+(e.fee?' · Fee '+esc(e.fee):'')+'</div>'
           +'<div class="ax-foot"><span class="ax-prize">'+fmt(e.prize1)+'</span><span class="ax-go">'+ARROW+'</span></div></div></a>';
       }).join('');
     }
