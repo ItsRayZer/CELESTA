@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
+<title>My Registrations — SPARK 2K26</title>
+<meta name="description" content="See all your SPARK 2K26 registrations and whether each one is paid. Look them up by your phone number.">
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/png" href="/assets/logo.webp">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=Marcellus&display=swap">
+<link rel="stylesheet" href="/styles.css?v=65">
+<link rel="stylesheet" href="/theme-purple.css?v=12">
+<noscript><style>.reveal{opacity:1 !important;transform:none !important}</style></noscript>
+<style>
+  html{background:#060608}body{background:#060608}
+  .mr-page{min-height:100svh;display:flex;flex-direction:column;align-items:center;padding:20px 16px 120px}
+  .mr-top{width:100%;max-width:560px;display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+  .mr-top a{color:rgba(255,255,255,.75);text-decoration:none;font-size:14px}
+  .mr-top b{color:#fff;font-size:13px;letter-spacing:.22em;text-transform:uppercase}
+  .mr-box{width:100%;max-width:560px}
+  .mr-box h1{color:#fff;font-family:Georgia,serif;font-size:32px;font-weight:700;margin:4px 0 8px}
+  .mr-box .mr-sub{color:rgba(255,255,255,.72);font-size:15px;line-height:1.6;margin:0 0 20px}
+  .mr-form{display:flex;gap:10px;margin-bottom:8px}
+  .mr-form input{flex:1;min-width:0;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.18);border-radius:12px;padding:13px 14px;font-size:16px;color:#fff;font-family:inherit;outline:none}
+  .mr-form input:focus{border-color:#8f47e6}
+  .mr-form input::placeholder{color:rgba(255,255,255,.4)}
+  .mr-form button{flex:none;background:linear-gradient(135deg,#7b3dff,#8f47e6);border:0;border-radius:12px;padding:13px 16px;font-size:15px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit}
+  .mr-form button:disabled{opacity:.6;cursor:default}
+  .mr-hint{color:rgba(255,255,255,.5);font-size:13px;line-height:1.5;margin:0 0 24px}
+  .mr-hint.err{color:#f87171}
+  .mr-sec{width:100%;max-width:560px;margin-top:8px}
+  .mr-sec h2{color:rgba(255,255,255,.85);font-size:13px;letter-spacing:.16em;text-transform:uppercase;margin:0 0 12px}
+  .mr-card{background:linear-gradient(135deg,rgba(123,61,255,.16),rgba(143,71,230,.08));border:1px solid rgba(255,255,255,.14);border-radius:16px;padding:16px;margin-bottom:12px}
+  .mr-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px}
+  .mr-ev{color:#fff;font-family:Georgia,serif;font-size:22px;font-weight:700;margin:0}
+  .mr-id{color:rgba(255,255,255,.55);font-family:monospace;font-size:12px;margin:4px 0 0;word-break:break-all}
+  .mr-badge{flex:none;font-size:12px;font-weight:700;padding:5px 10px;border-radius:99px;white-space:nowrap}
+  .mr-badge.paid{background:rgba(34,197,94,.16);color:#4ade80;border:1px solid rgba(74,222,128,.4)}
+  .mr-badge.unpaid{background:rgba(245,158,11,.14);color:#fbbf24;border:1px solid rgba(251,191,36,.4)}
+  .mr-rows{margin:0}
+  .mr-rows div{display:flex;justify-content:space-between;gap:16px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.09);font-size:14px;line-height:1.45}
+  .mr-rows div:last-child{border-bottom:0}
+  .mr-rows dt{color:rgba(255,255,255,.65);flex:none}
+  .mr-rows dd{margin:0;color:#fff;font-weight:600;text-align:right;word-break:break-word}
+  .mr-rows dd small{display:block;font-weight:400;color:rgba(255,255,255,.7)}
+  .mr-ticket{display:inline-block;margin-top:12px;color:#fff;font-size:14px;font-weight:700;text-decoration:none;border-bottom:1px solid rgba(255,255,255,.4);padding-bottom:2px}
+  .mr-empty{color:rgba(255,255,255,.65);font-size:15px;line-height:1.6;margin:0 0 12px}
+  .mr-empty a{color:#fff}
+  .mr-loading{color:rgba(255,255,255,.6);font-size:14px;padding:12px 0}
+</style>
+</head>
+<body class="dark-page">
+<div class="mr-page">
+  <div class="mr-top">
+    <a href="/events">&larr; Events</a>
+    <b>SPARK 2K26</b>
+  </div>
+  <div class="mr-box">
+    <h1>My Registrations</h1>
+    <p class="mr-sub">Your registrations are saved on this device. Enter your phone number to find them on any device.</p>
+    <form class="mr-form" id="mr-form">
+      <input id="mr-phone" type="tel" inputmode="numeric" autocomplete="tel" maxlength="13" placeholder="10-digit mobile number" aria-label="Phone number">
+      <button type="submit" id="mr-go">Find mine</button>
+    </form>
+    <p class="mr-hint" id="mr-hint">We look up registrations by the phone number you gave at registration.</p>
+  </div>
+  <div class="mr-sec" id="mr-results" hidden>
+    <h2 id="mr-results-h">Registrations</h2>
+    <div id="mr-results-list"></div>
+  </div>
+  <div class="mr-sec" id="mr-saved" hidden>
+    <h2>Saved on this device</h2>
+    <div id="mr-saved-list"></div>
+  </div>
+</div>
+<script src="/app.js?v=34" defer></script>
+<script src="/assets/spark-bot.js?v=26"></script>
+<script>
+(function(){
+  var REGS_KEY='spark_my_regs', PHONE_KEY='spark_my_phone';
+  function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+  function loadIds(){
+    try{var a=JSON.parse(localStorage.getItem(REGS_KEY)||'[]');return Array.isArray(a)?a:[];}
+    catch(e){return [];}
+  }
+  function saveIds(ids){
+    try{localStorage.setItem(REGS_KEY,JSON.stringify(ids.slice(0,20)));}catch(e){}
+    refreshBadge();
+  }
+  // Merge new IDs in front, deduped, capped at 20.
+  function mergeIds(newIds){
+    var cur=loadIds();
+    var merged=newIds.concat(cur.filter(function(x){return newIds.indexOf(x)===-1;}));
+    saveIds(merged);
+    return merged;
+  }
+  function refreshBadge(){
+    var b=document.querySelector('.myregs-count');
+    if(!b)return;
+    var n=loadIds().length;
+    b.textContent=n>99?'99+':String(n);
+    b.hidden=n===0;
+  }
+  function normPhone(p){
+    var d=String(p||'').replace(/\D/g,'');
+    if(d.indexOf('91')===0&&d.length===12)d=d.slice(2);
+    if(d.charAt(0)==='0'&&d.length===11)d=d.slice(1);
+    return d;
+  }
+  function cardHTML(t){
+    var memberList=[t.name].concat(t.members||[]);
+    var badge=t.paid
+      ?'<span class="mr-badge paid">Paid</span>'
+      :'<span class="mr-badge unpaid">Not Paid — pay at the venue</span>';
+    return '<article class="mr-card">'
+      +'<div class="mr-card-top"><div><p class="mr-ev">'+esc(t.event)+'</p>'
+      +'<p class="mr-id">'+esc(t.id)+'</p></div>'+badge+'</div>'
+      +'<dl class="mr-rows">'
+      +'<div><dt>Leader</dt><dd>'+esc(t.name)+'</dd></div>'
+      +'<div><dt>School</dt><dd>'+esc(t.school)+'</dd></div>'
+      +'<div><dt>Members</dt><dd>'+memberList.map(function(m){return esc(m);}).join(', ')+'<small>Team of '+esc(t.team)+'</small></dd></div>'
+      +(t.teamName?'<div><dt>Team</dt><dd>'+esc(t.teamName)+'</dd></div>':'')
+      +(t.fee?'<div><dt>Fee</dt><dd>'+esc(t.fee)+'</dd></div>':'')
+      +'<div><dt>Date</dt><dd>Fri, 27 Nov 2026 · 10 AM</dd></div>'
+      +'</dl>'
+      +'<a class="mr-ticket" href="/ticket?id='+encodeURIComponent(t.id)+'">View ticket &rarr;</a>'
+      +'</article>';
+  }
+  function fetchTicket(id){
+    return fetch('/api/ticket?id='+encodeURIComponent(id)).then(function(r){return r.json();})
+      .then(function(d){return (d&&d.ok&&d.ticket)?d.ticket:null;}).catch(function(){return null;});
+  }
+  var savedSec=document.getElementById('mr-saved');
+  var savedList=document.getElementById('mr-saved-list');
+  var resSec=document.getElementById('mr-results');
+  var resList=document.getElementById('mr-results-list');
+  var resH=document.getElementById('mr-results-h');
+  var hint=document.getElementById('mr-hint');
+  var phoneInput=document.getElementById('mr-phone');
+  var goBtn=document.getElementById('mr-go');
+  function renderSaved(excludeIds){
+    var ids=loadIds().filter(function(x){return excludeIds.indexOf(x)===-1;});
+    if(!ids.length){savedSec.hidden=true;savedList.innerHTML='';return;}
+    savedSec.hidden=false;
+    savedList.innerHTML='<p class="mr-loading">Loading your saved registrations…</p>';
+    Promise.all(ids.map(fetchTicket)).then(function(ts){
+      var found=ts.filter(Boolean);
+      // Drop IDs that no longer exist so the saved list stays clean.
+      if(found.length!==ids.length){
+        saveIds(found.map(function(t){return t.id;}));
+      }
+      if(!found.length){savedSec.hidden=true;savedList.innerHTML='';return;}
+      savedList.innerHTML=found.map(cardHTML).join('');
+    });
+  }
+  // On load: show what is saved on this device, and pre-fill the phone.
+  try{var savedPhone=localStorage.getItem(PHONE_KEY);if(savedPhone)phoneInput.value=savedPhone;}catch(e){}
+  renderSaved([]);
+  document.getElementById('mr-form').addEventListener('submit',function(ev){
+    ev.preventDefault();
+    var phone=normPhone(phoneInput.value);
+    hint.classList.remove('err');
+    if(!/^[6-9]\d{9}$/.test(phone)){
+      hint.textContent='Enter a valid 10-digit mobile number.';
+      hint.classList.add('err');
+      return;
+    }
+    goBtn.disabled=true;goBtn.textContent='Searching…';
+    hint.classList.remove('err');
+    hint.textContent='Looking up registrations for '+phone+'…';
+    fetch('/api/ticket?phone='+encodeURIComponent(phone)).then(function(r){return r.json();}).then(function(d){
+      goBtn.disabled=false;goBtn.textContent='Find mine';
+      if(!d||!d.ok||!Array.isArray(d.tickets)){
+        hint.textContent='Could not load registrations. Check your connection and try again.';
+        hint.classList.add('err');
+        return;
+      }
+      var list=d.tickets;
+      resSec.hidden=false;
+      resH.textContent='Registrations for '+phone;
+      if(!list.length){
+        resList.innerHTML='<p class="mr-empty">No registrations found for this number. <a href="/events">Browse events to register</a>.</p>';
+        hint.textContent='No registrations found for this number.';
+      }else{
+        resList.innerHTML=list.map(cardHTML).join('');
+        hint.textContent='Found '+list.length+' registration'+(list.length>1?'s':'')+' for '+phone+'. Saved on this device.';
+        try{localStorage.setItem(PHONE_KEY,phone);}catch(e){}
+        var ids=list.map(function(t){return t.id;});
+        mergeIds(ids);
+        renderSaved(ids);
+      }
+    }).catch(function(){
+      goBtn.disabled=false;goBtn.textContent='Find mine';
+      hint.textContent='Could not load registrations. Check your connection and try again.';
+      hint.classList.add('err');
+    });
+  });
+})();
+</script>
+</body>
+</html>

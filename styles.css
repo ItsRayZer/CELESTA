@@ -336,6 +336,20 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--gold)}
 .topmenu{position:absolute;top:0;left:0;right:0;z-index:90;display:flex;justify-content:center;gap:24px;padding:18px 16px;pointer-events:none}
 .topmenu a{pointer-events:auto;font-size:11px;letter-spacing:.22em;text-transform:uppercase;text-decoration:none;color:rgba(255,255,255,.75);transition:color .25s}
 .topmenu a:hover{color:var(--gold)}
+/* ---------- My Registrations: small minimal top-right button (bag-like) ---------- */
+/* Fixed at the top-right on every page (injected by app.js). Dark glass with a
+   subtle border; the count badge shows saved registrations. It sits above
+   content but below the bottom pill nav, and never touches the Spark AI
+   button (bottom-right). On narrow phones it drops below the top menu so it
+   cannot cover the menu links on the home page. */
+.myregs-btn{position:fixed;top:14px;right:14px;z-index:95;display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:12px;background:rgba(14,15,20,.72);border:1px solid rgba(255,255,255,.16);color:rgba(255,255,255,.85);text-decoration:none;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);box-shadow:0 4px 16px rgba(0,0,0,.35);transition:background .2s,border-color .2s}
+.myregs-btn:hover{background:rgba(30,22,54,.85);border-color:rgba(255,255,255,.32)}
+.myregs-btn svg{width:20px;height:20px;display:block}
+.myregs-count{position:absolute;top:-6px;right:-6px;min-width:18px;height:18px;padding:0 4px;border-radius:9px;background:#7b3dff;color:#fff;font-size:11px;font-weight:700;line-height:18px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.45)}
+.myregs-count[hidden]{display:none}
+@media (max-width:640px){
+  .myregs-btn{top:64px}
+}
 
 .ah-spark{left:50%;top:41%;width:18cqw;aspect-ratio:1;z-index:5;transform:translate(-50%,-50%) scale(0);opacity:0;pointer-events:none}
 .ah-spark i{position:absolute;left:50%;top:50%;width:2px;height:22%;transform-origin:50% 0;border-radius:2px;

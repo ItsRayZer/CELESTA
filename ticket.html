@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=Marcellus&display=swap">
-<link rel="stylesheet" href="/styles.css?v=63">
+<link rel="stylesheet" href="/styles.css?v=65">
 <link rel="stylesheet" href="/theme-purple.css?v=12">
 <noscript><style>.reveal{opacity:1 !important;transform:none !important}</style></noscript>
 <style>
@@ -36,6 +36,7 @@
   <div class="tk-state" id="tk-state"><p>Loading your ticket…</p></div>
   <div id="tk-slot"></div>
 </div>
+<script src="/app.js?v=34" defer></script>
 <script src="/assets/qrcode.min.js?v=1" defer></script>
 <script>
 (function(){
@@ -166,6 +167,18 @@
       return;
     }
     var t=d.ticket;
+    // Save this registration on this device so "My Registrations" can show
+    // it later without typing a phone number. Silent; never affects the ticket.
+    try{
+      var saved=JSON.parse(localStorage.getItem('spark_my_regs')||'[]');
+      if(!Array.isArray(saved))saved=[];
+      saved=[t.id].concat(saved.filter(function(x){return x!==t.id;})).slice(0,20);
+      localStorage.setItem('spark_my_regs',JSON.stringify(saved));
+      if(t.phone)localStorage.setItem('spark_my_phone',t.phone);
+      // Refresh the top button badge right away (app.js already ran).
+      var b=document.querySelector('.myregs-count');
+      if(b){b.textContent=saved.length>99?'99+':String(saved.length);b.hidden=saved.length===0;}
+    }catch(e){}
     var memberList=[t.name].concat(t.members||[]);
     var qrText='https://spark.maraugusthinosecollege.org/ticket?id='+t.id;
     var rows='';

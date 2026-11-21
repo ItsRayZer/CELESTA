@@ -210,6 +210,39 @@
       form.reset(); syncMembers();
     });
   }
+  /* ---------- My Registrations button: small top-right bag-like button ---------- */
+  /* Injected on every page that loads app.js. Shows a count badge with the
+     number of registrations saved on this device (localStorage spark_my_regs).
+     Tapping it opens /my-registrations. Never touches the Spark AI button
+     (bottom-right) or the #pill nav (bottom). */
+  var MYREGS_KEY = "spark_my_regs";
+  function myRegsCount() {
+    try {
+      var raw = localStorage.getItem(MYREGS_KEY);
+      var arr = raw ? JSON.parse(raw) : [];
+      return Array.isArray(arr) ? arr.length : 0;
+    } catch (e) { return 0; }
+  }
+  function updateMyRegsCount() {
+    var badge = document.querySelector(".myregs-count");
+    if (!badge) return;
+    var n = myRegsCount();
+    badge.textContent = n > 99 ? "99+" : String(n);
+    badge.hidden = n === 0;
+  }
+  if (!document.querySelector(".myregs-btn")) {
+    var myBtn = document.createElement("a");
+    myBtn.href = "/my-registrations";
+    myBtn.className = "myregs-btn";
+    myBtn.setAttribute("aria-label", "My registrations");
+    myBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 8h16v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M8 8V6a4 4 0 0 1 8 0v2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9.5 12.5h.01M14.5 12.5h.01" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg><span class="myregs-count" hidden>0</span>';
+    document.body.appendChild(myBtn);
+    updateMyRegsCount();
+    /* refresh the badge when the tab regains focus or another tab saves */
+    document.addEventListener("visibilitychange", function () { if (!document.hidden) updateMyRegsCount(); });
+    window.addEventListener("focus", updateMyRegsCount);
+    window.addEventListener("storage", updateMyRegsCount);
+  }
   function esc(s) {
     return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;")
       .replace(/>/g, "&gt;").replace(/"/g, "&quot;");

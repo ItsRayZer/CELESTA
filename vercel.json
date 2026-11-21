@@ -223,6 +223,10 @@
     {
       "source": "/ticket",
       "destination": "/ticket.html"
+    },
+    {
+      "source": "/my-registrations",
+      "destination": "/my-registrations.html"
     }
   ],
   "trailingSlash": false,
