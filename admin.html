@@ -13,23 +13,19 @@
 <script src="/assets/fp.min.js" defer></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-:root{--gold:#4cd27a;--gold-dim:rgba(76,210,122,.14);--goldbtn:#4cd27a;--bg:#040405;--glass:rgba(255,255,255,.045);--glass-hi:rgba(255,255,255,.08);--stroke:rgba(255,255,255,.09);--txt:#f4f4f6;--mut:#8b8b93;--red:#ff453a;--green:#4cd27a;--inputbg:rgba(255,255,255,.05);--inputph:#48484e;--theadbg:rgba(8,8,10,.9);--toastbg:rgba(30,30,34,.92);--tipbg:rgba(28,28,32,.97);--shadow:0 12px 48px rgba(0,0,0,.5);--optbg:#0a0a0a;--imgbg:#111;--rowline:rgba(255,255,255,.05);--hover:rgba(255,255,255,.03);color-scheme:dark}
+:root{--gold:#4cd27a;--gold-dim:rgba(76,210,122,.14);--goldbtn:#4cd27a;--bg:#040405;--cardbg:#121215;--cardbg-hi:#191920;--stroke:rgba(255,255,255,.09);--txt:#f4f4f6;--mut:#8b8b93;--red:#ff453a;--green:#4cd27a;--inputbg:rgba(255,255,255,.05);--inputph:#48484e;--theadbg:rgba(8,8,10,.9);--toastbg:rgba(30,30,34,.92);--tipbg:rgba(28,28,32,.97);--shadow:0 12px 48px rgba(0,0,0,.5);--optbg:#0a0a0a;--imgbg:#111;--rowline:rgba(255,255,255,.05);--hover:rgba(255,255,255,.03);color-scheme:dark}
 /* light mode follows the browser: white for light-browser users, black for dark */
 @media (prefers-color-scheme:light){
-:root{--gold:#15803d;--gold-dim:rgba(21,128,61,.1);--bg:#f2f2f5;--glass:rgba(255,255,255,.78);--glass-hi:#ffffff;--stroke:rgba(0,0,0,.1);--txt:#17171c;--mut:#45454e;--red:#d92d20;--green:#15803d;--inputbg:rgba(0,0,0,.04);--inputph:#9a9aa0;--theadbg:rgba(255,255,255,.94);--toastbg:rgba(255,255,255,.96);--tipbg:rgba(255,255,255,.97);--shadow:0 12px 32px rgba(0,0,0,.12);--optbg:#ffffff;--imgbg:#e8e6e2;--rowline:rgba(0,0,0,.07);--hover:rgba(0,0,0,.03);color-scheme:light}
-.bg i:nth-child(1){background:rgba(88,101,242,.1);opacity:.6}
-.bg i:nth-child(2){background:rgba(190,80,160,.07);opacity:.6}
-.bg i:nth-child(3){background:rgba(76,210,122,.12);opacity:.6}
+:root{--gold:#15803d;--gold-dim:rgba(21,128,61,.1);--bg:#f2f2f5;--cardbg:#f4f4f6;--cardbg-hi:#ffffff;--stroke:rgba(0,0,0,.1);--txt:#17171c;--mut:#45454e;--red:#d92d20;--green:#15803d;--inputbg:rgba(0,0,0,.04);--inputph:#9a9aa0;--theadbg:rgba(255,255,255,.94);--toastbg:rgba(255,255,255,.96);--tipbg:rgba(255,255,255,.97);--shadow:0 12px 32px rgba(0,0,0,.12);--optbg:#ffffff;--imgbg:#e8e6e2;--rowline:rgba(0,0,0,.07);--hover:rgba(0,0,0,.03);color-scheme:light}
+.bg{background:radial-gradient(420px 420px at 10% 0%,rgba(88,101,242,.08),transparent 70%),radial-gradient(320px 320px at 95% 100%,rgba(190,80,160,.06),transparent 70%),radial-gradient(200px 200px at 75% 45%,rgba(76,210,122,.09),transparent 70%)}
 }
 body{font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;min-height:100dvh;-webkit-font-smoothing:antialiased;overflow-x:hidden}
-.bg{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:0}
-.bg i{position:absolute;border-radius:50%;filter:blur(120px);opacity:.16;animation:drift 18s ease-in-out infinite}
-.bg i:nth-child(1){width:420px;height:420px;background:rgba(255,180,120,.14);top:-120px;left:-120px}
-.bg i:nth-child(2){width:320px;height:320px;background:rgba(88,101,242,.14);bottom:5%;right:-80px;animation-delay:-6s}
-.bg i:nth-child(3){width:200px;height:200px;background:rgba(76,210,122,.12);top:45%;left:70%;animation-delay:-12s}
-@keyframes drift{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(24px,-24px) scale(1.06)}}
-.wrap{position:relative;z-index:1;max-width:1060px;margin:0 auto;padding:20px 16px 90px}
-.glass{background:linear-gradient(135deg,var(--glass-hi),var(--glass));backdrop-filter:blur(28px) saturate(1.6);-webkit-backdrop-filter:blur(28px) saturate(1.6);border:1px solid var(--stroke);border-radius:20px;box-shadow:var(--shadow),inset 0 1px 0 rgba(255,255,255,.06)}
+.bg{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:0;background:radial-gradient(420px 420px at 10% 0%,rgba(255,180,120,.11),transparent 70%),radial-gradient(320px 320px at 95% 100%,rgba(88,101,242,.11),transparent 70%),radial-gradient(200px 200px at 75% 45%,rgba(76,210,122,.09),transparent 70%)}
+.bg i{display:none}
+.wrap{position:relative;z-index:1;max-width:1060px;margin:0 auto;padding:20px 16px 160px}
+/* 160px bottom padding: the fixed dock (~74px tall, more when the Android
+   toolbar lifts it) must never cover the last card, form field or button. */
+.glass{background:linear-gradient(135deg,var(--cardbg-hi),var(--cardbg));border:1px solid var(--stroke);border-radius:20px;box-shadow:var(--shadow),inset 0 1px 0 rgba(255,255,255,.06)}
 #login{position:relative;z-index:1;min-height:92vh;min-height:92dvh;display:flex;align-items:center;justify-content:center;padding:24px}
 .login-card{width:100%;max-width:340px;text-align:center}
 .login-card .mark{font-size:10px;font-weight:600;letter-spacing:.34em;color:var(--mut);margin-bottom:20px}
@@ -47,18 +43,18 @@ body{font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'SF Pro Di
 .rolepill{font-size:10.5px;font-weight:700;letter-spacing:.12em;padding:8px 16px;border-radius:99px;background:var(--inputbg);border:1px solid var(--stroke);color:var(--mut);white-space:nowrap}
 .rolepill.write{background:var(--gold-dim);border-color:rgba(212,168,83,.35);color:var(--gold)}
 .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);margin-right:6px;vertical-align:1px}
-.iconbtn{background:var(--glass);border:1px solid var(--stroke);color:var(--txt);border-radius:12px;padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer;backdrop-filter:blur(16px)}
+.iconbtn{background:var(--cardbg);border:1px solid var(--stroke);color:var(--txt);border-radius:12px;padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer}
 .iconbtn:active{opacity:.7}
 /* Axofy-style bottom menu: minimal line button, panel opens upward */
 /* Axofy-style bottom dock + left drawer */
-.dock{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(12px + var(--dock-lift,0px) + env(safe-area-inset-bottom));z-index:90;display:flex;justify-content:space-between;gap:2px;padding:6px;border-radius:30px;width:min(400px,calc(100% - 24px));background:var(--tipbg);-webkit-backdrop-filter:blur(20px) saturate(1.6);backdrop-filter:blur(20px) saturate(1.6);border:1px solid var(--stroke);box-shadow:0 8px 20px rgba(0,0,0,.22)}
+.dock{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(12px + var(--dock-lift,0px) + env(safe-area-inset-bottom));z-index:90;display:flex;justify-content:space-between;gap:2px;padding:6px;border-radius:30px;width:min(400px,calc(100% - 24px));background:var(--tipbg);border:1px solid var(--stroke);box-shadow:0 8px 20px rgba(0,0,0,.22)}
 .dock button{flex:1;min-width:0;border:0;background:none;color:var(--mut);display:grid;justify-items:center;gap:3px;padding:8px 0 7px;border-radius:24px;font:600 10px 'Plus Jakarta Sans',sans-serif;cursor:pointer;transition:.25s;white-space:nowrap}
 .dock button svg{width:20px;height:20px}
 .dock button.on{background:rgba(255,255,255,.13);color:var(--txt);box-shadow:inset 0 1px 0 rgba(255,255,255,.16)}
 .dock button:active{transform:scale(.96)}
 .scrim{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:110;opacity:0;pointer-events:none;transition:opacity .3s}
 .scrim.on{opacity:1;pointer-events:auto}
-.drawer{position:fixed;top:0;bottom:0;left:0;width:min(300px,84vw);z-index:120;transform:translateX(-105%);transition:transform .4s cubic-bezier(.2,.8,.2,1);padding:calc(20px + env(safe-area-inset-top)) 12px 18px;display:flex;flex-direction:column;gap:2px;border-radius:0 28px 28px 0;background:linear-gradient(180deg,rgba(24,24,28,.94),rgba(12,12,15,.96));-webkit-backdrop-filter:blur(20px) saturate(1.6);backdrop-filter:blur(20px) saturate(1.6);border-right:1px solid var(--stroke)}
+.drawer{position:fixed;top:0;bottom:0;left:0;width:min(300px,84vw);z-index:120;transform:translateX(-105%);transition:transform .4s cubic-bezier(.2,.8,.2,1);padding:calc(20px + env(safe-area-inset-top)) 12px 18px;display:flex;flex-direction:column;gap:2px;border-radius:0 28px 28px 0;background:linear-gradient(180deg,rgba(24,24,28,.94),rgba(12,12,15,.96));border-right:1px solid var(--stroke)}
 .drawer.open{transform:none}
 .dr-brand{font-size:26px;font-weight:800;letter-spacing:-.02em;padding:10px 12px 20px;color:var(--txt);line-height:1}
 .dr-brand small{display:block;font-size:10px;font-weight:700;letter-spacing:.22em;color:var(--mut);margin-top:5px}
@@ -98,7 +94,7 @@ body{font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'SF Pro Di
 .toolbar select option{background:var(--optbg)}
 .twrap{overflow-x:auto;border-radius:20px}
 table{width:100%;border-collapse:collapse;font-size:14px;min-width:640px}
-thead th{text-align:left;font-size:10px;font-weight:600;letter-spacing:.14em;color:var(--mut);padding:16px 14px;border-bottom:1px solid var(--stroke);white-space:nowrap;position:sticky;top:0;background:var(--theadbg);backdrop-filter:blur(16px)}
+thead th{text-align:left;font-size:10px;font-weight:600;letter-spacing:.14em;color:var(--mut);padding:16px 14px;border-bottom:1px solid var(--stroke);white-space:nowrap;position:sticky;top:0;background:var(--theadbg)}
 tbody td{padding:14px;border-bottom:1px solid var(--rowline);vertical-align:top}
 tbody tr:active{background:var(--hover)}
 tbody tr:last-child td{border-bottom:none}
@@ -123,12 +119,12 @@ tbody tr.flash{animation:flash 2.4s ease}
 .evcard .row{display:flex;justify-content:space-between;font-size:12.5px;color:var(--mut);margin-top:6px}
 .evcard .row em{color:var(--txt);font-style:normal;font-weight:700;font-variant-numeric:tabular-nums}
 .actions{display:flex;gap:10px;margin:18px 0;flex-wrap:wrap}
-.abtn{flex:1;min-width:140px;padding:15px;border-radius:14px;font-weight:600;font-size:14px;cursor:pointer;border:1px solid var(--stroke);background:var(--glass);color:var(--txt);backdrop-filter:blur(16px);font-family:inherit;transition:all .2s}
+.abtn{flex:1;min-width:140px;padding:15px;border-radius:14px;font-weight:600;font-size:14px;cursor:pointer;border:1px solid var(--stroke);background:var(--cardbg);color:var(--txt);font-family:inherit;transition:all .2s}
 .abtn:active{transform:scale(.98);opacity:.8}
 .abtn.go{background:var(--goldbtn);color:#000;border-color:var(--goldbtn);font-weight:700}
 .empty{text-align:center;padding:56px 20px;color:var(--mut);font-size:14px}
 .hidden{display:none!important}
-.toast{position:fixed;bottom:96px;z-index:200;left:50%;transform:translateX(-50%) translateY(160px);background:var(--toastbg);backdrop-filter:blur(20px);border:1px solid var(--stroke);color:var(--txt);font-weight:600;font-size:14px;padding:14px 28px;border-radius:99px;transition:transform .35s cubic-bezier(.2,.9,.3,1.2);box-shadow:var(--shadow)}
+.toast{position:fixed;bottom:96px;z-index:200;left:50%;transform:translateX(-50%) translateY(160px);background:var(--toastbg);border:1px solid var(--stroke);color:var(--txt);font-weight:600;font-size:14px;padding:14px 28px;border-radius:99px;transition:transform .35s cubic-bezier(.2,.9,.3,1.2);box-shadow:var(--shadow)}
 .toast.show{transform:translateX(-50%) translateY(0)}
 /* posters */
 .evposter{flex:none;display:flex;flex-direction:column;gap:3px;align-items:center}
@@ -136,7 +132,7 @@ tbody tr.flash{animation:flash 2.4s ease}
 .evposter .pchange{font-size:11px;font-weight:700;color:var(--gold);cursor:pointer}
 .evposter .preset{font-size:11px;font-weight:700;color:var(--red);background:none;border:none;cursor:pointer;padding:0}
 .evrow{align-items:flex-start}
-.logrow{padding:13px 14px;margin-bottom:8px}
+.logrow{padding:13px 14px;margin-bottom:8px;content-visibility:auto;contain-intrinsic-size:auto 120px}
 .logrow .lh{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
 .logrow .lh b{font-size:14px}
 .logrow .lt{font-size:11px;color:var(--mut);white-space:nowrap}
@@ -169,7 +165,7 @@ tbody tr.flash{animation:flash 2.4s ease}
 .addform select option{background:var(--optbg)}
 .addform input:focus,.addform select:focus{border-color:var(--gold)}
 /* modal */
-#modal,#modal-ev{position:fixed;inset:0;z-index:150;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);display:none;align-items:flex-end;justify-content:center}
+#modal,#modal-ev{position:fixed;inset:0;z-index:150;background:rgba(0,0,0,.7);display:none;align-items:flex-end;justify-content:center}
 #modal.show,#modal-ev.show{display:flex}
 @media(min-width:720px){#modal,#modal-ev{align-items:center}}
 .mcard{width:100%;max-width:480px;padding:24px;max-height:88vh;overflow-y:auto;border-radius:20px 20px 0 0}
@@ -183,7 +179,20 @@ tbody tr.flash{animation:flash 2.4s ease}
 .mcard textarea:focus{border-color:var(--gold)}
 .mcard .chk{display:flex;gap:10px;align-items:center;margin-top:14px;font-size:14px;font-weight:600}
 .mcard .chk input{width:auto}
-@media (prefers-reduced-motion:reduce){.bg i{animation:none}tbody tr.flash{animation:none}}
+/* PC mode: the layout already centres (1060px cap), so this is polish,
+   not a rebuild — same page, same dock + drawer, just using a wide screen
+   well: wider container, even grids (6 stats in 3x2, 4 event cards in a row),
+   and hover feedback that only exists where a real mouse exists. */
+@media(min-width:1280px){.wrap{max-width:1200px}}
+@media(min-width:1100px){.stats{grid-template-columns:repeat(3,1fr)}.evgrid{grid-template-columns:repeat(4,1fr)}}
+@media (hover:hover){
+.dock button:hover{background:var(--inputbg);color:var(--txt)}
+.dr-link:hover{background:var(--inputbg)}
+.evcard:hover{border-color:var(--mut)}
+tbody tr:hover{background:var(--hover)}
+.iconbtn:hover,.mini:hover,.paybtn:not(:disabled):hover,.abtn:hover{opacity:.85}
+}
+@media (prefers-reduced-motion:reduce){tbody tr.flash{animation:none}}
 </style>
 </head>
 <body>
@@ -207,8 +216,6 @@ tbody tr.flash{animation:flash 2.4s ease}
   <div class="topbar">
     <div class="ttl">SPARK Admin<small id="roleSub">DASHBOARD</small></div>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-      <button class="iconbtn" id="topBack" aria-label="Back to overview">← Back</button>
-      <button class="iconbtn" id="topMenu" aria-label="Open menu">☰ Menu</button>
       <span class="rolepill" id="rolePill">READ</span>
     </div>
   </div>
@@ -219,22 +226,22 @@ tbody tr.flash{animation:flash 2.4s ease}
     <div class="secsub">Registrations, payments and visits, live.</div>
 
     <div class="stats">
-      <div class="glass stat"><small>TOTAL VISITS</small><b id="sVisits">0</b></div>
-      <div class="glass stat"><small>VISITS TODAY</small><b id="sVisitsToday">0</b></div>
-      <div class="glass stat"><small>TOTAL REGISTRATIONS</small><b id="sTotal">0</b></div>
-      <div class="glass stat"><small>PAID STUDENTS</small><b class="green" id="sPaid">0</b></div>
-      <div class="glass stat"><small>PAYMENT COLLECTED</small><b class="gold" id="sAmt">₹0</b></div>
-      <div class="glass stat"><small>PENDING PAYMENT</small><b id="sPend" style="color:var(--red)">0</b></div>
+      <div class="glass stat"><small>TOTAL VISITS</small><b id="sVisits">—</b></div>
+      <div class="glass stat"><small>VISITS TODAY</small><b id="sVisitsToday">—</b></div>
+      <div class="glass stat"><small>TOTAL REGISTRATIONS</small><b id="sTotal">—</b></div>
+      <div class="glass stat"><small>PAID STUDENTS</small><b class="green" id="sPaid">—</b></div>
+      <div class="glass stat"><small>PAYMENT COLLECTED</small><b class="gold" id="sAmt">—</b></div>
+      <div class="glass stat"><small>PENDING PAYMENT</small><b id="sPend" style="color:var(--red)">—</b></div>
     </div>
 
     <div class="secttl" style="margin-top:6px">Per event</div>
-    <div id="ovEvents"></div>
+    <div id="ovEvents"><div class="empty">Loading…</div></div>
   </section>
 
   <!-- REGISTRATIONS -->
   <section id="sec-reg" class="hidden">
     <div class="secttl">Registrations <button class="ti" data-tip="Every student sign-up, live. Use search and the filters to find someone, tap an event card to open that event's own page. Full-access accounts can mark fees paid, edit details, or delete a registration.">?</button></div>
-    <div class="secsub">Students who registered for the fest, across all 4 events.</div>
+    <div class="secsub" id="regSub">Students who registered for the fest, across all 4 events.</div>
 
     <!-- Event inside page: shown when an event card is tapped; overall view shows the cards -->
     <div id="evDetail" class="hidden">
@@ -244,7 +251,7 @@ tbody tr.flash{animation:flash 2.4s ease}
       <div class="stats" id="evDetailStats" style="margin-top:14px"></div>
     </div>
 
-    <div class="evgrid" id="evGrid"></div>
+    <div class="evgrid" id="evGrid"><div class="empty" style="grid-column:1/-1">Loading…</div></div>
 
     <div class="toolbar">
       <input id="q" placeholder="Search name, school, phone...">
@@ -268,7 +275,7 @@ tbody tr.flash{animation:flash 2.4s ease}
   <section id="sec-events" class="hidden">
     <div class="secttl">Events <button class="ti" data-tip="Everything on the Events page and the registration forms comes from here. Edit any field and it goes live instantly. Hiding an event removes it from the site but keeps its registrations. Deleting is blocked while students are registered — hide it instead. Renaming never breaks links: the short address stays the same. Tap Change under a poster to upload a new one — it goes live instantly, and Reset brings back the original.">?</button></div>
     <div class="secsub">Add, edit, hide, close or reorder events. Tap Change under a poster to swap it. Changes go live instantly.</div>
-    <div id="evAdminList"></div>
+    <div id="evAdminList"><div class="empty">Loading…</div></div>
     <div class="glass addform hidden" id="addEventForm">
       <div class="secttl" style="margin-bottom:12px">Add event</div>
       <div class="grid">
@@ -293,7 +300,7 @@ tbody tr.flash{animation:flash 2.4s ease}
   <section id="sec-coords" class="hidden">
     <div class="secttl">Coordinators <button class="ti" data-tip="The people running the fest. Add or change a phone number here and it appears on the Contact page right away. Full-access accounts can also add or remove people.">?</button></div>
     <div class="secsub">Team lists and phone numbers, as shown on the Contact page.</div>
-    <div id="cList"></div>
+    <div id="cList"><div class="empty">Loading…</div></div>
     <div class="glass addform hidden" id="addForm">
       <div class="secttl" style="margin-bottom:12px">Add coordinator</div>
       <div class="grid">
@@ -319,7 +326,7 @@ tbody tr.flash{animation:flash 2.4s ease}
   <section id="sec-log" class="hidden">
     <div class="secttl">Activity Log <button class="ti" data-tip="Every admin login and every change made from this dashboard, newest first. Entries can't be edited or deleted — only full-access admins can see this page. Undo on a change puts the old values back; the undo itself is logged too. The log keeps the last 500 entries.">?</button></div>
     <div class="secsub">Who logged in, from where, and what changed. Entries can't be edited or deleted.</div>
-    <div id="logList"></div>
+    <div id="logList"><div class="empty">Loading…</div></div>
   </section>
 </div>
 
@@ -398,7 +405,7 @@ tbody tr.flash{animation:flash 2.4s ease}
 const $=id=>document.getElementById(id);
 let TOKEN=localStorage.getItem('celesta_admin_tok')||'', ROLE=localStorage.getItem('celesta_admin_role')||'';
 let REGS=[], FILTER_EV='', EV_DETAIL='', SEEN=new Set(), COORDS=[], POSTER_CUSTOM={}, SEEN_READY=false, LOG_UNDONE=new Set();
-let REG_TOTAL=0, REG_PAID_N=0, REG_PAID_AMT=0, REG_OFFSET=0, REG_HAS_MORE=false, POSTER_V=0, EVENT_COUNTS={};
+let REG_TOTAL=0, REG_PAID_N=0, REG_PAID_AMT=0, REG_OFFSET=0, REG_HAS_MORE=false, POSTER_V=0, EVENT_COUNTS={}, LAST_SIG='';
 const REG_PAGE=200;
 let EDIT_ID=null;
 
@@ -420,6 +427,15 @@ async function ensureEvents(force){
 function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2600);}
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function fmt(n){return '₹'+Number(n||0).toLocaleString('en-IN');}
+// The event fee is a display string ("₹100 per team"), not a number:
+// fmt() would Number() it to NaN. Show the string as-is; only a bare
+// number (typed by an admin, or legacy numeric data) goes through fmt().
+function feeTxt(f){
+  if(f==null||f==='')return '—';
+  if(typeof f==='number')return fmt(f);
+  const s=String(f).trim();
+  return /^\d+(\.\d+)?$/.test(s)?fmt(Number(s)):s;
+}
 function isWrite(){return ROLE==='write';}
 function authHeaders(json){const h={Authorization:'Bearer '+TOKEN,...fpHeaders()};if(json)h['Content-Type']='application/json';return h;}
 
@@ -544,10 +560,6 @@ document.addEventListener('click',e=>{
 function goTab(k){
   // Leaving Regs closes any open event page, so returning shows the overall view.
   if(k!=='reg'){EV_DETAIL='';FILTER_EV='';}
-  // The Back button only makes sense off Overview (it returns there),
-  // or inside an event page (it returns to all events).
-  // On Overview itself there is nowhere to go back to, so hide it.
-  $('topBack').style.display=(k==='overview'&&!EV_DETAIL)?'none':'';
   document.querySelectorAll('#dock button[data-tab]').forEach(x=>x.classList.toggle('on',x.dataset.tab===k));
   document.querySelectorAll('.dr-link[data-tab]').forEach(x=>x.classList.toggle('on',x.dataset.tab===k));
   ['overview','reg','events','coords','log'].forEach(s=>$('sec-'+s).classList.toggle('hidden',s!==k));
@@ -562,8 +574,6 @@ function openDrawer(o){$('drawer').classList.toggle('open',o);$('scrim').classLi
 function closeDrawer(){openDrawer(false);}
 $('dockMenu').onclick=()=>openDrawer(true);
 $('scrim').onclick=closeDrawer;
-$('topBack').onclick=()=>{ if(EV_DETAIL){closeEvent();} else {goTab('overview');} };
-$('topMenu').onclick=()=>openDrawer(true);
 
 // ---------- dock lift: keep the pinned bottom dock above the Android browser toolbar ----------
 // On Android Chrome/Brave the bottom toolbar overlays the page, hiding a fixed dock at
@@ -604,8 +614,6 @@ $('logoutBtn').onclick=()=>{localStorage.removeItem('celesta_admin_tok');localSt
 // ---------- dashboard ----------
 async function showDash(){
   $('login').classList.add('hidden');$('dash').classList.remove('hidden');$('dock').classList.remove('hidden');
-  // Dashboard always opens on Overview, where Back has nowhere to go.
-  $('topBack').style.display='none';
   const w=isWrite();
   $('rolePill').textContent=w?'WRITE · FULL ACCESS':'READ · VIEW ONLY';
   $('rolePill').classList.toggle('write',w);
@@ -649,15 +657,26 @@ async function load(reset=true){
     if(r.status===401){localStorage.removeItem('celesta_admin_tok');localStorage.removeItem('celesta_admin_role');location.reload();return;}
     const d=await r.json();
     const fresh=(d.regs||[]).filter(x=>!SEEN.has(x.id));
-    if(reset)REGS=d.regs||[];else REGS=REGS.concat(d.regs||[]);
+    // Skip the full-table rebuild when the refresh fetched byte-identical
+    // data: rebuilding up to 200 rows on every refresh is main-thread jank
+    // behind the scroll lag. Any real change (new reg, payment, edit)
+    // changes the signature and re-renders as before.
+    let unchanged=false;
+    if(reset){
+      const sig=JSON.stringify([(d.regs||[]),d.total,d.paidCount,d.paidAmount,d.byEvent]);
+      unchanged=(sig===LAST_SIG);LAST_SIG=sig;
+      REGS=d.regs||[];
+    }else REGS=REGS.concat(d.regs||[]);
     REG_TOTAL=d.total||REGS.length;REG_PAID_N=d.paidCount||0;REG_PAID_AMT=d.paidAmount||0;
     EVENT_COUNTS=d.byEvent||{};
     REG_OFFSET=REGS.length;REG_HAS_MORE=REGS.length<REG_TOTAL;
-    render();
-    if(fresh.length&&SEEN_READY){
-      const msg=fresh.length===1?('New registration: '+fresh[0].name+' — '+fresh[0].event):(fresh.length+' new registrations');
-      toast(msg);
-      if('Notification' in window&&Notification.permission==='granted'){try{new Notification('SPARK — new registration',{body:msg});}catch(e){}}
+    if(!unchanged){
+      render();
+      if(fresh.length&&SEEN_READY){
+        const msg=fresh.length===1?('New registration: '+fresh[0].name+' — '+fresh[0].event):(fresh.length+' new registrations');
+        toast(msg);
+        if('Notification' in window&&Notification.permission==='granted'){try{new Notification('SPARK — new registration',{body:msg});}catch(e){}}
+      }
     }
     SEEN_READY=true;
   }catch(e){toast('Failed to load');}
@@ -704,14 +723,23 @@ function render(){
     const n=evRegCount(e.slug,e.name);
     el.textContent=n+' reg'+(n===1?'':'s');
   });
+  // Dead events (hidden from the site AND zero registrations, e.g. the
+  // removed Idea Presentation) get no card on the Regs/Overview lists.
+  // A hidden event WITH registrations still shows, so no registration
+  // data is ever hidden; the Events tab still lists it.
+  const liveEv=EVENTS_DB.filter(e=>e.visible||evStats(e).n>0);
+  // The heading count follows the cards: it said "4 events" while five
+  // cards (incl. dead Idea Presentation) were listed. Keep the static
+  // "4 events" only until the data loads.
+  if(liveEv.length)$('regSub').textContent='Students who registered for the fest, across all '+liveEv.length+' events.';
   // overview per-event list (tap a row to open that event's page in Regs)
-  $('ovEvents').innerHTML=EVENTS_DB.map(e=>{
+  $('ovEvents').innerHTML=liveEv.map(e=>{
     const s=evStats(e);
     return `<div class="glass crow" data-ev="${esc(e.slug)}" style="cursor:pointer"><div class="who"><b>${esc(e.name)}</b><span>${esc(e.tagline||'')}</span></div><span class="mut">${s.n} registered · ${s.paid} paid · <span class="amt">${fmt(s.amount)}</span></span></div>`;
   }).join('')||'<div class="empty">No events yet.</div>';
   document.querySelectorAll('#ovEvents .crow').forEach(c=>c.onclick=()=>{goTab('reg');openEvent(c.dataset.ev);});
   // event cards
-  $('evGrid').innerHTML=EVENTS_DB.map(e=>{
+  $('evGrid').innerHTML=liveEv.map(e=>{
     const s=evStats(e);
     return `<div class="glass evcard ${FILTER_EV===e.slug?'sel':''}" data-ev="${esc(e.slug)}">
       <b>${esc(e.name)}</b>
@@ -729,7 +757,7 @@ function render(){
   if(ev){
     const s=evStats(ev);
     $('evDetailName').textContent=ev.name;
-    $('evDetailSub').textContent=(ev.tagline||'')+' · Team '+ev.teamMin+'–'+ev.teamMax+' · Fee '+(ev.fee?fmt(ev.fee):'—');
+    $('evDetailSub').textContent=(ev.tagline||'')+' · Team '+ev.teamMin+'–'+ev.teamMax+' · Fee '+feeTxt(ev.fee);
     $('evDetailStats').innerHTML=
       '<div class="glass stat"><small>REGISTERED</small><b>'+s.n+'</b></div>'+
       '<div class="glass stat"><small>PAID</small><b class="green">'+s.paid+'</b></div>'+
@@ -775,7 +803,14 @@ async function togglePay(id,wasPaid){
   const undo=()=>{if(x){x.paid=oldPaid;x.amount=oldAmt;}if(!wasPaid){REG_PAID_N--;REG_PAID_AMT-=amount;}else{REG_PAID_N++;REG_PAID_AMT+=oldAmt;}render();};
   try{
     const r=await fetch('/api/registrations',{method:'PATCH',headers:authHeaders(true),body:JSON.stringify({id,paid:!wasPaid,amount})});
-    if(r.ok){toast(wasPaid?'Marked unpaid':'Marked paid');}
+    if(r.ok){
+      // Reconcile with the server's saved record: a refresh that fired
+      // mid-PATCH would otherwise show the old paid state until the
+      // next refresh, making the toggle look like it reverted.
+      const d=await r.json().catch(()=>({}));
+      if(d.reg){const i=REGS.findIndex(x=>x.id===id);if(i>=0)REGS[i]=d.reg;}
+      render();toast(wasPaid?'Marked unpaid':'Marked paid');
+    }
     else{undo();toast('Failed');}
   }catch(e){undo();toast('Failed');}
 }
@@ -814,7 +849,7 @@ $('modalSave').onclick=async()=>{
   }catch(e){toast('Failed');}
 };
 
-$('q').addEventListener('input',render);
+let qT=null;$('q').addEventListener('input',()=>{clearTimeout(qT);qT=setTimeout(render,150);});
 $('fEv').addEventListener('change',e=>{FILTER_EV=e.target.value;render();});
 
 // ---------- event inside pages ----------
@@ -1005,7 +1040,7 @@ function renderEventsAdmin(){
     const custom=POSTER_CUSTOM[e.slug];
     return `<div class="glass crow evrow">
       <div class="evposter">
-        <img src="${e.poster?'/api/poster?event='+esc(e.slug)+'&v='+POSTER_V:'/assets/poster-'+esc(e.slug)+'.webp'}" alt="${esc(e.name)} poster">
+        <img loading="lazy" decoding="async" src="${e.poster?'/api/poster?event='+esc(e.slug)+'&v='+POSTER_V:'/assets/poster-'+esc(e.slug)+'.webp'}" alt="${esc(e.name)} poster">
         ${w?`<label class="pchange">Change<input type="file" accept="image/*" data-up="${e.slug}" style="display:none"></label>${custom?`<button class="preset" data-reset="${e.slug}">Reset</button>`:''}`:''}
       </div>
       <div class="who"><b>${esc(e.name)}</b><span>${esc(e.tagline||'')} · 1st ${fmt(e.prize1)} / 2nd ${fmt(e.prize2)} · Team ${e.teamMin}–${e.teamMax} · <span data-count="${e.slug}">${n} reg${n===1?'':'s'}</span></span></div>
@@ -1190,6 +1225,14 @@ let deferredPrompt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;$('installBtn').classList.remove('hidden');$('installBtn2').classList.remove('hidden');});
 function doInstall(){if(deferredPrompt){deferredPrompt.prompt();deferredPrompt=null;}}
 $('installBtn').onclick=doInstall;$('installBtn2').onclick=doInstall;
+
+// PC mode: Esc closes the drawer, any open modal, and the tooltip.
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Escape')return;
+  closeDrawer();
+  $('modal').classList.remove('show');$('modal-ev').classList.remove('show');EDIT_ID=null;EDIT_EV=null;
+  tipEl.classList.remove('show');document.querySelectorAll('.ti').forEach(x=>x.classList.remove('on'));
+});
 
 // auto-login
 if(TOKEN&&ROLE)showDash();
