@@ -67,33 +67,6 @@
   function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
   function fmt(n){return '₹'+Number(n||0).toLocaleString('en-IN');}
   function teamLabel(e){return e.teamMin===e.teamMax?e.teamMin+' member'+(e.teamMin>1?'s':''):e.teamMin+'–'+e.teamMax+' members';}
-  // Confirmation card (SVG), same design as the one attached to the email.
-  function xesc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-  function buildCardSVG(r){
-    var teamLine='Team of '+r.team+(r.teamName?' · '+r.teamName:'');
-    var memberLine=(r.members&&r.members.length)?r.members.join(', '):'—';
-    function lab(x,y,t){return '<text x="'+x+'" y="'+y+'" font-family="Arial,Helvetica,sans-serif" font-size="20" letter-spacing="2" fill="#9b8ec4">'+xesc(t)+'</text>';}
-    function val(x,y,t){return '<text x="'+x+'" y="'+y+'" font-family="Arial,Helvetica,sans-serif" font-size="30" font-weight="600" fill="#ffffff">'+xesc(t)+'</text>';}
-    return '<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="750" viewBox="0 0 1200 750">'
-      +'<defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1a0b2e"/><stop offset="0.6" stop-color="#0a0a12"/><stop offset="1" stop-color="#12081f"/></linearGradient></defs>'
-      +'<rect width="1200" height="750" fill="url(#bg)"/>'
-      +'<text x="48" y="96" font-family="Arial,Helvetica,sans-serif" font-size="54" font-weight="800" letter-spacing="2" fill="#ffffff">SPARK 2K26</text>'
-      +'<text x="48" y="132" font-family="Arial,Helvetica,sans-serif" font-size="20" letter-spacing="4" fill="#d4a853">NEXUS · DECODE YOUR FUTURE</text>'
-      +'<rect x="838" y="52" width="314" height="52" rx="26" fill="#d4a853"/>'
-      +'<text x="995" y="86" font-family="Arial,Helvetica,sans-serif" font-size="22" font-weight="700" text-anchor="middle" fill="#1a0b2e">REGISTRATION CONFIRMED</text>'
-      +'<text x="48" y="232" font-family="Arial,Helvetica,sans-serif" font-size="64" font-weight="800" fill="#ffffff">'+xesc(r.event)+'</text>'
-      +'<text x="48" y="282" font-family="Arial,Helvetica,sans-serif" font-size="30" fill="#cfc8e8">'+xesc(r.name)+'  ·  '+xesc(r.school)+'</text>'
-      +lab(48,356,'TEAM')+val(48,392,teamLine)
-      +lab(48,452,'MEMBERS')+val(48,488,memberLine)
-      +lab(48,548,'FEE')+val(48,584,(r.fee||'—')+' · pay at venue')
-      +lab(648,356,'REGISTRATION ID')+val(648,392,r.id||'—')
-      +lab(648,452,'DATE')+val(648,488,'Friday, 27 November 2026 · 10:00 AM')
-      +lab(648,548,'VENUE')+val(648,584,'Mar Augusthinose College, Ramapuram')
-      +'<line x1="48" y1="648" x2="1152" y2="648" stroke="rgba(255,255,255,0.18)" stroke-width="1"/>'
-      +'<text x="48" y="694" font-family="Arial,Helvetica,sans-serif" font-size="22" font-weight="600" fill="#d4a853">Report by 9:30 AM with a valid school ID</text>'
-      +'<text x="1152" y="694" font-family="Arial,Helvetica,sans-serif" font-size="20" text-anchor="end" fill="#9b8ec4">spark.maraugusthinosecollege.org</text>'
-      +'</svg>';
-  }
   function showMsg(title,body,back){
     app.innerHTML='<div style="padding:60px 0;text-align:center">'
       +'<h1 style="font-size:26px;margin-bottom:10px">'+esc(title)+'</h1>'
@@ -223,16 +196,9 @@
         if(!r.ok)throw new Error(d.error||'Registration failed');
         var box=document.getElementById('ok-msg');
         if(box){
-          // Download confirmation: build the SPARK card (SVG) in the browser
-          // from the details just registered, no server endpoint needed.
-          var svg=buildCardSVG({id:d.id||'',name:name,school:school,event:e.name,team:team,teamName:teamname,members:list,fee:e.fee||''});
-          var blob=new Blob([svg],{type:'image/svg+xml'});
-          var url=URL.createObjectURL(blob);
           box.innerHTML='<h3>Registered</h3><p><strong>'+esc(e.name)+'</strong><br>'
             +(teamname?esc(teamname)+' · ':'')+esc(name)+' · '+esc(school)+' · Team of '+esc(team)+'</p>'
-            +(e.fee?'<p class="reg-note">Saved with the organizers. Fee: '+esc(e.fee)+' — pay at the venue on 27 November 2026. Carry a valid ID card and report by 9:30 AM.</p>':'<p class="reg-note">Saved with the organizers. Carry a valid ID card and report by 9:30 AM on 27 November 2026.</p>')
-            +(d.emailSent&&email?'<p class="reg-note">A confirmation email with your card is on its way to '+esc(email)+'.</p>':'')
-            +'<p style="margin-top:14px"><a class="gz-btn" href="'+url+'" download="spark-2k26-confirmation.svg">Download confirmation</a></p>';
+            +(e.fee?'<p class="reg-note">Saved with the organizers. Fee: '+esc(e.fee)+' — pay at the venue on 27 November 2026. Carry a valid ID card and report by 9:30 AM. Please keep a screenshot.</p>':'<p class="reg-note">Saved with the organizers. Carry a valid ID card and report by 9:30 AM on 27 November 2026. Please keep a screenshot.</p>');
           box.classList.add('show');
           box.scrollIntoView({behavior:'smooth',block:'center'});
         }
