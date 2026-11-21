@@ -28,19 +28,30 @@ export default async function handler(req, res) {
         const vals = await redis.hmget('celesta:regs', ...ids);
         regs = Object.values(vals || {}).map(v => parseVal(v)).filter(Boolean);
       }
+      // Totals: when this page already holds every registration (the normal
+      // case — limit 200 covers the whole fest), total them from the rows we
+      // just fetched instead of a second full-table read. Otherwise fall back
+      // to the full scan so paged views stay exact. Saves 1 Redis command
+      // on every admin list load.
       let paidCount = 0, paidAmount = 0;
       const byEvent = {};
-      try {
-        const all = await redis.hgetall('celesta:regs');
-        if (all) for (const v of Object.values(all)) {
-          const r = parseVal(v);
+      const tally = (list) => {
+        for (const r of list) {
           if (!r) continue;
           const k = r.eventSlug || r.event;
           const b = byEvent[k] || (byEvent[k] = { n: 0, paid: 0, amount: 0 });
           b.n++;
           if (r.paid) { paidCount++; paidAmount += Number(r.amount || 0); b.paid++; b.amount += Number(r.amount || 0); }
         }
-      } catch { /* totals stay 0 on a read failure */ }
+      };
+      if (regs.length === total) {
+        tally(regs);
+      } else {
+        try {
+          const all = await redis.hgetall('celesta:regs');
+          if (all) tally(Object.values(all).map(v => parseVal(v)));
+        } catch { /* totals stay 0 on a read failure */ }
+      }
       return res.status(200).json({ regs, role, total, paidCount, paidAmount, byEvent });
     } catch (e) {
       return res.status(500).json({ error: 'Storage unavailable' });

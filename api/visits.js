@@ -73,6 +73,10 @@ export default async function handler(req, res) {
         }
       }
     }
+    // POST is a fire-and-forget beacon (app.js ignores the body): return
+    // without the 2 totals reads below, which only the GET endpoint needs.
+    // Saves 2 Redis commands on every counted visit (~600 on fest day).
+    if (req.method === 'POST') return res.status(200).json({ ok: true });
     const total = Number(await redis.get('celesta:visits:total') || 0);
     const today = Number(await redis.hget('celesta:visits:daily', day) || 0);
     // Totals change at most once per visit; a 60s shared cache keeps the

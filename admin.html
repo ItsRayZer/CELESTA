@@ -417,8 +417,6 @@ async function ensureEvents(force){
   EVSLUG={};EVENTS_DB.forEach(e=>{EVSLUG[e.name]=e.slug;});
   return EVENTS_DB;
 }
-function evOf(x){return EVENTS_DB.find(e=>e.slug===x.eventSlug||e.name===x.event)||null;}
-
 function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2600);}
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function fmt(n){return '₹'+Number(n||0).toLocaleString('en-IN');}
@@ -620,7 +618,11 @@ async function showDash(){
   EVENTS_DB.forEach(e=>{const o=document.createElement('option');o.value=e.slug;o.textContent=e.name;sel.appendChild(o);});
   renderEventsAdmin();
   load();
-  setInterval(()=>{if(!$('dash').classList.contains('hidden')&&!document.hidden&&navigator.onLine)load();},120000);
+  // Auto-refresh every 5 minutes (was 2): each refresh costs ~4-6 Redis
+  // commands, and on fest day 2-3 admins polling every 2 min would burn
+  // thousands of the 10,000/day free-tier budget on its own. 5 min is
+  // plenty fresh for registrations; manual Refresh is always there.
+  setInterval(()=>{if(!$('dash').classList.contains('hidden')&&!document.hidden&&navigator.onLine)load();},300000);
 }
 
 // Bot check: the server writes x.risk = {level, reasons, at} on every
@@ -659,12 +661,17 @@ async function load(reset=true){
     }
     SEEN_READY=true;
   }catch(e){toast('Failed to load');}
-  try{
-    const vr=await fetch('/api/visits',{cache:'no-store'});
-    const vd=await vr.json();
-    $('sVisits').textContent=Number(vd.total||0).toLocaleString('en-IN');
-    $('sVisitsToday').textContent=Number(vd.today||0).toLocaleString('en-IN');
-  }catch(e){}
+  // Visits only show on Overview, and the public totals are CDN-cached 60s:
+  // skip the fetch (and its 2 Redis reads) when Overview is hidden, and let
+  // the shared cache serve it when visible — no 'no-store' bypass.
+  if(!$('sec-overview').classList.contains('hidden')){
+    try{
+      const vr=await fetch('/api/visits');
+      const vd=await vr.json();
+      $('sVisits').textContent=Number(vd.total||0).toLocaleString('en-IN');
+      $('sVisitsToday').textContent=Number(vd.today||0).toLocaleString('en-IN');
+    }catch(e){}
+  }
 }
 $('refreshBtn2').onclick=load;
 
