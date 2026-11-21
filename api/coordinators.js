@@ -13,29 +13,29 @@ const redis = new Redis({
 // Seed data: the team lists RayZer shared (16 Nov 2026). Phones are empty until added from the admin.
 const DEFAULTS = [
   { id: 'ev-1', name: 'Sree Lakshmi', team: 'Event Coordinators', event: '', cls: '', phone: '' },
-  { id: 'ev-2', name: 'Anaswara', team: 'Event Coordinators', event: '', cls: '', phone: '' },
-  { id: 'ev-3', name: 'Alfiya', team: 'Event Coordinators', event: '', cls: '', phone: '' },
-  { id: 'de-1', name: 'Midhun', team: 'Decoration Team', event: '', cls: '', phone: '' },
-  { id: 'de-2', name: 'Ann Mariya', team: 'Decoration Team', event: '', cls: '', phone: '' },
-  { id: 'de-3', name: 'Aswin', team: 'Decoration Team', event: '', cls: '', phone: '' },
-  { id: 'de-4', name: 'Deleena', team: 'Decoration Team', event: '', cls: '', phone: '' },
+  { id: 'ev-2', name: 'Anaswara G Nair', team: 'Event Coordinators', event: '', cls: '', phone: '' },
+  { id: 'ev-3', name: 'Alfiya Siraj', team: 'Event Coordinators', event: '', cls: '', phone: '' },
+  { id: 'de-1', name: 'Midhun R Nair', team: 'Decoration Team', event: '', cls: '', phone: '' },
+  { id: 'de-2', name: 'Ann Maria Sunnil', team: 'Decoration Team', event: '', cls: '', phone: '' },
+  { id: 'de-3', name: 'Aswin R Nair', team: 'Decoration Team', event: '', cls: '', phone: '' },
+  { id: 'de-4', name: 'Deleena Tomy', team: 'Decoration Team', event: '', cls: '', phone: '' },
   { id: 'te-1', name: 'Aben Sojan', team: 'Technical Team', event: '', cls: '', phone: '' },
   { id: 'me-1', name: 'Alan Lal', team: 'Media Team', event: '', cls: '', phone: '' },
-  { id: 'me-2', name: 'Thomas', team: 'Media Team', event: '', cls: '', phone: '' },
+  { id: 'me-2', name: 'Thomas Augustin', team: 'Media Team', event: '', cls: '', phone: '' },
   { id: 'ma-1', name: 'Alphons Binoy', team: 'Marketing Team', event: '', cls: '', phone: '' },
   { id: 'ma-2', name: 'Simona Jaimon', team: 'Marketing Team', event: '', cls: '', phone: '' },
-  { id: 'fi-1', name: 'Turbo', team: 'Finance Team', event: '', cls: '', phone: '' },
+  { id: 'fi-1', name: 'Leon Mathew Tony', team: 'Finance Team', event: '', cls: '', phone: '' },
   { id: 'ex-1', name: 'Aby Bijo', team: 'Exhibition Team', event: '', cls: '', phone: '' },
   { id: 'og-1', name: 'Basil Shiju', team: 'Open Games', event: '', cls: '', phone: '' },
-  { id: 'og-2', name: 'Midhun', team: 'Open Games', event: '', cls: '', phone: '' },
+  { id: 'og-2', name: 'Midhun R Nair', team: 'Open Games', event: '', cls: '', phone: '' },
   { id: 'og-3', name: 'Alphons Binoy', team: 'Open Games', event: '', cls: '', phone: '' },
-  { id: 'sc-1', name: 'Aleena', team: 'Student Coordinators', event: 'Quiz', cls: '3rd BCA A', phone: '7306704199' },
-  { id: 'sc-2', name: 'Niya', team: 'Student Coordinators', event: 'Quiz', cls: '3rd BCA B', phone: '' },
+  { id: 'sc-1', name: 'Aleena Joseph', team: 'Student Coordinators', event: 'Quiz', cls: '3rd BCA A', phone: '7306704199' },
+  { id: 'sc-2', name: 'Niya Raj Thomas', team: 'Student Coordinators', event: 'Quiz', cls: '3rd BCA B', phone: '' },
   { id: 'sc-3', name: 'Abhinav Babu', team: 'Student Coordinators', event: 'Treasure Hunt', cls: '3rd BCA A', phone: '8590792481' },
   { id: 'sc-4', name: 'Ashwin PS', team: 'Student Coordinators', event: 'Treasure Hunt', cls: '', phone: '9778249397' },
   { id: 'sc-5', name: 'Adithya Rajagopal', team: 'Student Coordinators', event: 'Prompting', cls: '3rd BCA A', phone: '7902604501' },
   { id: 'sc-8', name: 'Agnivesh Santhosh', team: 'Student Coordinators', event: 'Reels Competition', cls: '3rd BCA A', phone: '7012745327' },
-  { id: 'sc-9', name: 'Daniel', team: 'Student Coordinators', event: 'Reels Competition', cls: '3rd BCA A', phone: '8848929570' },
+  { id: 'sc-9', name: 'Daniel Paul Jacob', team: 'Student Coordinators', event: 'Reels Competition', cls: '3rd BCA A', phone: '8848929570' },
 ];
 
 async function ensureSeeded() {
@@ -115,6 +115,29 @@ export default async function handler(req, res) {
         coordStale.forEach(c => { obj[c.id] = JSON.stringify(COORD_FIXES[c.id]); });
         await redis.hset('celesta:coordinators', obj);
         list = list.map(c => (COORD_FIXES[c.id] && ((c.id === 'sc-3' && c.name === 'Abhinavu Babu') || (c.id === 'sc-4' && c.name === 'Aadhil Kabeer'))) ? COORD_FIXES[c.id] : c);
+      }
+      // Full official names (21 Nov 2026, NEXUS EXECOM posters + Sir's note):
+      // first-name-only and nickname entries are corrected to their official
+      // full names (Turbo is Leon Mathew Tony). One-time: the stored records
+      // are corrected in place; after this the names no longer match the old
+      // values, so this never writes again.
+      const NAME_FIXES = {
+        'ev-2': 'Anaswara G Nair', 'ev-3': 'Alfiya Siraj', 'de-1': 'Midhun R Nair',
+        'de-2': 'Ann Maria Sunnil', 'de-3': 'Aswin R Nair', 'de-4': 'Deleena Tomy',
+        'me-2': 'Thomas Augustin', 'fi-1': 'Leon Mathew Tony', 'og-2': 'Midhun R Nair',
+        'sc-1': 'Aleena Joseph', 'sc-2': 'Niya Raj Thomas', 'sc-9': 'Daniel Paul Jacob',
+      };
+      const OLD_NAMES = {
+        'ev-2': 'Anaswara', 'ev-3': 'Alfiya', 'de-1': 'Midhun', 'de-2': 'Ann Mariya',
+        'de-3': 'Aswin', 'de-4': 'Deleena', 'me-2': 'Thomas', 'fi-1': 'Turbo',
+        'og-2': 'Midhun', 'sc-1': 'Aleena', 'sc-2': 'Niya', 'sc-9': 'Daniel',
+      };
+      const nameStale = list.filter(c => NAME_FIXES[c.id] && c.name === OLD_NAMES[c.id]);
+      if (nameStale.length) {
+        const obj = {};
+        nameStale.forEach(c => { obj[c.id] = JSON.stringify({ ...c, name: NAME_FIXES[c.id] }); });
+        await redis.hset('celesta:coordinators', obj);
+        list = list.map(c => (NAME_FIXES[c.id] && c.name === OLD_NAMES[c.id]) ? { ...c, name: NAME_FIXES[c.id] } : c);
       }
       return res.status(200).json({ coordinators: list });
     } catch (e) {
