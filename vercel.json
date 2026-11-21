@@ -122,6 +122,17 @@
   ],
   "redirects": [
     {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "spark-fest.vercel.app"
+        }
+      ],
+      "destination": "https://spark.maraugusthinosecollege.org/",
+      "permanent": true
+    },
+    {
       "source": "/:path*",
       "has": [
         {
