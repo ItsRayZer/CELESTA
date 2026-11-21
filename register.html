@@ -186,8 +186,12 @@
       var btn=form.querySelector('.rg-submit');
       btn.disabled=true;btn.textContent='Registering…';
       var payload={event:e.slug,name:name,school:school,phone:phone,email:email,team:team,teamName:teamname,members:list,website:val('website'),startedAt:startedAt};
+      // 15s timeout: a hung POST must fail visibly instead of leaving the
+      // button on "Registering…" forever (venue Wi-Fi stalls happen).
+      var ctl=('AbortController' in window)?new AbortController():null;
+      var pto=ctl?setTimeout(function(){try{ctl.abort();}catch(e){}},15000):null;
       try{
-        var r=await fetch('/api/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+        var r=await fetch('/api/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),signal:ctl?ctl.signal:undefined});
         var d=await r.json().catch(function(){return {};});
         if(!r.ok)throw new Error(d.error||'Registration failed');
         var box=document.getElementById('ok-msg');
@@ -200,13 +204,15 @@
         }
         form.reset();syncMembers();
       }catch(err){
+        var msg=(err&&err.name==='AbortError')?'The request timed out. Please check your connection and try again.':(err.message||'Something went wrong. Please try again.');
         var box2=document.getElementById('ok-msg');
         if(box2){
-          box2.innerHTML='<h3>Could not register</h3><p>'+esc(err.message||'Something went wrong. Please try again.')+'</p>';
+          box2.innerHTML='<h3>Could not register</h3><p>'+esc(msg)+'</p>';
           box2.classList.add('show');
           box2.scrollIntoView({behavior:'smooth',block:'center'});
         }
       }finally{
+        if(pto)clearTimeout(pto);
         btn.disabled=false;btn.textContent='Register for '+e.name;
       }
     });
@@ -238,6 +244,6 @@
 })();
 </script>
 <script src="/livebg.js?v=4" defer></script>
-<script src="/assets/spark-bot.js?v=21"></script>
+<script src="/assets/spark-bot.js?v=23"></script>
 </body>
 </html>

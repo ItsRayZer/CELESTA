@@ -71,7 +71,7 @@ export default async function handler(req, res) {
       // 500-entry activity log past the free tier.
       let prevKey = null;
       if (prev) {
-        prevKey = event + ':' + Date.now().toString(36);
+        prevKey = event + ':' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
         try { await redis.set('celesta:poster-prev:' + prevKey, prev, { ex: 30 * 24 * 3600 }); } catch { prevKey = null; }
       }
       await appendLog({
@@ -93,7 +93,7 @@ export default async function handler(req, res) {
       const prev = await redis.hget('celesta:posters', event);
       await redis.hdel('celesta:posters', event);
       if (prev) {
-        let prevKey = event + ':' + Date.now().toString(36);
+        let prevKey = event + ':' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
         try { await redis.set('celesta:poster-prev:' + prevKey, prev, { ex: 30 * 24 * 3600 }); } catch { prevKey = null; }
         await appendLog({
           actor: 'write', action: 'Poster reset',

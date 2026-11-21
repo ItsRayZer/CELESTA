@@ -15,7 +15,7 @@ const redis = new Redis({
 });
 
 const RELAY_URL = 'https://gptopen.vercel.app/api/relay';
-const RELAY_TIMEOUT_MS = 25000;
+const RELAY_TIMEOUT_MS = 8000;
 
 // Abuse protection (all in Redis, so it holds across every serverless
 // instance — the old in-memory per-IP limit did not):
@@ -76,6 +76,14 @@ async function dailyCapHit() {
     }
     return n > DAILY_MAX;
   } catch { return false; }
+}
+// Refund one daily count when the relay failed AFTER the count was
+// taken: a failed answer must not burn one of the day's 1,000.
+async function dailyCapRefund() {
+  try {
+    const day = new Date().toISOString().slice(0, 10);
+    await redis.decr('celesta:sparkchat:daily:' + day);
+  } catch {}
 }
 
 // Key contacts (from the official poster). Always in the prompt, even
@@ -146,7 +154,7 @@ export function buildSystemPrompt(events, coords, lang) {
     '- Online registration is FREE: there is NO online payment, no payment link,',
     '  no UPI, no ticket booking, no seat booking.',
     '- Each event has a fee, paid at the venue on the day: Treasure Hunt Rs.200',
-    '  per team, Prompting Rs.100 per participant, Reels Rs.100 per team,',
+    '  per team, Prompting Rs.50 per participant, Reels Rs.100 per team,',
     '  Quiz Rs.100 per team. Never ask for or accept any online payment.',
     '- "Book online" means register online (free). A student may join more than',
     '  one event, but only one team per student per event.',
@@ -262,9 +270,6 @@ function clientIp(req) {
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   if (!originAllowed(req)) return res.status(403).json({ error: 'forbidden' });
-  const ip = clientIp(req);
-  if (await redisRateLimited(ip)) return res.status(429).json({ error: 'rate_limited' });
-
   const body = typeof req.body === 'string'
     ? (() => { try { return JSON.parse(req.body || '{}'); } catch { return {}; } })()
     : (req.body || {});
@@ -273,6 +278,11 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'invalid_question' });
   }
   const lang = body.lang === 'ml' ? 'ml' : 'en';
+
+  // Per-IP rate limit AFTER validation: junk requests don't burn quota,
+  // and a flood still gets stopped before the expensive relay call.
+  const ip = clientIp(req);
+  if (await redisRateLimited(ip)) return res.status(429).json({ error: 'rate_limited' });
 
   // Daily global cap, counted only on validated questions that are
   // about to call the relay.
@@ -286,6 +296,6 @@ export default async function handler(req, res) {
   const systemPrompt = buildSystemPrompt(events, coords, lang);
 
   const answer = await askRelay(systemPrompt, question);
-  if (!answer) return res.status(502).json({ error: 'ai_unavailable' });
+  if (!answer) { await dailyCapRefund(); return res.status(502).json({ error: 'ai_unavailable' }); }
   return res.status(200).json({ answer });
 }

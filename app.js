@@ -179,7 +179,7 @@
       mark("name", name.length >= 2);
       mark("school", school.length >= 2);
       mark("phone", /^[6-9]\d{9}$/.test(phone));
-      mark("email", /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email));
+      mark("email", !email || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email));
       mark("team", team >= min && team <= max);
       if (team > 1) mark("members", list.length >= team - 1);
       var agree = document.getElementById("in-agree");
@@ -203,7 +203,7 @@
       if (box) {
         box.innerHTML = "<h3>Registration noted</h3><p><strong>" + esc(ev) + "</strong><br>" +
           (teamname ? esc(teamname) + " · " : "") + esc(name) + " · " + esc(school) + " · Team of " + esc(team) + "</p>" +
-          "<p class='reg-note'>Saved on this device only (static site demo). Carry a valid ID card on 27 November 2026 and report by 9:30 AM. The organizers will announce confirmation and payment details soon — please keep a screenshot.</p>";
+          "<p class='reg-note'>Sent to the organizers. Carry a valid ID card on 27 November 2026 and report by 9:30 AM. The fee is paid at the venue. Please keep a screenshot.</p>";
         box.classList.add("show");
         box.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "center" });
       }

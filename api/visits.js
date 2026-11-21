@@ -55,13 +55,29 @@ export default async function handler(req, res) {
           if (n > VISIT_RL_LIMIT) allowed = false;
         } catch { /* rate limit unavailable — count the visit */ }
         if (allowed) {
-          await redis.incr('celesta:visits:total');
-          await redis.hincrby('celesta:visits:daily', day, 1);
+          // One round-trip for both counters instead of two sequential
+          // calls: every visit POST costs 2 Redis commands, not 3.
+          // Fall back to sequential calls if the client has no pipeline
+          // (keeps the local test stub, which lacks pipeline, working).
+          try {
+            if (typeof redis.pipeline === 'function') {
+              const p = redis.pipeline();
+              p.incr('celesta:visits:total');
+              p.hincrby('celesta:visits:daily', day, 1);
+              await p.exec();
+            } else {
+              await redis.incr('celesta:visits:total');
+              await redis.hincrby('celesta:visits:daily', day, 1);
+            }
+          } catch { /* visits are best-effort; totals still return below */ }
         }
       }
     }
     const total = Number(await redis.get('celesta:visits:total') || 0);
     const today = Number(await redis.hget('celesta:visits:daily', day) || 0);
+    // Totals change at most once per visit; a 60s shared cache keeps the
+    // public stat from burning Redis reads on every page load.
+    if (req.method === 'GET') res.setHeader('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300');
     return res.status(200).json({ total, today });
   } catch (e) {
     return res.status(200).json({ total: 0, today: 0 });

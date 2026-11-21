@@ -58,8 +58,8 @@ export default async function handler(req, res) {
       // --- Validate the edit the same way /api/register validates a submit ---
       // (an admin typo must not write a negative amount, a bad phone, or a
       // team size the event doesn't allow).
-      if (amount !== undefined && (typeof amount !== 'number' || !Number.isFinite(amount) || amount < 0)) {
-        return res.status(400).json({ error: 'Amount must be a number of ₹0 or more' });
+      if (amount !== undefined && (typeof amount !== 'number' || !Number.isFinite(amount) || amount < 0 || amount > 100000)) {
+        return res.status(400).json({ error: 'Amount must be a number between ₹0 and ₹1,00,000' });
       }
       if (paid !== undefined && typeof paid !== 'boolean') {
         return res.status(400).json({ error: 'Paid must be true or false' });
@@ -130,9 +130,10 @@ export default async function handler(req, res) {
       // record is saved (and before the old markers are dropped). A marker
       // already pointing at this record is our own (that field didn't
       // change), not a conflict.
+      let oldMk = null, mk = null;
       if (newPhone || newEmail) {
-        const oldMk = regMarkerKeys(rec.eventSlug || rec.event, normPhone(before.phone), before.email);
-        const mk = regMarkerKeys(rec.eventSlug || rec.event, normPhone(rec.phone), rec.email);
+        oldMk = regMarkerKeys(rec.eventSlug || rec.event, normPhone(before.phone), before.email);
+        mk = regMarkerKeys(rec.eventSlug || rec.event, normPhone(rec.phone), rec.email);
         try {
           const claimedNew = [];
           let ok = true;
@@ -148,11 +149,18 @@ export default async function handler(req, res) {
             for (const k of claimedNew) { try { await redis.del(k); } catch {} }
             return res.status(409).json({ error: 'This phone/email is already registered for ' + rec.event });
           }
-          if (oldMk.phone && oldMk.phone !== mk.phone) await redis.del(oldMk.phone);
-          if (oldMk.email && oldMk.email !== mk.email) await redis.del(oldMk.email);
         } catch { /* markers are a backstop; continue to save */ }
       }
       await redis.hset('celesta:regs', { [id]: JSON.stringify(rec) });
+      // Drop the old markers only AFTER the save succeeded: a failed save
+      // must never leave the old phone/email unprotected, and a successful
+      // save must never leave the new phone/email blocked by an orphan.
+      if (oldMk && mk) {
+        try {
+          if (oldMk.phone && oldMk.phone !== mk.phone) await redis.del(oldMk.phone);
+          if (oldMk.email && oldMk.email !== mk.email) await redis.del(oldMk.email);
+        } catch { /* markers are a backstop */ }
+      }
       // Log only what actually changed, with the old values for undo.
       const changed = {};
       const bits = [];

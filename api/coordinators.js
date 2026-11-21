@@ -2,7 +2,7 @@
 // POST   /api/coordinators — add or update a coordinator (write role only). Body: { id?, name, team, event?, cls?, phone? }
 // DELETE /api/coordinators?id=... — remove a coordinator (write role only).
 import { Redis } from '@upstash/redis';
-import { verify, parseVal } from './admin-login.js';
+import { verify, parseVal, normPhone, validPhone } from './admin-login.js';
 import { appendLog } from './activity-log.js';
 
 const redis = new Redis({
@@ -31,8 +31,8 @@ const DEFAULTS = [
   { id: 'og-3', name: 'Alphons Binoy', team: 'Open Games', event: '', cls: '', phone: '' },
   { id: 'sc-1', name: 'Aleena', team: 'Student Coordinators', event: 'Quiz', cls: '3rd BCA A', phone: '7306704199' },
   { id: 'sc-2', name: 'Niya', team: 'Student Coordinators', event: 'Quiz', cls: '3rd BCA B', phone: '' },
-  { id: 'sc-3', name: 'Abhinavu Babu', team: 'Student Coordinators', event: 'Treasure Hunt', cls: '3rd BCA A', phone: '8590792481' },
-  { id: 'sc-4', name: 'Aadhil Kabeer', team: 'Student Coordinators', event: 'Treasure Hunt', cls: '2nd BCA A', phone: '' },
+  { id: 'sc-3', name: 'Abhinav Babu', team: 'Student Coordinators', event: 'Treasure Hunt', cls: '3rd BCA A', phone: '8590792481' },
+  { id: 'sc-4', name: 'Ashwin PS', team: 'Student Coordinators', event: 'Treasure Hunt', cls: '', phone: '9778249397' },
   { id: 'sc-5', name: 'Adithya Rajagopal', team: 'Student Coordinators', event: 'Prompting', cls: '3rd BCA A', phone: '7902604501' },
   { id: 'sc-8', name: 'Agnivesh Santhosh', team: 'Student Coordinators', event: 'Reels Competition', cls: '3rd BCA A', phone: '7012745327' },
   { id: 'sc-9', name: 'Daniel', team: 'Student Coordinators', event: 'Reels Competition', cls: '3rd BCA A', phone: '8848929570' },
@@ -90,7 +90,7 @@ export default async function handler(req, res) {
       // touched, so an admin-set phone is never overwritten. Once filled,
       // this never writes again.
       const PHONE_FIXES = {
-        'sc-1': '7306704199', 'sc-2': '9562133922', 'sc-3': '8590792481', 'sc-4': '8075641227', 'sc-5': '7902604501',
+        'sc-1': '7306704199', 'sc-2': '9562133922', 'sc-3': '8590792481', 'sc-4': '9778249397', 'sc-5': '7902604501',
         'sc-8': '7012745327', 'sc-9': '8848929570',
       };
       const phoneMissing = list.filter(c => PHONE_FIXES[c.id] && !c.phone);
@@ -99,6 +99,22 @@ export default async function handler(req, res) {
         phoneMissing.forEach(c => { obj[c.id] = JSON.stringify({ ...c, phone: PHONE_FIXES[c.id] }); });
         await redis.hset('celesta:coordinators', obj);
         list = list.map(c => (PHONE_FIXES[c.id] && !c.phone) ? { ...c, phone: PHONE_FIXES[c.id] } : c);
+      }
+      // Treasure Hunt coordinator change (21 Nov 2026, official PDF is the
+      // source of truth): Aadhil Kabeer is replaced by Ashwin PS (9778249397),
+      // and Abhinavu Babu is spelled Abhinav Babu in the PDF. One-time: the
+      // stored records are corrected in place; after this the names no longer
+      // match the old values, so this never writes again.
+      const COORD_FIXES = {
+        'sc-3': { id: 'sc-3', name: 'Abhinav Babu', team: 'Student Coordinators', event: 'Treasure Hunt', cls: '3rd BCA A', phone: '8590792481' },
+        'sc-4': { id: 'sc-4', name: 'Ashwin PS', team: 'Student Coordinators', event: 'Treasure Hunt', cls: '', phone: '9778249397' },
+      };
+      const coordStale = list.filter(c => (c.id === 'sc-3' && c.name === 'Abhinavu Babu') || (c.id === 'sc-4' && c.name === 'Aadhil Kabeer'));
+      if (coordStale.length) {
+        const obj = {};
+        coordStale.forEach(c => { obj[c.id] = JSON.stringify(COORD_FIXES[c.id]); });
+        await redis.hset('celesta:coordinators', obj);
+        list = list.map(c => (COORD_FIXES[c.id] && ((c.id === 'sc-3' && c.name === 'Abhinavu Babu') || (c.id === 'sc-4' && c.name === 'Aadhil Kabeer'))) ? COORD_FIXES[c.id] : c);
       }
       return res.status(200).json({ coordinators: list });
     } catch (e) {
@@ -112,15 +128,20 @@ export default async function handler(req, res) {
   if (req.method === 'POST') {
     const c = req.body || {};
     if (!c.name || !c.team) return res.status(400).json({ error: 'Name and team are required' });
-    const id = c.id ? String(c.id).trim() : ('c' + Date.now().toString(36));
+    const id = c.id ? String(c.id).trim() : ('c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6));
     if (!/^[A-Za-z0-9-]+$/.test(id)) return res.status(400).json({ error: 'Invalid coordinator id' });
+    // A coordinator phone, when given, must be a real 10-digit Indian
+    // mobile: the contact page publishes it, so a typo becomes a wrong
+    // number students call.
+    const phoneNorm = String(c.phone || '').trim() ? normPhone(String(c.phone).trim()) : '';
+    if (phoneNorm && !validPhone(phoneNorm)) return res.status(400).json({ error: 'Enter a valid 10-digit mobile number' });
     const rec = {
       id,
       name: String(c.name).trim().slice(0, 100),
       team: String(c.team).trim().slice(0, 100),
       event: String(c.event || '').trim().slice(0, 100),
       cls: String(c.cls || '').trim().slice(0, 100),
-      phone: String(c.phone || '').trim().slice(0, 100),
+      phone: phoneNorm,
     };
     try {
       const old = parseVal(await redis.hget('celesta:coordinators', rec.id));

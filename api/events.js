@@ -21,7 +21,7 @@ export const DEFAULT_EVENTS = [
     "prize2": 1000,
     "teamMin": 2,
     "teamMax": 2,
-    "fee": "\u20b950 per team",
+    "fee": "\u20b9100 per team",
     "duration": "\u2248 90 minutes",
     "when": "Fri, 27 Nov 2026 \u00b7 10 AM",
     "where": "Mar Augusthinose College, Ramapuram",
@@ -32,10 +32,13 @@ export const DEFAULT_EVENTS = [
     ],
     "rules": [
       "Each team must consist of exactly 2 members.",
-      "The registration fee is \u20b950 per team.",
-      "Participants must answer within the given time limit.",
-      "Electronic gadgets are strictly prohibited during the competition.",
+      "The registration fee is \u20b9100 per team.",
+      "The quiz will consist of questions based on General Knowledge and Technology.",
+      "Participants must answer questions within the given time limit.",
+      "Electronic gadgets, including mobile phones, smartwatches and calculators, are strictly prohibited during the competition.",
       "Team members are not allowed to seek help from the audience.",
+      "Participants must behave respectfully towards the quiz master, other teams and the organisers.",
+      "If there is a tie, the quiz master will conduct a tie-breaker round to determine the winner.",
       "Any form of cheating or unfair practice will lead to disqualification.",
       "The quiz master's decision will be final."
     ],
@@ -47,7 +50,7 @@ export const DEFAULT_EVENTS = [
     "order": 3,
     "visible": true,
     "regOpen": true,
-    "rulesV": 3
+    "rulesV": 4
   },
   {
     "slug": "treasure-hunt",
@@ -72,15 +75,19 @@ export const DEFAULT_EVENTS = [
     "rules": [
       "Each team must consist of exactly 4 members.",
       "The registration fee is \u20b9200 per team.",
-      "Mobile phones are strictly prohibited during the game.",
-      "Participants must follow the instructions given by the coordinators.",
-      "Sharing clues or answers with other teams is not allowed.",
-      "Participants must not leave the designated game area.",
-      "Any form of cheating will lead to disqualification.",
-      "Damaging college property or disturbing others is strictly prohibited.",
-      "Participants must maintain discipline throughout the competition.",
-      "Teams that fail to find the treasure within the allotted time must follow the additional instructions given by the organisers.",
-      "The decision of the organisers will be final."
+      "Participants must be present at the venue at the reporting time.",
+      "Only registered teams will be allowed to participate.",
+      "Teams must collect all clues and complete the tasks given at each checkpoint.",
+      "Clues will be hidden around the campus - teams must find them by solving the previous clue.",
+      "A team can use only one mobile phone, which must be used only for navigation and clue-related purposes.",
+      "Any extra phone or device found with the team will result in disqualification.",
+      "Teams are not permitted to seek help from volunteers, students, staff or any external person.",
+      "If a team takes help from someone else, the team will be disqualified.",
+      "No team should tamper with or move the clues, props or any setup made for the event.",
+      "Any form of cheating, misconduct or unfair practice will result in disqualification.",
+      "Teams must follow the instructions given by the coordinators at every stage.",
+      "The coordinators' decision will be final.",
+      "Teams must report to the venue on time; late teams will not be allowed to participate."
     ],
     "reqs": [
       "Valid school ID card for every participant.",
@@ -91,36 +98,41 @@ export const DEFAULT_EVENTS = [
     "order": 4,
     "visible": true,
     "regOpen": true,
-    "rulesV": 3
+    "rulesV": 4
   },
   {
     "slug": "prompting",
     "name": "Prompting",
     "tagline": "Craft the sharpest prompt and make AI deliver.",
-    "about": "Test how well you can talk to AI. You will be given a task, and you must write a prompt that makes the AI give the best answer — accurate, creative and to the point.",
+    "about": "Prompt Match is a creative challenge in prompt engineering. You get a computer, an AI image-generation tool and the same reference image as everyone else. Recreate the image as closely as possible with carefully written prompts. Observe every detail — subject, colours, lighting, background, mood, camera angle, art style — and turn it into precise prompts. No technical background is needed, just a sharp eye and a way with words. Look closely. Describe carefully. Make it match.",
     "prize1": 1500,
     "prize2": 750,
     "teamMin": 1,
     "teamMax": 1,
-    "fee": "\u20b9100 per participant",
+    "fee": "\u20b950 per participant",
     "duration": "30 minutes",
     "when": "Fri, 27 Nov 2026 \u00b7 10 AM",
     "where": "Mar Augusthinose College, Ramapuram",
     "how": [
-      "One task, 30 minutes. All participants are given the same task and 30 minutes to complete it.",
-      "One AI tool only. Only the AI tool assigned by the organisers may be used; switching between AI tools is not allowed.",
-      "Judging. The AI output is evaluated on creativity, accuracy and relevance; the quality and clarity of the prompts is also considered."
+      "One task, 30 minutes. Everyone gets the same reference image and 30 minutes to recreate it with prompts.",
+      "One AI tool only. Only the AI image-generation tool assigned by the organisers may be used; switching between AI tools is not allowed.",
+      "Judging. The generated images are judged on similarity to the reference image; the closest match wins."
     ],
     "rules": [
       "Each participant must compete individually.",
-      "Only the AI tools permitted by the organisers can be used.",
-      "Participants must use their own creativity and ideas while writing prompts.",
+      "The registration fee is \u20b950 per participant.",
+      "The competition will test participants' prompt-writing skills using AI tools.",
+      "Participants must complete the task within the allotted time of 30 minutes.",
+      "A common reference image and task will be provided to all participants.",
+      "Participants must use the assigned AI tool to generate an image resembling the reference image.",
+      "Only AI tools approved by the organisers are permitted.",
+      "Prompts must be written independently using creativity and imagination.",
       "Copying prompts from other participants or external sources is strictly prohibited.",
-      "Participants must not use mobile phones or other devices except those permitted by the organisers.",
-      "Participants must not switch between different AI tools; they must use only the AI tool assigned by the organisers.",
-      "Sharing or switching devices during the competition is strictly prohibited.",
-      "The decision of the judges will be final.",
-      "Any form of malpractice will lead to disqualification."
+      "Mobile phones and unauthorised devices are not permitted.",
+      "Switching between AI tools during the competition is strictly prohibited.",
+      "Sharing or exchanging devices is not allowed.",
+      "Any form of malpractice will result in disqualification.",
+      "The judges' decision will be final and binding."
     ],
     "reqs": [
       "Valid school ID card for every participant.",
@@ -131,7 +143,7 @@ export const DEFAULT_EVENTS = [
     "order": 2,
     "visible": true,
     "regOpen": true,
-    "rulesV": 3
+    "rulesV": 4
   },
   {
     "slug": "idea-presentation",
@@ -190,13 +202,22 @@ export const DEFAULT_EVENTS = [
     "rules": [
       "Each team must consist of exactly 2 members.",
       "The registration fee is ₹100 per team.",
-      "No pre-recorded videos or previously edited clips are allowed.",
-      "No assistance from college staff, organisers, or external persons is allowed.",
-      "Participants must shoot and edit their reels independently.",
-      "Offensive, inappropriate, or disrespectful content is strictly prohibited.",
-      "Dangerous stunts or activities that disrupt the fest are not allowed.",
-      "The organisers' decision is final.",
-      "The college reserves the right to use, share, publish or reproduce the submitted reels on its official social media platforms, website and other promotional materials."
+      "The reel must be created entirely within the competition time of 2 hours.",
+      "Participants must shoot and edit the reel only within the college campus.",
+      "The video should be of 30\u201390 seconds in length.",
+      "The video format should be MP4, 9:16 portrait orientation, and a minimum resolution of 720p.",
+      "Each team should submit only one reel.",
+      "Participants can use their own voice-overs and background music, but copyrighted music is not allowed.",
+      "Only the team members can shoot and edit the reel; no assistance from college staff, organisers or external persons is allowed.",
+      "Pre-recorded videos or previously edited clips are strictly prohibited.",
+      "Reels that are not created on the event theme will be disqualified.",
+      "Editing must be completed within the allotted competition time.",
+      "Dangerous stunts or activities that disrupt the fest are strictly prohibited.",
+      "Offensive, inappropriate or disrespectful content is strictly prohibited.",
+      "Participants must not post the reel on any social media platform before the results are announced.",
+      "The college reserves the right to use, share, publish or reproduce the submitted reels on its official social media platforms, website and other promotional materials.",
+      "The organisers' decision will be final.",
+      "Teams must report to the venue at the reporting time."
     ],
     "reqs": [
       "Valid school ID card for every participant.",
@@ -210,7 +231,7 @@ export const DEFAULT_EVENTS = [
     "order": 1,
     "visible": true,
     "regOpen": true,
-    "rulesV": 3
+    "rulesV": 4
   }
 ];
 
@@ -312,10 +333,10 @@ function cleanEvent(body, existing) {
   if (!e.name) throw new Error('Name is required');
   e.tagline = str('tagline', '', 200);
   e.about = str('about', '', 2000);
-  e.prize1 = Math.max(0, Math.round(num('prize1')));
-  e.prize2 = Math.max(0, Math.round(num('prize2')));
-  e.teamMin = Math.max(1, Math.round(num('teamMin', 1)));
-  e.teamMax = Math.max(e.teamMin, Math.round(num('teamMax', e.teamMin)));
+  e.prize1 = Math.min(1000000, Math.max(0, Math.round(num('prize1'))));
+  e.prize2 = Math.min(1000000, Math.max(0, Math.round(num('prize2'))));
+  e.teamMin = Math.min(20, Math.max(1, Math.round(num('teamMin', 1))));
+  e.teamMax = Math.min(20, Math.max(e.teamMin, Math.round(num('teamMax', e.teamMin))));
   e.fee = str('fee', '', 100);
   e.rulesV = num('rulesV', 0);
   e.duration = str('duration', '', 100);
@@ -324,7 +345,7 @@ function cleanEvent(body, existing) {
   e.how = arr('how');
   e.rules = arr('rules');
   e.reqs = arr('reqs');
-  e.order = num('order', 99);
+  e.order = Math.min(1000, Math.max(-100, num('order', 99)));
   e.visible = bool('visible', true);
   e.regOpen = bool('regOpen', true);
   return e;
@@ -351,12 +372,14 @@ export default async function handler(req, res) {
       // /api/poster call entirely when no custom poster exists. That call
       // 404s and burns a Redis command per event per student, so skipping
       // it is the single biggest free-tier saving on fest day.
-      let posters = {};
-      try { posters = await redis.hgetall('celesta:posters') || {}; } catch {}
+      // Keys only (HKEYS): the base64 poster bodies are ~900KB each and
+      // would be fetched on every public events call for no reason.
+      let posterSlugs = new Set();
+      try { posterSlugs = new Set(await redis.hkeys('celesta:posters') || []); } catch {}
       // Unauthenticated callers see listed events only; a logged-in admin
       // (read or write token) sees hidden ones too, for the admin UI.
       const list = (role ? events : events.filter(e => e.visible))
-        .map(e => ({ ...e, poster: !!posters[e.slug] }));
+        .map(e => ({ ...e, poster: posterSlugs.has(e.slug) }));
       return res.status(200).json({ events: list });
     } catch (e) {
       return res.status(200).json({ events: DEFAULT_EVENTS.filter(e => e.visible) });
@@ -371,7 +394,9 @@ export default async function handler(req, res) {
       const events = await loadEvents();
       let slug = slugify(req.body && req.body.name);
       if (events.some(e => e.slug === slug)) slug = slug + '-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-      const e = cleanEvent(req.body || {}, null);
+      let e;
+      try { e = cleanEvent(req.body || {}, null); }
+      catch (err) { return res.status(400).json({ error: err.message || 'Invalid event' }); }
       e.slug = slug;
       await redis.hset('celesta:events', { [slug]: JSON.stringify(e) });
       await appendLog({
@@ -382,7 +407,7 @@ export default async function handler(req, res) {
       }, req);
       return res.status(200).json({ ok: true, event: e });
     } catch (e) {
-      return res.status(400).json({ error: e.message || 'Invalid event' });
+      return res.status(500).json({ error: 'Storage unavailable' });
     }
   }
 
@@ -392,7 +417,9 @@ export default async function handler(req, res) {
       const slug = req.body && req.body.slug;
       const old = events.find(e => e.slug === slug);
       if (!old) return res.status(404).json({ error: 'Event not found' });
-      const e = cleanEvent(req.body || {}, old);
+      let e;
+      try { e = cleanEvent(req.body || {}, old); }
+      catch (err) { return res.status(400).json({ error: err.message || 'Invalid event' }); }
       e.slug = old.slug; // slug never changes — links keep working after a rename
       await redis.hset('celesta:events', { [slug]: JSON.stringify(e) });
       const evBits = [];
@@ -430,7 +457,7 @@ export default async function handler(req, res) {
       }
       return res.status(200).json({ ok: true, event: e });
     } catch (e) {
-      return res.status(400).json({ error: e.message || 'Invalid event' });
+      return res.status(500).json({ error: 'Storage unavailable' });
     }
   }
 

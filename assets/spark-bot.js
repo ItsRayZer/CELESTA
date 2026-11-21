@@ -1,4 +1,9 @@
-/* Spark AI v21 — Axo-style chat assistant for SPARK 2K26.
+/* Spark AI v23 — Axo-style chat assistant for SPARK 2K26.
+   v23: fees synced to the official PDF (21 Nov): Prompting Rs.50 (was Rs.100),
+   Quiz Rs.100 (was Rs.50); TH coordinators Abhinav Babu + Ashwin PS;
+   Prompting is now Prompt Match (recreate a reference image with AI).
+   v22: Quiz fee corrected to Rs.50 (was Rs.100) in the KB; cleanAi now
+   loops until stable so nested-tag payloads can't smuggle a live tag in.
    v18: the keyword matcher still answers what it knows (score >= 3).
    Anything else goes to /api/spark-chat, which asks the GptOpen relay
    with a facts-only prompt built from the live events + coordinators.
@@ -48,16 +53,16 @@ var KB=[
   m:"<b>Reels Competition</b> - Create a reel that stops the scroll.<br>Team: 2 members. Fee: Rs.100 per team. Prizes: <b>1st Rs.2,000, 2nd Rs.1,000</b>.<br>Coordinators: Agnivesh Santhosh, Daniel.<br><a href=\"/registration/reels-competition\">Register for Reels Competition</a>" },
 { k:["prompt","prompting","ai prompt","prompt engineering"],
   mk:["prompt","prompting","ai"],
-  a:"<b>Prompting</b> - The art of crafting the perfect AI prompt.<br>Individual. Fee: Rs.100 per participant. Prizes: <b>1st Rs.1,500, 2nd Rs.750</b>.<br>Coordinator: Adithya Rajagopal.<br><a href=\"/registration/prompting\">Register for Prompting</a>",
-  m:"<b>Prompting</b> - The art of crafting the perfect AI prompt.<br>Individual. Fee: Rs.100 per participant. Prizes: <b>1st Rs.1,500, 2nd Rs.750</b>.<br>Coordinator: Adithya Rajagopal.<br><a href=\"/registration/prompting\">Register for Prompting</a>" },
+  a:"<b>Prompting</b> - Prompt Match: recreate a reference image with AI prompts.<br>Individual. Fee: Rs.50 per participant. Prizes: <b>1st Rs.1,500, 2nd Rs.750</b>.<br>Coordinator: Adithya Rajagopal.<br><a href=\"/registration/prompting\">Register for Prompting</a>",
+  m:"<b>Prompting</b> - Prompt Match: recreate a reference image with AI prompts.<br>Individual. Fee: Rs.50 per participant. Prizes: <b>1st Rs.1,500, 2nd Rs.750</b>.<br>Coordinator: Adithya Rajagopal.<br><a href=\"/registration/prompting\">Register for Prompting</a>" },
 { k:["quiz"],
   mk:["quiz"],
   a:"<b>Quiz</b> - A battle of brains across rapid rounds of questions.<br>Team: 2 members. Fee: Rs.100 per team. Prizes: <b>1st Rs.2,000, 2nd Rs.1,000</b>.<br>Coordinators: Aleena, Niya.<br><a href=\"/registration/quiz\">Register for Quiz</a>",
   m:"<b>Quiz</b> - A battle of brains across rapid rounds of questions.<br>Team: 2 members. Fee: Rs.100 per team. Prizes: <b>1st Rs.2,000, 2nd Rs.1,000</b>.<br>Coordinators: Aleena, Niya.<br><a href=\"/registration/quiz\">Register for Quiz</a>" },
 { k:["treasure","treasure hunt","hunt","clue","clues"],
   mk:["treasure","hunt","clue"],
-  a:"<b>Treasure Hunt</b> - A campus-wide race of clues leading to the hidden treasure.<br>Team: 4 members. Fee: Rs.200 per team. Prize: <b>Rs.6,000, winner-takes-all</b> (no 2nd prize).<br>Coordinators: Abhinavu Babu, Aadhil Kabeer.<br><a href=\"/registration/treasure-hunt\">Register for Treasure Hunt</a>",
-  m:"<b>Treasure Hunt</b> - A campus-wide race of clues leading to the hidden treasure.<br>Team: 4 members. Fee: Rs.200 per team. Prize: <b>Rs.6,000, winner-takes-all</b> (no 2nd prize).<br>Coordinators: Abhinavu Babu, Aadhil Kabeer.<br><a href=\"/registration/treasure-hunt\">Register for Treasure Hunt</a>" },
+  a:"<b>Treasure Hunt</b> - A campus-wide race of clues leading to the hidden treasure.<br>Team: 4 members. Fee: Rs.200 per team. Prize: <b>Rs.6,000, winner-takes-all</b> (no 2nd prize).<br>Coordinators: Abhinav Babu, Ashwin PS.<br><a href=\"/registration/treasure-hunt\">Register for Treasure Hunt</a>",
+  m:"<b>Treasure Hunt</b> - A campus-wide race of clues leading to the hidden treasure.<br>Team: 4 members. Fee: Rs.200 per team. Prize: <b>Rs.6,000, winner-takes-all</b> (no 2nd prize).<br>Coordinators: Abhinav Babu, Ashwin PS.<br><a href=\"/registration/treasure-hunt\">Register for Treasure Hunt</a>" },
 { k:["prize","prizes","prize pool","prize money","win","winner","reward","cash"],
   mk:["prize","prizes","sammana","cash","kitum","kaanum","price"],
   a:"Total prize pool: <b>Rs.14,250</b>.<br>Reels Competition: Rs.2,000 + Rs.1,000<br>Prompting: Rs.1,500 + Rs.750<br>Quiz: Rs.2,000 + Rs.1,000<br>Treasure Hunt: <b>Rs.6,000, winner-takes-all</b>.",
@@ -96,8 +101,8 @@ var KB=[
   m:"SPARK 2K26 organise cheyyunnathu <b>NEXUS</b> aanu, Mar Augusthinose College, Ramapuram ile Association of Computer Applications. Tagline: <b>Decode Your Future</b>." },
 { k:["fee","fees","cost","price","payment","pay","free","entry fee","ticket"],
   mk:["fee","fees","cost","price","payment","free","cash"],
-  a:"Each event has a fee, paid at the venue on the day: <b>Treasure Hunt Rs.200 per team, Prompting Rs.100 per participant, Reels Rs.100 per team, Quiz Rs.100 per team</b>.<br>Online registration itself is free, there is no online payment.",
-  m:"Oro eventinum fee undu, venue il aanu kodukkendathu: <b>Treasure Hunt Rs.200 per team, Prompting Rs.100 per participant, Reels Rs.100 per team, Quiz Rs.100 per team</b>.<br>Online registration free aanu, online payment illa." },
+  a:"Each event has a fee, paid at the venue on the day: <b>Treasure Hunt Rs.200 per team, Prompting Rs.50 per participant, Reels Rs.100 per team, Quiz Rs.100 per team</b>.<br>Online registration itself is free, there is no online payment.",
+  m:"Oro eventinum fee undu, venue il aanu kodukkendathu: <b>Treasure Hunt Rs.200 per team, Prompting Rs.50 per participant, Reels Rs.100 per team, Quiz Rs.100 per team</b>.<br>Online registration free aanu, online payment illa." },
 { k:["bring","what to bring","carry","id","id card","school id"],
   mk:["bring","carry","id","kondu","varuka"],
   a:"Bring your <b>valid school ID card</b> - it is required for registration and entry. Bring your school name and team details too.",
@@ -440,13 +445,23 @@ function build(){
      might emit so it can never break the panel layout. One pass: an
      allowed tag is normalized to bare <b> / </b> / <br> so an attribute
      (onclick, etc.) can never survive on it; every other tag is removed. */
+  // Sanitise AI HTML: keep only <b> and <br>, strip every other tag.
+  // Loop until stable: a single pass leaves a live tag behind when the
+  // payload hides one tag inside another, e.g. <i<img ...>mg ...>
+  // becomes <img ...> after the outer tag is stripped.
   function cleanAi(html){
-    return String(html||"").replace(/<[/]?([a-z][a-z0-9]*)(?=[ />])[^>]*>/gi, function(m, tag){
-      tag = tag.toLowerCase();
-      if (tag === 'b') return m.charAt(1) === '/' ? '</b>' : '<b>';
-      if (tag === 'br') return '<br>';
-      return '';
-    });
+    let out = String(html||"");
+    let prev;
+    do {
+      prev = out;
+      out = out.replace(/<[/]?([a-z][a-z0-9]*)(?=[ />])[^>]*>/gi, function(m, tag){
+        tag = tag.toLowerCase();
+        if (tag === 'b') return m.charAt(1) === '/' ? '</b>' : '<b>';
+        if (tag === 'br') return '<br>';
+        return '';
+      });
+    } while (out !== prev);
+    return out;
   }
   function ask(q){
     q=(q||"").trim(); if(!q) return;

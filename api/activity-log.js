@@ -54,7 +54,7 @@ export function clientInfo(req) {
   const ip = real || (xff.length ? xff[xff.length - 1] : null);
   const ua = String(h['user-agent'] || '') || null;
   const country = h['x-vercel-ip-country'] ? String(h['x-vercel-ip-country']) : null;
-  const city = h['x-vercel-ip-city'] ? decodeURIComponent(String(h['x-vercel-ip-city'])) : null;
+  const city = dec(h['x-vercel-ip-city']);
   const fp = h['x-device-fp'] ? String(h['x-device-fp']).slice(0, 32) : null;
   const fpjs = h['x-device-fpjs'] ? String(h['x-device-fpjs']).slice(0, 32) : null;
   // Client-asserted fields are capped like ua/fp: a hostile client must not be
@@ -158,6 +158,7 @@ async function applyUndo(u) {
     }
     if (u.kind === 'reg-add') {
       const rec = u.record;
+      if (!rec || !rec.id) return { ok: false, error: 'Nothing to restore' };
       const exists = await redis.hget('celesta:regs', rec.id);
       if (exists) return { ok: false, error: 'Registration already exists' };
       // Claim the markers BEFORE restoring: if another record took that
@@ -222,6 +223,7 @@ async function applyUndo(u) {
       return { ok: true, message: 'Event restored to its previous values' };
     }
     if (u.kind === 'event-add') {
+      if (!u.event || !u.event.slug) return { ok: false, error: 'Nothing to restore' };
       const exists = await redis.hget('celesta:events', u.event.slug);
       if (exists) return { ok: false, error: 'Event already exists' };
       await redis.hset('celesta:events', { [u.event.slug]: JSON.stringify(u.event) });
@@ -232,12 +234,14 @@ async function applyUndo(u) {
       return { ok: true, message: 'Coordinator removed' };
     }
     if (u.kind === 'coord-add') {
+      if (!u.record || !u.record.id) return { ok: false, error: 'Nothing to restore' };
       const exists = await redis.hget('celesta:coordinators', u.record.id);
       if (exists) return { ok: false, error: 'Coordinator already exists' };
       await redis.hset('celesta:coordinators', { [u.record.id]: JSON.stringify(u.record) });
       return { ok: true, message: 'Coordinator restored' };
     }
     if (u.kind === 'coord-update') {
+      if (!u.record || !u.record.id) return { ok: false, error: 'Nothing to restore' };
       await redis.hset('celesta:coordinators', { [u.record.id]: JSON.stringify(u.record) });
       return { ok: true, message: 'Coordinator restored to its previous values' };
     }

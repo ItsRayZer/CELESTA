@@ -317,7 +317,7 @@ tbody tr.flash{animation:flash 2.4s ease}
 
   <!-- ACTIVITY LOG -->
   <section id="sec-log" class="hidden">
-    <div class="secttl">Activity Log <button class="ti" data-tip="Every admin login and every change made from this dashboard, newest first. Entries can't be edited or deleted — only full-access admins can see this page. Undo on a change puts the old values back; the undo itself is logged too. The log keeps the last 100 entries.">?</button></div>
+    <div class="secttl">Activity Log <button class="ti" data-tip="Every admin login and every change made from this dashboard, newest first. Entries can't be edited or deleted — only full-access admins can see this page. Undo on a change puts the old values back; the undo itself is logged too. The log keeps the last 500 entries.">?</button></div>
     <div class="secsub">Who logged in, from where, and what changed. Entries can't be edited or deleted.</div>
     <div id="logList"></div>
   </section>
@@ -998,7 +998,7 @@ function renderEventsAdmin(){
     const custom=POSTER_CUSTOM[e.slug];
     return `<div class="glass crow evrow">
       <div class="evposter">
-        <img src="${e.poster?'/api/poster?event='+e.slug+'&v='+POSTER_V:'/assets/poster-'+e.slug+'.webp'}" alt="${esc(e.name)} poster">
+        <img src="${e.poster?'/api/poster?event='+esc(e.slug)+'&v='+POSTER_V:'/assets/poster-'+esc(e.slug)+'.webp'}" alt="${esc(e.name)} poster">
         ${w?`<label class="pchange">Change<input type="file" accept="image/*" data-up="${e.slug}" style="display:none"></label>${custom?`<button class="preset" data-reset="${e.slug}">Reset</button>`:''}`:''}
       </div>
       <div class="who"><b>${esc(e.name)}</b><span>${esc(e.tagline||'')} · 1st ${fmt(e.prize1)} / 2nd ${fmt(e.prize2)} · Team ${e.teamMin}–${e.teamMax} · <span data-count="${e.slug}">${n} reg${n===1?'':'s'}</span></span></div>
@@ -1130,7 +1130,7 @@ $('csvBtn').onclick=async()=>{
     }
     const rows=[['ID','Event','Name','School','Phone','Email','Team Size','Team Name','Members','Paid','Amount','Registered At']];
     all.forEach(x=>rows.push([x.id,x.event,x.name,x.school,x.phone,x.email||'',x.team,x.teamName||'',(Array.isArray(x.members)?x.members:[]).join('; '),x.paid?'YES':'NO',x.amount||0,x.at]));
-    const cell=c=>{let s=String(c);if(/^[=+\-@\t\r]/.test(s))s="'"+s;return '"'+s.replace(/"/g,'""')+'"';};
+    const cell=c=>{let s=String(c);if(/^\s*[=+\-@]/.test(s))s="'"+s;return '"'+s.replace(/"/g,'""')+'"';};
     const csv=rows.map(r=>r.map(cell).join(',')).join('\n');
     const a=document.createElement('a');
     a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));

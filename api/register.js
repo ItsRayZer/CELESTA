@@ -71,7 +71,17 @@ export function riskLevelFor(reasons) {
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { event, name, school, phone, email, team, teamName, members, website, startedAt } = req.body || {};
+  let { event, name, school, phone, email, team, teamName, members, website, startedAt } = req.body || {};
+  // Normalise at the door: trim free text so stored records carry no stray
+  // spaces, and reject non-string member names (a number/boolean/object in
+  // the array is a malformed client, not a name).
+  if (typeof name === 'string') name = name.trim();
+  if (typeof school === 'string') school = school.trim();
+  if (typeof teamName === 'string') teamName = teamName.trim();
+  if (Array.isArray(members) && members.some(m => typeof m !== 'string')) {
+    return res.status(400).json({ error: 'Member names must be text' });
+  }
+  if (Array.isArray(members)) members = members.map(m => m.trim());
 
   // Honeypot FIRST: the "website" field is hidden from humans. A bot that
   // fills it is rejected with a generic error — no reason is ever given.
