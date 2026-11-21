@@ -211,10 +211,10 @@
     });
   }
   /* ---------- My Registrations button: small top-right bag-like button ---------- */
-  /* Injected on every page that loads app.js. Shows a count badge with the
-     number of registrations saved on this device (localStorage spark_my_regs).
-     Tapping it opens /my-registrations. Never touches the Spark AI button
-     (bottom-right) or the #pill nav (bottom). */
+  /* Injected ONLY on the events page (owner's call: not on Home or other pages).
+     Shows a count badge with the number of registrations saved on this device
+     (localStorage spark_my_regs). Tapping it opens /my-registrations. Never
+     touches the Spark AI button (bottom-right) or the #pill nav (bottom). */
   var MYREGS_KEY = "spark_my_regs";
   function myRegsCount() {
     try {
@@ -230,7 +230,9 @@
     badge.textContent = n > 99 ? "99+" : String(n);
     badge.hidden = n === 0;
   }
-  if (!document.querySelector(".myregs-btn")) {
+  /* Only on the events page: the owner wants the bag button there, not on Home or other pages. */
+  var isEventsPage = /^\/(events|events\.html)$/.test(location.pathname);
+  if (isEventsPage && !document.querySelector(".myregs-btn")) {
     var myBtn = document.createElement("a");
     myBtn.href = "/my-registrations";
     myBtn.className = "myregs-btn";
