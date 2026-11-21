@@ -916,8 +916,7 @@ footer .f-nexus img{width:40px}
 .rg-submit{height:58px;border:0;border-radius:18px;background:#111114;color:#fff;font:600 17px/1 inherit;font-family:inherit;width:100%;cursor:pointer;box-shadow:0 10px 24px rgba(17,17,20,.22);transition:transform .25s cubic-bezier(.2,.9,.3,1.3),box-shadow .25s;-webkit-tap-highlight-color:transparent}
 .rg-submit:active{transform:scale(.97);box-shadow:0 4px 12px rgba(17,17,20,.2)}
 .reg-page .reg-note{text-align:center;font-size:12.5px;color:var(--rg-mut);line-height:1.5}
-.reg-page .ok-msg{border:0;background:#eefaf1;border-radius:22px;padding:20px 20px 20px 72px;text-align:left;position:relative;color:#14532d;margin-top:0}
-.reg-page .ok-msg::before{content:"\2713";position:absolute;left:18px;top:20px;width:40px;height:40px;border-radius:50%;background:var(--rg-green);color:#fff;display:grid;place-items:center;font-size:21px;font-weight:700}
+.reg-page .ok-msg{border:0;background:#eefaf1;border-radius:22px;padding:20px;text-align:left;position:relative;color:#14532d;margin-top:0}
 .reg-page .ok-msg h3{font-family:inherit;font-weight:700;font-size:18px;margin-bottom:4px}
 .reg-page .ok-msg p{font-size:14px;line-height:1.5;color:inherit}
 .reg-page .ok-msg .reg-note{text-align:left;color:#3f6b50;margin-top:8px}

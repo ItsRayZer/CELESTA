@@ -139,6 +139,17 @@ body.premium-page,body.light-page,body.reg-page,body.dark-page{background:transp
 .tk-id b{display:block;margin-top:1cqw;font-size:5cqw;letter-spacing:.12em}
 .tk-note{margin:4.5cqw 0 0;font-size:3.8cqw;line-height:1.6;color:rgba(255,255,255,.85);text-align:center}
 .tk-actions{display:flex;flex-direction:column;gap:10px;max-width:440px;margin:18px auto 0}
+/* Minimal ticket: no poster, no perforation, short and clean. */
+.tk-mini-wrap{margin:0}
+.tk-mini{padding:22px 20px 18px;text-align:left}
+.tk-mini-head{margin:0;font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:rgba(255,255,255,.75)}
+.tk-mini-event{margin:6px 0 0;font-size:24px;font-weight:700;line-height:1.2;color:#fff}
+.tk-mini-date{margin:6px 0 0;font-size:13px;line-height:1.5;color:rgba(255,255,255,.8)}
+.tk-mini .tk-details{margin-top:14px;padding-top:12px;border-top:1px dashed rgba(255,255,255,.35)}
+.tk-mini .tk-row{padding:8px 0;font-size:15px}
+.tk-mini .tk-id{margin:12px 0 0;padding:12px;font-size:13px}
+.tk-mini .tk-id b{font-size:18px}
+.tk-mini .tk-note{margin:12px 0 0;font-size:13px}
 .tk-actions .tk-dl{appearance:none;border:0;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;height:52px;border-radius:99px;background:#fff;color:#2a0f66;font-weight:700;font-size:16px;box-shadow:0 10px 30px rgba(20,0,70,.45)}
 .tk-actions .tk-dl:active{transform:scale(.98)}
 .tk-actions .tk-dl[disabled]{opacity:.6;cursor:wait}
