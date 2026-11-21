@@ -14,6 +14,7 @@
 // Flagged records never block a real student — only a filled honeypot,
 // a bad phone, a duplicate, or the rate limit reject a submit.
 import { Redis } from '@upstash/redis';
+import tls from 'tls';
 import { loadEvents } from './events.js';
 import { normPhone, validPhone, regMarkerKeys, MARKER_TTL } from './admin-login.js';
 export { normPhone, validPhone, regMarkerKeys, MARKER_TTL } from './admin-login.js';
@@ -177,7 +178,6 @@ export function riskLevelFor(reasons) {
 // (dpl_5zrF1nsFaVDjGPkJ7h4mE6cojJo5, dpl_Au2DkSQuPe6L3cPx8Xm2UB1k9WV9,
 // dpl_2uS4bTMcvFrLuWMPNFZBy4nSPt2r, dpl_3wNjx6ByJuTLcD3ZjqQc7SquqY5i).
 // Do NOT add an email library without a canary deploy.
-import tls from 'node:tls';
 
 function b64(s) { return Buffer.from(String(s), 'utf8').toString('base64'); }
 
