@@ -20,7 +20,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=Marcellus&display=swap">
 <link rel="stylesheet" href="/styles.css?v=62">
-<link rel="stylesheet" href="/theme-purple.css?v=6">
+<link rel="stylesheet" href="/theme-purple.css?v=7">
 <style>#pill{display:none!important}</style>
 <style>html{background:#060608}body{background:#060608}.hp{position:absolute!important;left:-9999px!important;top:auto;width:1px;height:1px;overflow:hidden}</style>
 </head>
@@ -67,6 +67,104 @@
   function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
   function fmt(n){return '₹'+Number(n||0).toLocaleString('en-IN');}
   function teamLabel(e){return e.teamMin===e.teamMax?e.teamMin+' member'+(e.teamMin>1?'s':''):e.teamMin+'–'+e.teamMax+' members';}
+  function svgEsc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+  function posterDataURL(src){
+    return fetch(src).then(function(r){return r.blob();}).then(function(b){
+      return new Promise(function(res,rej){
+        var fr=new FileReader();
+        fr.onload=function(){res(fr.result);};
+        fr.onerror=function(){rej(new Error('poster'));};
+        fr.readAsDataURL(b);
+      });
+    });
+  }
+  function downloadTicket(e,regId,posterSrc){
+    var btn=document.getElementById('tk-dl');
+    if(btn){btn.disabled=true;btn.textContent='Preparing ticket…';}
+    // Read the rendered ticket details back from the page so the download
+    // always matches what the student sees.
+    var tk=document.getElementById('reg-ticket');
+    var rows=[];
+    if(tk){
+      var els=tk.querySelectorAll('.tk-row');
+      els.forEach(function(r){
+        var k=r.querySelector('.tk-k'), v=r.querySelector('.tk-v');
+        if(k&&v)rows.push({k:k.textContent.trim(),v:v.textContent.trim().replace(/\s+/g,' ')});
+      });
+    }
+    posterDataURL(posterSrc).catch(function(){return '';}).then(function(poster){
+      var W=1080,H=1780,px=64;
+      var y=px, svg='';
+      svg+='<svg xmlns="http://www.w3.org/2000/svg" width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'">';
+      svg+='<defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7b3dff"/><stop offset=".45" stop-color="#8f47e6"/><stop offset="1" stop-color="#3d1596"/></linearGradient></defs>';
+      svg+='<rect width="'+W+'" height="'+H+'" rx="48" fill="url(#bg)"/>';
+      // Poster
+      var pw=W-2*px, ph=Math.round(pw*1.5);
+      if(poster){
+        svg+='<clipPath id="pc"><rect x="'+px+'" y="'+y+'" width="'+pw+'" height="'+ph+'" rx="36"/></clipPath>';
+        svg+='<image href="'+poster+'" x="'+px+'" y="'+y+'" width="'+pw+'" height="'+ph+'" clip-path="url(#pc)" preserveAspectRatio="xMidYMid slice"/>';
+      }
+      y+=ph+48;
+      // Perforation
+      svg+='<line x1="'+(px+20)+'" y1="'+y+'" x2="'+(W-px-20)+'" y2="'+y+'" stroke="rgba(255,255,255,.45)" stroke-width="3" stroke-dasharray="14 12"/>';
+      svg+='<circle cx="'+px+'" cy="'+y+'" r="26" fill="#060608"/><circle cx="'+(W-px)+'" cy="'+y+'" r="26" fill="#060608"/>';
+      y+=56;
+      // Title + date
+      svg+='<text x="'+(W/2)+'" y="'+(y+30)+'" text-anchor="middle" font-family="Georgia,serif" font-size="64" font-weight="700" fill="#fff">'+svgEsc(e.name)+'</text>';
+      y+=96;
+      svg+='<text x="'+(W/2)+'" y="'+(y+30)+'" text-anchor="middle" font-family="Georgia,serif" font-size="92" fill="#fff">NOV 27</text>';
+      y+=110;
+      svg+='<text x="'+(W/2)+'" y="'+(y+10)+'" text-anchor="middle" font-family="Arial,sans-serif" font-size="30" letter-spacing="4" fill="rgba(255,255,255,.85)">FRI · 10 AM · '+svgEsc(e.when||'Mar Augusthinose College')+'</text>';
+      y+=72;
+      // Details rows
+      rows.forEach(function(r){
+        svg+='<text x="'+px+'" y="'+(y+10)+'" font-family="Arial,sans-serif" font-size="30" fill="rgba(255,255,255,.75)">'+svgEsc(r.k)+'</text>';
+        svg+='<text x="'+(W-px)+'" y="'+(y+10)+'" text-anchor="end" font-family="Arial,sans-serif" font-size="30" font-weight="700" fill="#fff">'+svgEsc(r.v)+'</text>';
+        y+=52;
+      });
+      y+=20;
+      if(regId){
+        svg+='<rect x="'+px+'" y="'+y+'" width="'+pw+'" height="96" rx="18" fill="rgba(14,5,38,.85)" stroke="rgba(255,255,255,.4)" stroke-dasharray="10 8"/>';
+        svg+='<text x="'+(W/2)+'" y="'+(y+38)+'" text-anchor="middle" font-family="Arial,sans-serif" font-size="26" letter-spacing="3" fill="rgba(255,255,255,.8)">REGISTRATION ID</text>';
+        svg+='<text x="'+(W/2)+'" y="'+(y+76)+'" text-anchor="middle" font-family="monospace" font-size="36" font-weight="700" letter-spacing="2" fill="#fff">'+svgEsc(regId)+'</text>';
+        y+=130;
+      }
+      svg+='<text x="'+(W/2)+'" y="'+(y+10)+'" text-anchor="middle" font-family="Arial,sans-serif" font-size="26" fill="rgba(255,255,255,.85)">Show this ticket at the registration desk · Carry a valid school ID</text>';
+      y+=44;
+      svg+='<text x="'+(W/2)+'" y="'+(y+10)+'" text-anchor="middle" font-family="Arial,sans-serif" font-size="26" fill="rgba(255,255,255,.85)">Report by 9:30 AM · 27 November 2026 · Mar Augusthinose College, Ramapuram</text>';
+      svg+='<text x="'+(W/2)+'" y="'+(H-36)+'" text-anchor="middle" font-family="Arial,sans-serif" font-size="24" letter-spacing="4" fill="rgba(255,255,255,.6)">NEXUS · SPARK 2K26</text>';
+      svg+='</svg>';
+      // Render SVG to PNG for easy sharing, fall back to the SVG file.
+      var img=new Image();
+      var url='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
+      img.onload=function(){
+        try{
+          var c=document.createElement('canvas');c.width=W;c.height=H;
+          var cx=c.getContext('2d');cx.drawImage(img,0,0,W,H);
+          c.toBlob(function(b){
+            if(!b){saveSVG();return;}
+            var a=document.createElement('a');
+            a.href=URL.createObjectURL(b);
+            a.download='SPARK-2K26-ticket-'+(regId||e.slug)+'.png';
+            document.body.appendChild(a);a.click();a.remove();
+            setTimeout(function(){URL.revokeObjectURL(a.href);},4000);
+            if(btn){btn.disabled=false;btn.textContent='Download ticket';}
+          },'image/png');
+        }catch(err){saveSVG();}
+      };
+      img.onerror=function(){saveSVG();};
+      function saveSVG(){
+        var blob=new Blob([svg],{type:'image/svg+xml'});
+        var a=document.createElement('a');
+        a.href=URL.createObjectURL(blob);
+        a.download='SPARK-2K26-ticket-'+(regId||e.slug)+'.svg';
+        document.body.appendChild(a);a.click();a.remove();
+        setTimeout(function(){URL.revokeObjectURL(a.href);},4000);
+        if(btn){btn.disabled=false;btn.textContent='Download ticket';}
+      }
+      img.src=url;
+    });
+  }
   function showMsg(title,body,back){
     app.innerHTML='<div style="padding:60px 0;text-align:center">'
       +'<h1 style="font-size:26px;margin-bottom:10px">'+esc(title)+'</h1>'
@@ -196,11 +294,36 @@
         if(!r.ok)throw new Error(d.error||'Registration failed');
         var box=document.getElementById('ok-msg');
         if(box){
-          box.innerHTML='<h3>Registered</h3><p><strong>'+esc(e.name)+'</strong><br>'
-            +(teamname?esc(teamname)+' · ':'')+esc(name)+' · '+esc(school)+' · Team of '+esc(team)+'</p>'
-            +(e.fee?'<p class="reg-note">Saved with the organizers. Fee: '+esc(e.fee)+' — pay at the venue on 27 November 2026. Carry a valid ID card and report by 9:30 AM. Please keep a screenshot.</p>':'<p class="reg-note">Saved with the organizers. Carry a valid ID card and report by 9:30 AM on 27 November 2026. Please keep a screenshot.</p>');
+          var regId=d.id||'';
+          var posterSrc=e.poster?'/api/poster?event='+esc(e.slug):'/assets/poster-'+esc(e.slug)+'.webp';
+          var teamMeta=(e.teamMin===1?'Solo or up to '+e.teamMax:'Teams of '+e.teamMin+'\u2013'+e.teamMax);
+          var memberList=[name].concat(list);
+          var rows='';
+          rows+='<div class="tk-row"><span class="tk-k">Event</span><span class="tk-v">'+esc(e.name)+'</span></div>';
+          if(teamname)rows+='<div class="tk-row"><span class="tk-k">Team</span><span class="tk-v">'+esc(teamname)+'</span></div>';
+          rows+='<div class="tk-row"><span class="tk-k">Leader</span><span class="tk-v">'+esc(name)+'</span></div>';
+          rows+='<div class="tk-row"><span class="tk-k">School</span><span class="tk-v">'+esc(school)+'</span></div>';
+          rows+='<div class="tk-row"><span class="tk-k">Members</span><span class="tk-v">'+memberList.map(function(m){return esc(m);}).join('<br>')+'<small>Team of '+esc(team)+'</small></span></div>';
+          rows+='<div class="tk-row"><span class="tk-k">Phone</span><span class="tk-v">'+esc(phone)+'</span></div>';
+          if(e.fee)rows+='<div class="tk-row"><span class="tk-k">Fee</span><span class="tk-v">'+esc(e.fee)+'<small>Pay at the venue</small></span></div>';
+          box.innerHTML='<div class="tk-wrap" id="reg-ticket"><div class="tk">'
+            +'<img class="tk-poster" src="'+posterSrc+'" alt="'+esc(e.name)+' poster" decoding="async">'
+            +'<i class="tk-perf" aria-hidden="true"></i>'
+            +'<span class="tk-pill"><i></i>Registered · Inter-School Competition</span>'
+            +'<p class="tk-date">Nov 27</p>'
+            +'<p class="tk-meta">Fri \u00b7 10 AM \u00b7 '+esc(teamMeta)+'</p>'
+            +'<div class="tk-details"><p class="tk-d-title">Your ticket</p>'
+            +rows
+            +(regId?'<div class="tk-id">Registration ID<b>'+esc(regId)+'</b></div>':'')
+            +'<p class="tk-note">Show this ticket at the registration desk. Carry a valid school ID card for every member. Report by 9:30 AM on 27 November 2026, Mar Augusthinose College, Ramapuram.</p>'
+            +'</div></div></div>'
+            +'<div class="tk-actions"><button class="tk-dl" id="tk-dl" type="button">Download ticket</button>'
+            +'<a class="tk-back" href="/events">See all events</a></div>'
+            +'<p class="tk-dl-note">Keep this ticket safe. You will need it at the venue.</p>';
           box.classList.add('show');
           box.scrollIntoView({behavior:'smooth',block:'center'});
+          var dl=document.getElementById('tk-dl');
+          if(dl)dl.addEventListener('click',function(){downloadTicket(e,regId,posterSrc);});
         }
         form.reset();syncMembers();
       }catch(err){

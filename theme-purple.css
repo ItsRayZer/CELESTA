@@ -127,6 +127,23 @@ body.premium-page,body.light-page,body.reg-page,body.dark-page{background:transp
 .tk-meta{position:relative;z-index:1;margin:3.4cqw 0 0;font-size:3.7cqw;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.82)}
 .tk-go{position:relative;z-index:1;display:inline-flex;align-items:center;gap:2cqw;margin-top:6cqw;height:12cqw;padding:0 7cqw;border-radius:99px;background:#fff;color:#2a0f66;font-weight:700;font-size:4.4cqw;text-decoration:none;box-shadow:0 2cqw 6cqw rgba(20,0,70,.45);transition:transform .2s}
 .tk-go:active{transform:scale(.97)}
+/* ===== post-registration ticket: details stub below the perforation ===== */
+.tk-details{position:relative;z-index:1;margin-top:6cqw;padding-top:5.5cqw;border-top:.4cqw dashed rgba(255,255,255,.35);text-align:left}
+.tk-details .tk-d-title{margin:0 0 3.5cqw;font-size:3.4cqw;letter-spacing:.28em;text-transform:uppercase;color:rgba(255,255,255,.75);text-align:center}
+.tk-row{display:flex;justify-content:space-between;gap:4cqw;padding:2.2cqw 0;border-bottom:1px solid rgba(255,255,255,.12);font-size:4.2cqw;line-height:1.45}
+.tk-row:last-child{border-bottom:0}
+.tk-row .tk-k{color:rgba(255,255,255,.72);flex:none}
+.tk-row .tk-v{font-weight:600;text-align:right;word-break:break-word}
+.tk-row .tk-v small{display:block;font-weight:400;color:rgba(255,255,255,.78);font-size:3.6cqw}
+.tk-id{margin:4cqw 0 0;padding:3cqw 4cqw;border-radius:2.5cqw;background:rgba(14,5,38,.85);border:1px dashed rgba(255,255,255,.35);font-size:4cqw;text-align:center;letter-spacing:.06em}
+.tk-id b{display:block;margin-top:1cqw;font-size:5cqw;letter-spacing:.12em}
+.tk-note{margin:4.5cqw 0 0;font-size:3.8cqw;line-height:1.6;color:rgba(255,255,255,.85);text-align:center}
+.tk-actions{display:flex;flex-direction:column;gap:10px;max-width:440px;margin:18px auto 0}
+.tk-actions .tk-dl{appearance:none;border:0;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;height:52px;border-radius:99px;background:#fff;color:#2a0f66;font-weight:700;font-size:16px;box-shadow:0 10px 30px rgba(20,0,70,.45)}
+.tk-actions .tk-dl:active{transform:scale(.98)}
+.tk-actions .tk-dl[disabled]{opacity:.6;cursor:wait}
+.tk-actions .tk-back{display:flex;align-items:center;justify-content:center;height:48px;border-radius:99px;border:1px solid rgba(255,255,255,.25);color:#fff;text-decoration:none;font-weight:600;font-size:15px}
+.tk-dl-note{margin:10px 0 0;text-align:center;font-size:13px;color:#86868b}
 @media(prefers-reduced-motion:reduce){.tk::after,.tk-poster,.tk-wrap{animation:none}}
 /* header text now sits under the ticket */
 .reg-page .rg-head{text-align:center}
