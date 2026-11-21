@@ -218,9 +218,13 @@ export default async function handler(req, res) {
     await redis.zadd('celesta:reglist', { score: Date.now(), member: id });
     return res.status(200).json({ ok: true, id });
   } catch (e) {
+    console.error('register write failed', e);
     // Roll the markers back so a failed write doesn't block the student.
     if (mk.phone) try { await redis.del(mk.phone); } catch {}
     if (mk.email) try { await redis.del(mk.email); } catch {}
+    // Remove a half-written record (hset ok, zadd failed) so the retry
+    // doesn't hit a false "already registered" duplicate.
+    try { await redis.hdel('celesta:regs', id); } catch {}
     return res.status(500).json({ error: 'Storage unavailable' });
   }
 }
