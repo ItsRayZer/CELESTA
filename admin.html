@@ -442,6 +442,11 @@ async function ensureEvents(force){
 }
 function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2600);}
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+// Member names, whether stored as plain strings (old form / admin edits)
+// or as objects {name, phone, email} (new form).
+function memNames(list){return (list||[]).map(function(m){return typeof m==='string'?m:((m&&m.name)||'');}).filter(Boolean);}
+// One member as "Name · phone" (phone only when the record has one).
+function memLine(m){if(typeof m==='string')return m;if(!m||typeof m!=='object')return '';return (m.name||'')+(m.phone?' · '+m.phone:'');}
 function fmt(n){return '₹'+Number(n||0).toLocaleString('en-IN');}
 // The event fee is a display string ("₹100 per team"), not a number:
 // fmt() would Number() it to NaN. Show the string as-is; only a bare
@@ -794,7 +799,7 @@ function render(){
     <td><b>${esc(x.name)}</b>${x.invalid?' <span class="risk risk-bad">INVALID</span>':''}<br><span class="mut">${esc(x.school)}</span>${x.teamName?'<br><span class="mut">'+esc(x.teamName)+'</span>':''}${badge}${whyLine}</td>
     <td><span class="evtag">${esc(x.event)}</span></td>
     <td>${esc(x.phone)}<br><span class="mut">${esc(x.email||'—')}</span></td>
-    <td>${x.team}${Array.isArray(x.members)&&x.members.length?'<br><span class="mut">'+x.members.map(esc).join(', ')+'</span>':''}</td>
+    <td>${x.team}${Array.isArray(x.members)&&x.members.length?'<br><span class="mut">'+x.members.map(function(m){return esc(memLine(m));}).join(', ')+'</span>':''}</td>
     <td>${x.paid?'<span class="amt">'+fmt(x.amount)+'</span><br><span class="mut">PAID</span>':'<span class="mut">UNPAID</span>'}</td>
     <td style="white-space:nowrap">${w?`<button class="paybtn ${x.paid?'paid':''}" data-id="${x.id}" data-paid="${x.paid?1:0}">${x.paid?'Paid':'Mark paid'}</button>
     <button class="mini" data-edit="${x.id}">Edit</button>
@@ -891,7 +896,7 @@ function openEdit(id){
   EDIT_ID=id;
   $('eName').value=x.name||'';$('eSchool').value=x.school||'';$('ePhone').value=x.phone||'';
   $('eEmail').value=x.email||'';$('eTeam').value=x.team||'';$('eTeamName').value=x.teamName||'';
-  $('eMembers').value=(Array.isArray(x.members)?x.members:[]).join(', ');
+  $('eMembers').value=memNames(x.members).join(', ');
   $('modal').classList.add('show');
 }
 $('modalCancel').onclick=()=>{$('modal').classList.remove('show');EDIT_ID=null;};
@@ -1230,7 +1235,7 @@ $('csvBtn').onclick=async()=>{
       if(!(d.regs||[]).length)break;
     }
     const rows=[['ID','Event','Name','School','Phone','Email','Team Size','Team Name','Members','Paid','Amount','Registered At']];
-    all.forEach(x=>rows.push([x.id,x.event,x.name,x.school,x.phone,x.email||'',x.team,x.teamName||'',(Array.isArray(x.members)?x.members:[]).join('; '),x.paid?'YES':'NO',x.amount||0,x.at]));
+    all.forEach(x=>rows.push([x.id,x.event,x.name,x.school,x.phone,x.email||'',x.team,x.teamName||'',memNames(x.members).join('; '),x.paid?'YES':'NO',x.amount||0,x.at]));
     const cell=c=>{let s=String(c);if(/^\s*[=+\-@]/.test(s))s="'"+s;return '"'+s.replace(/"/g,'""')+'"';};
     const csv=rows.map(r=>r.map(cell).join(',')).join('\n');
     const a=document.createElement('a');

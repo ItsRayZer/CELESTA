@@ -22,7 +22,7 @@
 <link rel="stylesheet" href="/styles.css?v=65">
 <link rel="stylesheet" href="/theme-purple.css?v=10">
 <style>#pill{display:none!important}</style>
-<style>html{background:#060608}body{background:#060608}.hp{position:absolute!important;left:-9999px!important;top:auto;width:1px;height:1px;overflow:hidden}</style>
+<style>html{background:#060608}body{background:#060608}.hp{position:absolute!important;left:-9999px!important;top:auto;width:1px;height:1px;overflow:hidden}.reg-page .mem{padding:12px 16px 4px;border-top:1px solid var(--rg-line)}.reg-page .mem-head{font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--rg-mut);margin-bottom:4px}.reg-page .mem .field{padding:0}.reg-page .mem .field+.field{border-top:1px solid var(--rg-line)}</style>
 </head>
 <body class="reg-page">
 
@@ -226,15 +226,22 @@
     }else{
       teamSizeRow='<div class="field" id="f-team"><label for="in-team">Team size</label><select id="in-team">'+opts+'</select><div class="err">Choose your team size.</div></div>';
     }
-    // Team name: only for team events.
-    var teamNameRow=isSolo?'':'<div class="field" id="f-teamname"><label for="in-teamname">Team name</label><input id="in-teamname" type="text" placeholder="Optional" maxlength="80"></div>';
-    // Other members: only for team events. Label fits the exact count.
+    // Team name: only for team events. It is REQUIRED (owner's call).
+    var teamNameRow=isSolo?'':'<div class="field" id="f-teamname"><label for="in-teamname">Team name</label><input id="in-teamname" type="text" placeholder="Your team name" maxlength="80"><div class="err">Enter your team name.</div></div>';
+    // Other members: only for team events. One block per member, each
+    // with Name (must) + Phone (optional) + Email (optional). The leader
+    // is Member 1; these blocks are Member 2, 3, 4.
     var membersRow='';
     if(!isSolo){
       var others=e.teamMax-1;
-      var memLabel=(others===1)?'Partner':'Other team members ('+others+' more)';
-      var memPh=(others===1)?"Your partner's name":'Other members, one per line';
-      membersRow='<div class="field" id="f-members"><label for="in-members">'+memLabel+'</label><textarea id="in-members" placeholder="'+memPh+'"></textarea><div class="err" id="err-members">Add the names of your other team members.</div></div>';
+      for(var mi=0;mi<others;mi++){
+        var mn=mi+2;
+        membersRow+='<div class="mem" id="mem-block-'+mi+'"><div class="mem-head">Member '+mn+'</div>'
+          +'<div class="field" id="f-mem'+mi+'-name"><label for="in-mem'+mi+'-name">Name</label><input id="in-mem'+mi+'-name" type="text" placeholder="Full name" maxlength="100"><div class="err">Enter member '+mn+'\'s name.</div></div>'
+          +'<div class="field" id="f-mem'+mi+'-phone"><label for="in-mem'+mi+'-phone">Phone (optional)</label><input id="in-mem'+mi+'-phone" type="tel" inputmode="numeric" maxlength="13" placeholder="10-digit mobile"><div class="err">Enter a valid 10-digit mobile number.</div></div>'
+          +'<div class="field" id="f-mem'+mi+'-email"><label for="in-mem'+mi+'-email">Email (optional)</label><input id="in-mem'+mi+'-email" type="email" placeholder="you@example.com" maxlength="254"><div class="err">Enter a valid email address.</div></div>'
+          +'</div>';
+      }
     }
     var closed=!e.regOpen;
     var teamMeta=(e.teamMin===1?'Solo or up to '+e.teamMax:'Teams of '+e.teamMin+'\u2013'+e.teamMax);
@@ -257,7 +264,7 @@
         +'<div class="field" id="f-name"><label for="in-name">Name</label><input id="in-name" type="text" autocomplete="name" placeholder="Team leader" maxlength="100"><div class="err">Enter your full name.</div></div>'
         +'<div class="field" id="f-school"><label for="in-school">School</label><input id="in-school" type="text" autocomplete="organization" placeholder="Your school" maxlength="150"><div class="err">Enter your school name.</div></div>'
         +'<div class="field" id="f-phone"><label for="in-phone">Phone</label><input id="in-phone" type="tel" inputmode="numeric" autocomplete="tel" maxlength="13" placeholder="10-digit mobile"><div class="err">Enter a valid 10-digit mobile number.</div></div>'
-        +'<div class="field" id="f-email"><label for="in-email">Email (optional)</label><input id="in-email" type="email" autocomplete="email" placeholder="you@example.com" maxlength="254"><div class="err">Enter a valid email address.</div></div>'
+        +'<div class="field" id="f-email"><label for="in-email">Email</label><input id="in-email" type="email" autocomplete="email" placeholder="you@example.com" maxlength="254"><div class="err">Enter a valid email address.</div></div>'
         +'<div class="field hp" aria-hidden="true"><label for="in-website">Website</label><input id="in-website" type="text" autocomplete="off" tabindex="-1"></div>'
         +'</div><div class="rg-group">'
         +teamSizeRow
@@ -292,32 +299,19 @@
     var form=document.getElementById('reg-form-dyn');
     // Bot check: when the form opened. A submit under 2s is flagged server-side.
     var startedAt=Date.now();
-    var teamSel=document.getElementById('in-team'), mem=document.getElementById('f-members');
+    var teamSel=document.getElementById('in-team');
     // Only a range event has a real team-size dropdown to sync. Fixed-size
-    // events render the members field already correct (or not at all).
+    // events render the member blocks already correct (or not at all).
     var isSelect=teamSel&&teamSel.tagName==='SELECT';
     function syncMembers(){
-      if(!isSelect||!mem)return;
+      if(!isSelect)return;
       var n=parseInt(teamSel.value,10)||1;
-      mem.hidden=n<2;
-      var lab=mem.querySelector('label');
-      if(lab)lab.textContent=n<2?'Other team members':'Other team members ('+(n-1)+' more)';
+      for(var i=0;i<e.teamMax-1;i++){
+        var b=document.getElementById('mem-block-'+i);
+        if(b)b.hidden=i>=n-1;
+      }
     }
     if(isSelect){teamSel.addEventListener('change',syncMembers);syncMembers();}
-    // F-26: cap the members box at team-1 names as the user types, so
-    // they cannot enter more names than the team size allows.
-    var memTa=document.getElementById('in-members');
-    if(memTa){
-      memTa.addEventListener('input',function(){
-        var n=parseInt(teamSel.value,10)||1;
-        var max=Math.max(0,n-1), lines=memTa.value.split(/\n/), kept=[], count=0;
-        for(var i=0;i<lines.length;i++){
-          if(lines[i].trim()){count++;if(count>max)continue;}
-          kept.push(lines[i]);
-        }
-        if(kept.length!==lines.length)memTa.value=kept.join('\n');
-      });
-    }
     form.addEventListener('input',function(ev){
       var f=ev.target.closest&&ev.target.closest('.field');
       if(f)f.classList.remove('invalid');
@@ -332,16 +326,31 @@
       }
       function val(id){var el=document.getElementById('in-'+id);return el?el.value.trim():'';}
       var name=val('name'), school=val('school'), phone=val('phone').replace(/\D/g,''), email=val('email'),
-          team=parseInt(val('team'),10), teamname=val('teamname'), members=val('members');
+          team=parseInt(val('team'),10), teamname=val('teamname');
       if(phone.length===12&&phone.slice(0,2)==='91')phone=phone.slice(2);
       else if(phone.length===11&&phone.charAt(0)==='0')phone=phone.slice(1);
-      var list=members.split(/\n+/).map(function(s){return s.trim();}).filter(Boolean);
+      function normPh(p){p=(p||'').replace(/\D/g,'');if(p.length===12&&p.slice(0,2)==='91')p=p.slice(2);else if(p.length===11&&p.charAt(0)==='0')p=p.slice(1);return p;}
+      // Members, one by one: Name must, Phone + Email optional.
+      var list=[];
+      if(team>1){
+        var need=team-1;
+        for(var mi=0;mi<need;mi++){
+          list.push({name:val('mem'+mi+'-name'),phone:normPh(val('mem'+mi+'-phone')),email:val('mem'+mi+'-email')});
+        }
+      }
       mark('name',name.length>=2);
       mark('school',school.length>=2);
       mark('phone',/^[6-9]\d{9}$/.test(phone));
-      mark('email',!email||/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email));
+      mark('email',/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email));
       mark('team',team>=e.teamMin&&team<=e.teamMax);
-      if(team>1)mark('members',list.length===team-1);
+      if(team>1){
+        mark('teamname',teamname.length>=2);
+        list.forEach(function(m,i){
+          mark('mem'+i+'-name',m.name.length>=2);
+          mark('mem'+i+'-phone',!m.phone||/^[6-9]\d{9}$/.test(m.phone));
+          mark('mem'+i+'-email',!m.email||/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(m.email));
+        });
+      }
       var agree=document.getElementById('in-agree');
       if(agree)mark('agree',agree.checked);
       if(!ok){if(first&&first.scrollIntoView)first.scrollIntoView({behavior:'smooth',block:'center'});return;}

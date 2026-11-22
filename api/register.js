@@ -112,10 +112,25 @@ export default async function handler(req, res) {
   if (typeof name === 'string') name = name.trim();
   if (typeof school === 'string') school = school.trim();
   if (typeof teamName === 'string') teamName = teamName.trim();
-  if (Array.isArray(members) && members.some(m => typeof m !== 'string')) {
-    return res.status(400).json({ error: 'Member names must be text' });
+  // Members are objects {name, phone, email} (new form) or plain strings
+  // (old form / admin edits). Normalise every entry to an object so the
+  // rest of this file only ever sees one shape.
+  if (Array.isArray(members)) {
+    const norm = [];
+    for (const m of members) {
+      if (typeof m === 'string') { norm.push({ name: m.trim(), phone: '', email: '' }); continue; }
+      if (m && typeof m === 'object' && !Array.isArray(m)) {
+        norm.push({
+          name: typeof m.name === 'string' ? m.name.trim() : '',
+          phone: typeof m.phone === 'string' ? m.phone.trim() : '',
+          email: typeof m.email === 'string' ? m.email.trim() : '',
+        });
+        continue;
+      }
+      return res.status(400).json({ error: 'Member details must be text' });
+    }
+    members = norm;
   }
-  if (Array.isArray(members)) members = members.map(m => m.trim());
 
   // Honeypot FIRST: the "website" field is hidden from humans. A bot that
   // fills it is rejected with a generic error — no reason is ever given.
@@ -134,8 +149,8 @@ export default async function handler(req, res) {
       || String(email || '').length > 254 || String(teamName || '').length > 80) {
     return res.status(400).json({ error: 'A field is too long — please shorten it and try again.' });
   }
-  if (Array.isArray(members) && (members.length > 20 || members.some(m => String(m).length > 100))) {
-    return res.status(400).json({ error: 'Member names are too long or there are too many members.' });
+  if (Array.isArray(members) && (members.length > 20 || members.some(m => m.name.length > 100 || m.phone.length > 13 || m.email.length > 254))) {
+    return res.status(400).json({ error: 'Member details are too long or there are too many members.' });
   }
 
   // Validate the event against the database (falls back to the built-in list if storage is down).
@@ -158,12 +173,25 @@ export default async function handler(req, res) {
   if (!Number.isInteger(teamSize) || teamSize < ev.teamMin || teamSize > ev.teamMax) {
     return res.status(400).json({ error: 'Team size for ' + ev.name + ' must be ' + ev.teamMin + '–' + ev.teamMax });
   }
+  // Team name is REQUIRED for team events (owner's call).
+  if (teamSize > 1 && !teamName) {
+    return res.status(400).json({ error: 'Enter your team name' });
+  }
   // members are the OTHER team members (leader excluded): at most teamMax - 1.
   if (Array.isArray(members) && members.length > ev.teamMax - 1) {
     return res.status(400).json({ error: 'Too many team members for ' + ev.name });
   }
-  if (teamSize > 1 && (!Array.isArray(members) || members.filter(m => String(m || '').trim()).length < teamSize - 1)) {
+  if (teamSize > 1 && (!Array.isArray(members) || members.filter(m => m.name).length < teamSize - 1)) {
     return res.status(400).json({ error: 'Add the other team members for a team of ' + teamSize });
+  }
+  // Each member: name must, phone + email optional but well-formed if given.
+  if (Array.isArray(members)) {
+    for (const m of members) {
+      if (!m.name || m.name.length < 2) return res.status(400).json({ error: 'Enter every team member\u2019s name' });
+      if (m.phone) m.phone = normPhone(m.phone);
+      if (m.phone && !validPhone(m.phone)) return res.status(400).json({ error: 'Enter a valid 10-digit mobile number for ' + m.name });
+      if (m.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(m.email)) return res.status(400).json({ error: 'Enter a valid email address for ' + m.name });
+    }
   }
 
   const phoneNorm = normPhone(phone);
@@ -171,13 +199,15 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Enter a valid 10-digit mobile number' });
   }
   const emailNorm = String(email || '').trim();
-  // Email format is validated HERE, before the duplicate scan / marker
-  // claim: without this, an invalid string like "not-an-email" is treated
-  // as a real identity and matches a stored record (or a leftover marker)
-  // carrying the same string, returning a misleading 409 "Already
-  // registered". Email is optional (empty = no email), but a supplied
-  // email must be well-formed.
-  if (emailNorm && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailNorm)) {
+  // Leader email is REQUIRED (owner's call). Its format is validated
+  // HERE, before the duplicate scan / marker claim: without this, an
+  // invalid string like "not-an-email" is treated as a real identity
+  // and matches a stored record (or a leftover marker) carrying the
+  // same string, returning a misleading 409 "Already registered".
+  if (!emailNorm) {
+    return res.status(400).json({ error: 'Enter your email address' });
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailNorm)) {
     return res.status(400).json({ error: 'Enter a valid email address' });
   }
 
@@ -217,7 +247,7 @@ export default async function handler(req, res) {
   const schoolLow = String(school).trim().toLowerCase();
   if (junkText(school) || JUNK_SCHOOLS.has(schoolLow)) reasons.push('school looks off');
   if (emailNorm && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailNorm)) reasons.push('email looks off');
-  if (Array.isArray(members) && members.some(m => junkText(m))) reasons.push('member name looks off');
+  if (Array.isArray(members) && members.some(m => junkText(m.name))) reasons.push('member name looks off');
   if (teamName && junkText(teamName)) reasons.push('team name looks off');
   // Timing: a submit in under 2 seconds is too fast for a human. A missing
   // timestamp means the request didn't come from the form at all.
@@ -264,7 +294,7 @@ export default async function handler(req, res) {
   }
   const record = {
     id, event: ev.name, eventSlug: ev.slug, name, school, phone: phoneNorm, email: emailNorm, team: teamSize,
-    teamName: teamName || '', members: Array.isArray(members) ? members.map(String) : [],
+    teamName: teamName || '', members: Array.isArray(members) ? members : [],
     paid: false, amount: 0, at: new Date().toISOString(),
     risk: { level: riskLevelFor(reasons), reasons, at: new Date().toISOString() },
   };

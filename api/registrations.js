@@ -209,7 +209,23 @@ export default async function handler(req, res) {
       }
       if (newPhone) rec.phone = newPhone;
       if (typeof req.body.team === 'number') rec.team = req.body.team;
-      if (Array.isArray(req.body.members)) rec.members = req.body.members.map(String);
+      if (Array.isArray(req.body.members)) {
+        // The admin edit modal sends member NAMES only. Keep each member's
+        // stored phone/email when the name is unchanged, so an admin name
+        // fix never silently wipes a member's contact details. A renamed
+        // member is a different person, so it starts with no phone/email.
+        const byName = new Map();
+        if (Array.isArray(rec.members)) for (const m of rec.members) {
+          const nm = typeof m === 'string' ? m.trim() : (m && m.name ? String(m.name).trim() : '');
+          if (nm && !byName.has(nm)) byName.set(nm, m);
+        }
+        rec.members = req.body.members.map(function (s) {
+          const nm = String(s).trim();
+          const old = byName.get(nm);
+          if (old && typeof old === 'object') return { name: nm, phone: old.phone || '', email: old.email || '' };
+          return { name: nm, phone: '', email: '' };
+        });
+      }
       // Keep the uniqueness markers in step with an edited phone/email.
       // Claim the new markers FIRST: if either is taken, refuse before the
       // record is saved (and before the old markers are dropped). A marker

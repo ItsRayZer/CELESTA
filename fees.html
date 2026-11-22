@@ -517,6 +517,9 @@ nav button.on { background: #fff; color: #000; }
   var $=function(id){return document.getElementById(id);};
   function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
   function inr(n){return '₹'+Number(n||0).toLocaleString('en-IN');}
+  // Member names, whether stored as plain strings (old form / admin
+  // edits) or as objects {name, phone, email} (new form).
+  function memNames(list){return (list||[]).map(function(m){return typeof m==='string'?m:((m&&m.name)||'');}).filter(Boolean);}
   function pad(n){return String(n).padStart(2,'0');}
   function fmtTime(d){var h=d.getHours(),m=d.getMinutes(),s=d.getSeconds();function p(x){return (x<10?'0':'')+x;}return p(h)+':'+p(m)+':'+p(s);}
   function fmtWhen(iso){try{var d=new Date(iso);return d.toLocaleDateString('en-IN',{day:'numeric',month:'short'})+' '+fmtTime(d);}catch(e){return '';}}
@@ -929,7 +932,7 @@ nav button.on { background: #fff; color: #000; }
     $('collect-name').textContent=r.teamName||r.name;
     $('collect-event2').textContent=r.event||'';
     $('collect-school').textContent=r.school||'';
-    $('collect-team').textContent='Team of '+(r.team||1)+(r.members&&r.members.length?' · '+[r.name].concat(r.members).join(', '):'');
+    $('collect-team').textContent='Team of '+(r.team||1)+(r.members&&r.members.length?' · '+[r.name].concat(memNames(r.members)).join(', '):'');
     $('collect-fee').textContent=(r.fee||inr(r.feeAmount))+(r.paid?' (paid)':'');
     $('collect-status').textContent=r.paid?('Paid · '+(r.paidMethod==='cash'?'Cash':'GPay')):'Unpaid';
     var canWrite=role==='write';
@@ -1007,7 +1010,7 @@ nav button.on { background: #fff; color: #000; }
     $('pc-name').textContent=r.teamName||r.name||'';
     $('pc-event').textContent=r.event||'';
     $('pc-school').textContent=r.school||'';
-    $('pc-team').textContent='Team of '+(r.team||1)+(r.members&&r.members.length?' · '+[r.name].concat(r.members).join(', '):'');
+    $('pc-team').textContent='Team of '+(r.team||1)+(r.members&&r.members.length?' · '+[r.name].concat(memNames(r.members)).join(', '):'');
     $('pc-fee').textContent=r.fee||inr(r.feeAmount);
     $('pc-method').textContent=method==='cash'?'Cash':'GPay';
     $('pc-method').style.color=method==='cash'?'var(--lime)':'#4da3ff';
@@ -1286,7 +1289,7 @@ nav button.on { background: #fff; color: #000; }
     $('rc-chest').textContent='CHEST '+(r.chest||'—');
     $('rc-event').textContent=r.event||'';
     $('rc-school').textContent=r.school||'';
-    $('rc-team').textContent='Team of '+(r.team||1)+((r.members&&r.members.length)?' · '+[r.name].concat(r.members).join(', '):'');
+    $('rc-team').textContent='Team of '+(r.team||1)+((r.members&&r.members.length)?' · '+[r.name].concat(memNames(r.members)).join(', '):'');
     $('rc-fee').textContent=r.fee||inr(r.feeAmount);
     $('rc-method').textContent=paid?(r.paidMethod==='cash'?'Cash':'GPay'):'Not paid';
     $('rc-cash').textContent=inr(paid&&r.paidMethod==='cash'?amount:0);
@@ -1313,7 +1316,7 @@ nav button.on { background: #fff; color: #000; }
   function downloadReceiptSVG(r){
     var btn=$('rc-download');
     if(btn){btn.disabled=true;btn.textContent='Preparing receipt…';}
-    var memberList=[r.name].concat(r.members||[]);
+    var memberList=[r.name].concat(memNames(r.members));
     var paid=!!r.paid;
     var amount=paid?(r.amount||r.feeAmount||0):(r.feeAmount||0);
     var method=paid?(r.paidMethod==='cash'?'Cash':'GPay'):'Not paid';

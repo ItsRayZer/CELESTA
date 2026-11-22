@@ -126,6 +126,9 @@
 (function(){
   function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
   function svgEsc(s){return esc(s);}
+  // Member names, whether stored as plain strings (old form / admin
+  // edits) or as objects {name, phone, email} (new form).
+  function memNames(list){return (list||[]).map(function(m){return typeof m==='string'?m:((m&&m.name)||'');}).filter(Boolean);}
   // Update only the button's label span, never textContent on the button
   // itself: that would wipe the inline SVG icon (V2-m14).
   function setBtnLabel(btn,txt){var l=btn?btn.querySelector('.tk-btn-label'):null;if(l){l.textContent=txt;}else if(btn){btn.textContent=txt;}}
@@ -214,7 +217,7 @@
     if(btn){btn.disabled=true;setBtnLabel(btn,'Preparing ticket…');}
     // Build the download from the ticket DATA, not from the page text, so
     // the image never garbles names. Same new receipt design as the page.
-    var memberList=[t.name].concat(t.members||[]);
+    var memberList=[t.name].concat(memNames(t.members));
     var paid=!!t.paid;
     var amount=paid?(t.amount||t.feeAmount||0):(t.feeAmount||0);
     var method=paid?(t.paidMethod==='cash'?'Cash':'GPay'):'Not paid';
@@ -324,7 +327,7 @@
   function render(t){
     current=t;
     var paid=!!t.paid;
-    var memberList=[t.name].concat(t.members||[]);
+    var memberList=[t.name].concat(memNames(t.members));
     var amount=paid?(t.amount||t.feeAmount||0):(t.feeAmount||0);
     var method=paid?(t.paidMethod==='cash'?'Cash':'GPay'):'—';
     var cashAmt=paid&&t.paidMethod==='cash'?amount:0;

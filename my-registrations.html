@@ -69,6 +69,8 @@
 (function(){
   var REGS_KEY='spark_my_regs';
   function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+  // Member names, whether stored as plain strings (old form / admin edits) or as objects {name, phone, email} (new form).
+  function memNames(list){return (list||[]).map(function(m){return typeof m==='string'?m:((m&&m.name)||'');}).filter(Boolean);}
   function loadIds(){
     try{var a=JSON.parse(localStorage.getItem(REGS_KEY)||'[]');return Array.isArray(a)?a:[];}
     catch(e){return [];}
@@ -85,7 +87,7 @@
     b.hidden=n===0;
   }
   function cardHTML(t){
-    var memberList=[t.name].concat(t.members||[]);
+    var memberList=[t.name].concat(memNames(t.members));
     var badge=t.paid
       ?'<span class="mr-badge paid">Paid</span>'
       :'<span class="mr-badge unpaid">Not Paid — pay at the venue</span>';
