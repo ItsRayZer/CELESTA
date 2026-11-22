@@ -16,6 +16,21 @@ const redis = new Redis({
 import { parseVal } from './admin-login.js';
 import { loadEvents } from './events.js';
 
+// Client IP, same rule as visits.js / register.js: Vercel sets x-real-ip;
+// otherwise the LAST X-Forwarded-For entry (the first is spoofable).
+function clientIp(req) {
+  const h = (req && req.headers) || {};
+  const real = String(h['x-real-ip'] || '').trim();
+  if (real) return real;
+  const parts = String(h['x-forwarded-for'] || '').split(',').map(s => s.trim()).filter(Boolean);
+  return parts.length ? parts[parts.length - 1] : 'unknown';
+}
+
+// Per-IP rate limit: 60 requests per 10 minutes. Each fetch costs 2 Redis
+// commands, so without this ~5,000 bogus fetches exhaust the daily budget.
+const TICKET_RL_LIMIT = 60;
+const TICKET_RL_WINDOW = 600;
+
 function toTicket(rec, fee) {
   return {
     id: rec.id,
@@ -47,6 +62,19 @@ async function feeBySlug() {
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+  // Rate limit counts only requests that reach this handler (GETs here;
+  // preflight / other methods return 405 above and are not counted).
+  try {
+    const rlKey = 'celesta:rl:ticket:' + clientIp(req);
+    const n = await redis.incr(rlKey);
+    if (n === 1) {
+      try { await redis.expire(rlKey, TICKET_RL_WINDOW); }
+      catch { try { await redis.del(rlKey); } catch {} } // never leave a key with no TTL
+    }
+    if (n > TICKET_RL_LIMIT) {
+      return res.status(429).json({ error: 'Too many requests. Try again later.' });
+    }
+  } catch { /* rate limit unavailable — serve the ticket */ }
   const id = String(req.query.id || '').trim();
   if (!id) {
     return res.status(400).json({ error: 'Missing ticket id' });
@@ -60,6 +88,9 @@ export default async function handler(req, res) {
     const rec = parseVal(raw);
     if (!rec) return res.status(404).json({ error: 'Ticket not found' });
     const fees = await feeBySlug();
+    // Paid status changes slowly; a private 60s cache lets My Registrations
+    // (one fetch per saved id) reuse the response. Errors are never cached.
+    res.setHeader('Cache-Control', 'private, max-age=60');
     return res.status(200).json({ ok: true, ticket: toTicket(rec, fees[rec.eventSlug] || '') });
   } catch (e) {
     console.error('ticket lookup failed', e);

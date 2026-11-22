@@ -341,7 +341,7 @@
       try{
         var r=await fetch('/api/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),signal:ctl?ctl.signal:undefined});
         var d=await r.json().catch(function(){return {};});
-        if(!r.ok)throw new Error(d.error||'Registration failed');
+        if(!r.ok){var ex=new Error(d.error||'Registration failed');ex.status=r.status;throw ex;}
         // Registration saved: the ticket lives on its own page.
         // If a confirmation email is on its way, the ticket page shows the
         // line (this page redirects away too fast to show it here).
@@ -357,10 +357,30 @@
         }
         form.reset();syncMembers();
       }catch(err){
-        var msg=(err&&err.name==='AbortError')?'The request timed out. Please check your connection and try again.':(err.message||'Something went wrong. Please try again.');
+        // Recovery guidance: the server saves the registration (HSET/ZADD)
+        // BEFORE it sends the email and the response, so a timeout or a
+        // dropped connection after submit can mean the registration IS
+        // saved even though no response arrived. Never tell the student
+        // to just "try again" — that produces a confusing 409.
+        var isTimeout=err&&err.name==='AbortError';
+        var isNetErr=err&&err.name==='TypeError';
+        var is409=err&&err.status===409;
+        var head='Could not register';
+        var msgHtml;
+        if(is409){
+          head='Already registered';
+          msgHtml='This phone/email is already registered for this event. If this was you, open <a href="/my-registrations.html">My Registrations</a> or your ticket link \u2014 do not submit again. If this was not you, ask the desk for help.';
+        }else if(isTimeout||isNetErr){
+          // Keep the existing timeout text as the first line, then add
+          // the recovery guidance.
+          msgHtml=(isTimeout?'The request timed out. Please check your connection and try again.':'The connection was lost while submitting.')
+            +' Your registration may already be saved. Do not submit again \u2014 check <a href="/my-registrations.html">My Registrations</a> or ask the desk to look you up by phone.';
+        }else{
+          msgHtml=esc(err.message||'Something went wrong. Please try again.');
+        }
         var box2=document.getElementById('ok-msg');
         if(box2){
-          box2.innerHTML='<h3>Could not register</h3><p>'+esc(msg)+'</p>';
+          box2.innerHTML='<h3>'+head+'</h3><p>'+msgHtml+'</p>';
           box2.classList.add('show');
           box2.scrollIntoView({behavior:'smooth',block:'center'});
         }

@@ -10,6 +10,29 @@ import { verify, parseVal, normPhone, validPhone, regMarkerKeys, MARKER_TTL } fr
 import { appendLog } from './activity-log.js';
 import { loadEvents } from './events.js';
 
+const HISTORY_KEY = 'celesta:fees:history';
+const HISTORY_CAP = 500;
+
+// Same entry shape as api/fees.js pushHistory: {id, chest, event,
+// eventSlug, name, amount, method, at, by}. Kept local (not imported from
+// fees.js) to avoid a circular import.
+async function pushHistory(entry) {
+  await redis.lpush(HISTORY_KEY, JSON.stringify(entry));
+  try { await redis.ltrim(HISTORY_KEY, 0, HISTORY_CAP - 1); } catch { /* cap is a nicety */ }
+}
+
+// Remove EVERY history entry for one registration (count 0 = all).
+// Duplicates from a past race may differ in `at`, so match by id and
+// remove each distinct stored string.
+async function removeHistoryFor(id) {
+  const raw = await redis.lrange(HISTORY_KEY, 0, HISTORY_CAP - 1);
+  const targets = [...new Set((raw || []).filter(function (v) {
+    const p = parseVal(v);
+    return p && p.id === id;
+  }))];
+  for (const target of targets) await redis.lrem(HISTORY_KEY, 0, target);
+}
+
 export default async function handler(req, res) {
   const token = (req.headers.authorization || '').replace('Bearer ', '');
   const role = verify(token);
@@ -54,6 +77,7 @@ export default async function handler(req, res) {
       }
       return res.status(200).json({ regs, role, total, paidCount, paidAmount, byEvent });
     } catch (e) {
+      console.error('registrations GET failed', e);
       return res.status(500).json({ error: 'Storage unavailable' });
     }
   }
@@ -117,10 +141,10 @@ export default async function handler(req, res) {
             const r = parseVal(v);
             if (!r || (r.eventSlug !== rec.eventSlug && r.event !== rec.event)) continue;
             if (newPhone && normPhone(r.phone) === newPhone) {
-              return res.status(409).json({ error: 'This phone number is already registered for ' + rec.event });
+              return res.status(409).json({ error: 'Already registered for this event' });
             }
             if (newEmail && r.email && String(r.email).trim().toLowerCase() === newEmail) {
-              return res.status(409).json({ error: 'This email is already registered for ' + rec.event });
+              return res.status(409).json({ error: 'Already registered for this event' });
             }
           }
         } catch { /* duplicate check unavailable — continue */ }
@@ -172,6 +196,42 @@ export default async function handler(req, res) {
           if (oldMk.email && oldMk.email !== mk.email) await redis.del(oldMk.email);
         } catch { /* markers are a backstop */ }
       }
+      // Mirror the payment history (the same source api/fees.js reads for
+      // cash/gpay): a paid flip or an amount change here must move the
+      // history with it, or funds and history diverge. A history failure
+      // must not fail the PATCH — the record is already saved.
+      try {
+        const wasPaid = !!before.paid, isPaid = !!rec.paid;
+        if (!wasPaid && isPaid) {
+          await pushHistory({
+            id: rec.id, chest: rec.chest || '', event: rec.event, eventSlug: rec.eventSlug,
+            name: rec.name, amount: Number(rec.amount || 0), method: rec.paidMethod || '',
+            at: rec.paidAt || new Date().toISOString(), by: 'admin',
+          });
+        } else if (wasPaid && !isPaid) {
+          await removeHistoryFor(id);
+        } else if (wasPaid && isPaid && typeof amount === 'number' && amount !== before.amount) {
+          // Amount changed on a still-paid record: rewrite its history
+          // entry with the new amount, keeping the original method/at.
+          let prev = null;
+          try {
+            const rawHist = await redis.lrange(HISTORY_KEY, 0, HISTORY_CAP - 1);
+            for (const v of rawHist || []) {
+              const p = parseVal(v);
+              if (p && p.id === id) { prev = p; break; }
+            }
+          } catch { /* fall back to the record's own payment fields */ }
+          await removeHistoryFor(id);
+          await pushHistory({
+            id: rec.id, chest: rec.chest || '', event: rec.event, eventSlug: rec.eventSlug,
+            name: rec.name, amount: Number(rec.amount || 0),
+            method: (prev && prev.method) || rec.paidMethod || '',
+            at: (prev && prev.at) || rec.paidAt || new Date().toISOString(), by: 'admin',
+          });
+        }
+      } catch (e) {
+        console.error('registrations history mirror failed', e);
+      }
       // Log only what actually changed, with the old values for undo.
       const changed = {};
       const bits = [];
@@ -194,6 +254,7 @@ export default async function handler(req, res) {
       }
       return res.status(200).json({ ok: true, reg: rec });
     } catch (e) {
+      console.error('registrations PATCH failed', e);
       return res.status(500).json({ error: 'Storage unavailable' });
     }
   }
@@ -213,6 +274,11 @@ export default async function handler(req, res) {
           if (mk.email) await redis.del(mk.email);
         } catch { /* markers expire on their own; the record is already gone */ }
       }
+      // A deleted paid registration must not leave its money in history.
+      if (rec && rec.paid) {
+        try { await removeHistoryFor(id); }
+        catch (e) { console.error('registrations history removal failed', e); }
+      }
       if (rec) {
         await appendLog({
           actor: 'write', action: 'Registration deleted',
@@ -223,6 +289,7 @@ export default async function handler(req, res) {
       }
       return res.status(200).json({ ok: true });
     } catch (e) {
+      console.error('registrations DELETE failed', e);
       return res.status(500).json({ error: 'Storage unavailable' });
     }
   }

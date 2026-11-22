@@ -100,6 +100,13 @@ export default async function handler(req, res) {
         await redis.hset('celesta:coordinators', obj);
         list = list.map(c => (PHONE_FIXES[c.id] && !c.phone) ? { ...c, phone: PHONE_FIXES[c.id] } : c);
       }
+      // Flag-gated one-time migration: NAME_FIXES / COORD_FIXES used to
+      // re-apply whenever an admin deliberately renamed someone back to an
+      // old value. They now run at most once, guarded by the stored flag
+      // celesta:coord_migrated_v1, set after the first pass completes.
+      let coordMigrated = false;
+      try { coordMigrated = !!(await redis.get('celesta:coord_migrated_v1')); } catch { coordMigrated = false; }
+      if (!coordMigrated) {
       // Treasure Hunt coordinator change (21 Nov 2026, official PDF is the
       // source of truth): Aadhil Kabeer is replaced by Ashwin PS (9778249397),
       // and Abhinavu Babu is spelled Abhinav Babu in the PDF. One-time: the
@@ -139,6 +146,11 @@ export default async function handler(req, res) {
         await redis.hset('celesta:coordinators', obj);
         list = list.map(c => (NAME_FIXES[c.id] && c.name === OLD_NAMES[c.id]) ? { ...c, name: NAME_FIXES[c.id] } : c);
       }
+        // Set the flag only after the pass completes, so a failed hset
+        // above (which throws to the outer catch) does not skip a needed
+        // migration. A no-op pass also sets it: nothing was stale.
+        await redis.set('celesta:coord_migrated_v1', '1');
+      }
       return res.status(200).json({ coordinators: list });
     } catch (e) {
       return res.status(200).json({ coordinators: DEFAULTS });
@@ -177,6 +189,7 @@ export default async function handler(req, res) {
       }, req);
       return res.status(200).json({ ok: true, coordinator: rec });
     } catch (e) {
+      console.error('coordinators handler failed', e);
       return res.status(500).json({ error: 'Storage unavailable' });
     }
   }
@@ -197,6 +210,7 @@ export default async function handler(req, res) {
       }
       return res.status(200).json({ ok: true });
     } catch (e) {
+      console.error('coordinators handler failed', e);
       return res.status(500).json({ error: 'Storage unavailable' });
     }
   }

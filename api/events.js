@@ -235,24 +235,39 @@ export const DEFAULT_EVENTS = [
   }
 ];
 
-export async function loadEvents() {
+export async function loadEvents(options) {
+  // options: { allowWrite, strict }
+  // - Default (public) path: read-only, non-strict. NEVER writes to Redis
+  //   (no seeding, no normalize/rulesV migration) and returns only what is
+  //   stored; on a Redis error it falls back to DEFAULT_EVENTS.
+  // - { allowWrite: true, strict: true }: admin write paths only. Seeding
+  //   and the one-time migrations run here, behind admin auth, and a Redis
+  //   error THROWS so the caller fails honestly (register.js turns a
+  //   thrown error into a 500) instead of silently serving stale defaults.
+  const allowWrite = !!(options && options.allowWrite);
+  const strict = !!(options && options.strict);
+  const defaultsCopy = () => DEFAULT_EVENTS.map(e => JSON.parse(JSON.stringify(e)))
+    .sort((a, b) => (a.order || 99) - (b.order || 99) || String(a.name).localeCompare(String(b.name)));
   let vals;
   try {
     vals = await redis.hvals('celesta:events');
-  } catch {
+  } catch (e) {
+    if (strict) throw e;
     // Redis down / rate-limited: serve built-in defaults so the public
     // site and registration keep working instead of a 500.
-    return DEFAULT_EVENTS.map(e => JSON.parse(JSON.stringify(e)))
-      .sort((a, b) => (a.order || 99) - (b.order || 99) || String(a.name).localeCompare(String(b.name)));
+    return defaultsCopy();
   }
   if (!vals || !vals.length) {
+    if (!allowWrite) return defaultsCopy();
     const obj = {};
     DEFAULT_EVENTS.forEach(e => { obj[e.slug] = JSON.stringify(e); });
-    try { await redis.hset('celesta:events', obj); } catch {}
+    try { await redis.hset('celesta:events', obj); }
+    catch (e) { if (strict) throw e; }
     vals = Object.values(obj);
   }
   const list = vals.map(v => parseVal(v)).filter(Boolean);
   list.sort((a, b) => (a.order || 99) - (b.order || 99) || String(a.name).localeCompare(String(b.name)));
+  if (!allowWrite) return list;
   // One-time correction of stale wording from when the fest was inter-college:
   // fix the stored copy in place so the site shows the right text. After the
   // first run nothing is stale anymore, so this never writes again.
@@ -283,7 +298,8 @@ export async function loadEvents() {
   if (dirty) {
     const obj = {};
     list.forEach(e => { obj[e.slug] = JSON.stringify(e); });
-    try { await redis.hset('celesta:events', obj); } catch {}
+    try { await redis.hset('celesta:events', obj); }
+    catch (e) { if (strict) throw e; }
     // The order migration above can change sort keys, so re-sort before return.
     list.sort((a, b) => (a.order || 99) - (b.order || 99) || String(a.name).localeCompare(String(b.name)));
   }
@@ -330,12 +346,16 @@ function cleanEvent(body, existing) {
   const e = existing ? { ...existing } : {};
   // Caps mirror register.js: a write token must not be able to store
   // multi-MB blobs that are then served to every public visitor.
+  const stripCRLF = (s) => String(s).replace(/[\r\n]+/g, ' ');
   const str = (k, d = '', max = 200) => {
     const v = typeof body[k] === 'string' ? body[k].trim() : (existing ? existing[k] : d);
-    return typeof v === 'string' ? v.slice(0, max) : v;
+    // Strip CR/LF from every string field: the event name lands in the
+    // email Subject, so a \r or \n in any stored field is an SMTP header
+    // injection hole. Replaced with a space, not dropped, so words stay apart.
+    return typeof v === 'string' ? stripCRLF(v).slice(0, max) : v;
   };
   const num = (k, d = 0) => { const n = Number(body[k]); return Number.isFinite(n) ? n : (existing ? existing[k] : d); };
-  const arr = (k, maxItem = 500, maxLen = 50) => (Array.isArray(body[k]) ? body[k].map(String).map(s => s.trim().slice(0, maxItem)).filter(Boolean).slice(0, maxLen) : (existing ? existing[k] || [] : []));
+  const arr = (k, maxItem = 500, maxLen = 50) => (Array.isArray(body[k]) ? body[k].map(String).map(s => stripCRLF(s.trim()).slice(0, maxItem)).filter(Boolean).slice(0, maxLen) : (existing ? existing[k] || [] : []));
   const bool = (k, d = true) => (typeof body[k] === 'boolean' ? body[k] : (existing ? existing[k] : d));
   e.name = str('name', '', 100);
   if (!e.name) throw new Error('Name is required');
@@ -345,7 +365,12 @@ function cleanEvent(body, existing) {
   e.prize2 = Math.min(1000000, Math.max(0, Math.round(num('prize2'))));
   e.teamMin = Math.min(20, Math.max(1, Math.round(num('teamMin', 1))));
   e.teamMax = Math.min(20, Math.max(e.teamMin, Math.round(num('teamMax', e.teamMin))));
-  e.fee = str('fee', '', 100);
+  // Fee format: "₹<amount> per team|participant". parseFee() takes the
+  // first number in the string, so "2 members ₹100" would parse as 2 — a
+  // malformed fee must never be stored. If it does not match, keep the
+  // existing fee (on create there is none, so the fee stays empty).
+  const feeVal = str('fee', '', 100);
+  e.fee = /^₹\d+ per (team|participant)$/.test(feeVal) ? feeVal : (existing ? (existing.fee || '') : '');
   e.rulesV = num('rulesV', 0);
   e.duration = str('duration', '', 100);
   e.when = str('when', 'Fri, 27 Nov 2026 \u00b7 10 AM', 100);
@@ -399,7 +424,7 @@ export default async function handler(req, res) {
 
   if (req.method === 'POST') {
     try {
-      const events = await loadEvents();
+      const events = await loadEvents({ allowWrite: true, strict: true });
       let slug = slugify(req.body && req.body.name);
       if (events.some(e => e.slug === slug)) slug = slug + '-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
       let e;
@@ -415,13 +440,14 @@ export default async function handler(req, res) {
       }, req);
       return res.status(200).json({ ok: true, event: e });
     } catch (e) {
+      console.error('events handler failed', e);
       return res.status(500).json({ error: 'Storage unavailable' });
     }
   }
 
   if (req.method === 'PATCH') {
     try {
-      const events = await loadEvents();
+      const events = await loadEvents({ allowWrite: true, strict: true });
       const slug = req.body && req.body.slug;
       const old = events.find(e => e.slug === slug);
       if (!old) return res.status(404).json({ error: 'Event not found' });
@@ -465,6 +491,7 @@ export default async function handler(req, res) {
       }
       return res.status(200).json({ ok: true, event: e });
     } catch (e) {
+      console.error('events handler failed', e);
       return res.status(500).json({ error: 'Storage unavailable' });
     }
   }
@@ -473,7 +500,7 @@ export default async function handler(req, res) {
     const slug = req.query.slug;
     if (!slug) return res.status(400).json({ error: 'Missing slug' });
     try {
-      const events = await loadEvents();
+      const events = await loadEvents({ allowWrite: true, strict: true });
       const ev = events.find(e => e.slug === slug);
       if (!ev) return res.status(404).json({ error: 'Event not found' });
       // Blocked when registrations exist — hide the event instead of deleting it.
@@ -493,6 +520,7 @@ export default async function handler(req, res) {
       }, req);
       return res.status(200).json({ ok: true });
     } catch (e) {
+      console.error('events handler failed', e);
       return res.status(500).json({ error: 'Storage unavailable' });
     }
   }

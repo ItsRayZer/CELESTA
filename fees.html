@@ -214,7 +214,7 @@ nav button.on { background: #fff; color: #000; }
 
       <div class="plan-kicker" style="margin:18px 0 10px">Choose an event</div>
       <div id="event-list" class="plan-list"><div class="plan-empty">Loading events…</div></div>
-      <div class="text-center text-[10px] font-mono pt-8" style="color:var(--mut)">FEES · SPARK 2K26 · Admin only · live sync every 5s</div>
+      <div class="text-center text-[10px] font-mono pt-8" style="color:var(--mut)">FEES · SPARK 2K26 · Admin only · live sync every 60s</div>
     </section>
 
     <!-- LANDING BOTTOM MENU: Dashboard (left) + Scan QR (right) -->
@@ -459,7 +459,7 @@ nav button.on { background: #fff; color: #000; }
 <div id="toast" class="fixed left-1/2 -translate-x-1/2 z-[90] px-4 py-3 rounded-2xl text-xs font-bold opacity-0 pointer-events-none transition-opacity" style="bottom:calc(96px + env(safe-area-inset-bottom))"></div>
 
 <script src="/assets/qrcode.min.js?v=1" defer></script>
-<script src="/assets/jsQR.js"></script>
+<script src="/assets/jsQR.js" defer></script>
 <script>
 (function(){
   var TOKEN_KEY='celesta_admin_tok', ROLE_KEY='celesta_admin_role';
@@ -564,7 +564,7 @@ nav button.on { background: #fff; color: #000; }
       if(curEvent)loadEventData();
     });
   }
-  setInterval(function(){if(!document.hidden&&token)refreshAll();},5000);
+  setInterval(function(){if(!document.hidden&&token)refreshAll();},60000);
   document.addEventListener('visibilitychange',function(){if(!document.hidden&&token)refreshAll();});
   window.addEventListener('focus',function(){if(token)refreshAll();});
 
@@ -944,6 +944,21 @@ nav button.on { background: #fff; color: #000; }
   // the normal collect card for an unpaid student. No mark-paid ever happens
   // from a scan alone; Cash/GPay on the collect card still does the paying.
   var scanStream=null, scanRunning=false, scanCanvas=null, lastBad='', lastBadAt=0;
+  // One scan loop at a time: scheduleScanTick() dedupes (a tick already pending
+  // for the current generation is never scheduled twice), and scanGen is bumped
+  // by stopScan() so a stale pending tick from a closed/reopened scanner dies
+  // instead of starting a second loop. scanTickPendingGen=-1 means none pending.
+  var scanTickPendingGen=-1, scanGen=0;
+  function scheduleScanTick(){
+    if(!scanRunning)return;
+    if(scanTickPendingGen===scanGen)return;
+    scanTickPendingGen=scanGen;
+    var g=scanGen;
+    setTimeout(function(){
+      if(scanTickPendingGen===g)scanTickPendingGen=-1;
+      if(g===scanGen&&scanRunning)requestAnimationFrame(scanTick);
+    },100);
+  }
   function parseRegId(text){
     if(!text)return '';
     var m=String(text).match(/reg_[A-Za-z0-9_-]{8,32}/);
@@ -953,6 +968,7 @@ nav button.on { background: #fff; color: #000; }
   function scanMsg(t,err){var m=$('scan-msg');if(!m)return;m.textContent=t||'';m.className='msg text-center'+(err?' err':'');}
   function stopScan(){
     scanRunning=false;
+    scanGen++;
     if(scanStream){scanStream.getTracks().forEach(function(tr){tr.stop();});scanStream=null;}
     var v=$('scan-video'); if(v)v.srcObject=null;
   }
@@ -975,9 +991,10 @@ nav button.on { background: #fff; color: #000; }
         }
       }
     }catch(e){/* bad frame — keep scanning */}
-    setTimeout(function(){if(scanRunning)requestAnimationFrame(scanTick);},100);
+    scheduleScanTick();
   }
   function openScanner(){
+    stopScan(); // a previous stream/loop (double-tap) is torn down first, so only one loop can run
     $('scan-overlay').classList.remove('hide');
     $('scan-paid').classList.add('hide');
     $('btn-scan-another').classList.add('hide');
@@ -1051,7 +1068,7 @@ nav button.on { background: #fff; color: #000; }
       // code held in frame repeats the message at most once per 2 seconds.
       var now=Date.now();
       if(text!==lastBad||now-lastBadAt>2000){lastBad=text;lastBadAt=now;scanMsg('Not a SPARK ticket QR — try again.',1);}
-      if(scanRunning)scanTick();
+      scheduleScanTick();
       return;
     }
     stopScan();

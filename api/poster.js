@@ -36,6 +36,7 @@ export default async function handler(req, res) {
       res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=300');
       return res.status(200).send(buf);
     } catch (e) {
+      console.error('poster handler failed', e);
       return res.status(500).json({ error: 'Storage unavailable' });
     }
   }
@@ -65,15 +66,22 @@ export default async function handler(req, res) {
     if (!okMagic) return res.status(400).json({ error: 'Image data does not match its declared format' });
     try {
       const prev = await redis.hget('celesta:posters', event);
+      // Snapshot FIRST, then overwrite: if the snapshot write fails, abort
+      // with a 500 and leave the current poster untouched. Writing it after
+      // the overwrite meant a failed snapshot lost the old poster forever.
+      let prevKey = null;
+      if (prev) {
+        prevKey = event + ':' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+        try { await redis.set('celesta:poster-prev:' + prevKey, prev, { ex: 30 * 24 * 3600 }); }
+        catch (e) {
+          console.error('poster snapshot failed', e);
+          return res.status(500).json({ error: 'Storage unavailable' });
+        }
+      }
       await redis.hset('celesta:posters', { [event]: b64 });
       // The previous poster goes to a Redis snapshot key, NOT into the log
       // entry: a ~900KB base64 blob in every undo entry would bloat the
       // 500-entry activity log past the free tier.
-      let prevKey = null;
-      if (prev) {
-        prevKey = event + ':' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-        try { await redis.set('celesta:poster-prev:' + prevKey, prev, { ex: 30 * 24 * 3600 }); } catch { prevKey = null; }
-      }
       await appendLog({
         actor: 'write', action: 'Poster updated',
         detail: EVENTS[event] + ' poster ' + (prev ? 'replaced (was custom)' : 'changed from the original'),
@@ -82,6 +90,7 @@ export default async function handler(req, res) {
       }, req);
       return res.status(200).json({ ok: true, event });
     } catch (e) {
+      console.error('poster handler failed', e);
       return res.status(500).json({ error: 'Storage unavailable' });
     }
   }
@@ -91,10 +100,19 @@ export default async function handler(req, res) {
     if (!EVENTS[event]) return res.status(400).json({ error: 'Unknown event' });
     try {
       const prev = await redis.hget('celesta:posters', event);
+      // Snapshot FIRST, then delete: if the snapshot write fails, abort
+      // with a 500 and leave the current poster untouched.
+      let prevKey = null;
+      if (prev) {
+        prevKey = event + ':' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+        try { await redis.set('celesta:poster-prev:' + prevKey, prev, { ex: 30 * 24 * 3600 }); }
+        catch (e) {
+          console.error('poster snapshot failed', e);
+          return res.status(500).json({ error: 'Storage unavailable' });
+        }
+      }
       await redis.hdel('celesta:posters', event);
       if (prev) {
-        let prevKey = event + ':' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-        try { await redis.set('celesta:poster-prev:' + prevKey, prev, { ex: 30 * 24 * 3600 }); } catch { prevKey = null; }
         await appendLog({
           actor: 'write', action: 'Poster reset',
           detail: EVENTS[event] + ' poster reset to the original',
@@ -104,6 +122,7 @@ export default async function handler(req, res) {
       }
       return res.status(200).json({ ok: true, event });
     } catch (e) {
+      console.error('poster handler failed', e);
       return res.status(500).json({ error: 'Storage unavailable' });
     }
   }

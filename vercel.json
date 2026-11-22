@@ -20,7 +20,7 @@
         },
         {
           "key": "Permissions-Policy",
-          "value": "camera=(), microphone=(), geolocation=()"
+          "value": "microphone=(), geolocation=()"
         },
         {
           "key": "Content-Security-Policy",
@@ -28,6 +28,15 @@
         }
       ],
       "source": "/(.*)"
+    },
+    {
+      "source": "/fees*",
+      "headers": [
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(self), microphone=(), geolocation=()"
+        }
+      ]
     },
     {
       "source": "/styles.css",
@@ -191,6 +200,10 @@
     {
       "destination": "/map.html",
       "source": "/maps"
+    },
+    {
+      "destination": "/map.html",
+      "source": "/map"
     },
     {
       "destination": "/contact.html",

@@ -80,12 +80,12 @@ export default async function handler(req, res) {
 
   const info = clientInfo(req);
   const failKey = 'celesta:loginfail:' + (info.ip || 'unknown');
-  try {
-    const fails = Number(await redis.get(failKey) || 0);
-    if (fails >= LOCK_AFTER) {
-      return res.status(429).json({ error: 'Too many wrong attempts. Try again in 15 minutes.' });
-    }
-  } catch { /* lockout check unavailable — continue */ }
+  // No pre-check GET here: a check-then-act read lets concurrent bursts all
+  // see < LOCK_AFTER before any increment. The lockout is enforced below,
+  // atomically, by INCR-ing on each failed password and checking the
+  // returned count. A correct password still logs in (and clears the key)
+  // even inside the window, so a shared venue IP is not locked out for
+  // everyone by one person's wrong guesses.
 
   // Constant-time compare: hash both sides with SHA-256 (always 32 bytes,
   // so timingSafeEqual never throws on length) instead of ===, which
@@ -103,14 +103,21 @@ export default async function handler(req, res) {
     await appendLog({ type: 'login', actor: 'read', action: 'Read-only admin logged in' }, req);
     return res.status(200).json({ ok: true, role: 'read', token: sign('read') });
   }
-  // Wrong password: count it toward the lockout.
+  // Wrong password: INCR FIRST (atomic), then check the returned count.
+  // The increment is the enforcement, so concurrent bursts cannot all
+  // slip under the threshold. n > LOCK_AFTER (i.e. the 6th wrong attempt
+  // in the window) is a 429; earlier failures are a 401.
+  let failCount = 0;
   try {
-    const n = await redis.incr(failKey);
-    if (n === 1) {
+    failCount = await redis.incr(failKey);
+    if (failCount === 1) {
       try { await redis.expire(failKey, LOCK_WINDOW); }
       catch { try { await redis.del(failKey); } catch {} } // never leave a key with no TTL
     }
-  } catch { /* ignore */ }
+  } catch { /* ignore — Redis failure never blocks a real login */ }
+  if (failCount > LOCK_AFTER) {
+    return res.status(429).json({ error: 'Too many wrong attempts. Try again in 15 minutes.' });
+  }
   // Log failed attempts, but at most one per IP every 5 minutes so a flood
   // of wrong passwords can't flush real entries out of the capped log.
   try {

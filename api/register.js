@@ -6,7 +6,7 @@
 //    and are rejected outright with a generic error (no reason given).
 //  - timing: the form records when it was opened; a submit in under 2
 //    seconds is too fast for a human and gets flagged.
-//  - per-IP rate limit: 100 registrations per 10 minutes (spam flood guard)
+//  - per-IP rate limit: 600 registrations per 10 minutes (spam flood guard)
 //  - phone must be a valid Indian 10-digit mobile (after +91 / leading 0)
 //  - same phone or email already registered for the same event → duplicate
 //  - gibberish / junk names, schools and emails are FLAGGED, not blocked:
@@ -17,7 +17,7 @@ import { Redis } from '@upstash/redis';
 import { randomBytes } from 'crypto';
 import { loadEvents } from './events.js';
 import { normPhone, validPhone, regMarkerKeys, MARKER_TTL } from './admin-login.js';
-import { sendMail, buildConfirmationEmail } from '../lib/email.js';
+import { sendMail, buildConfirmationEmail, mailConfigured } from '../lib/email.js';
 export { normPhone, validPhone, regMarkerKeys, MARKER_TTL } from './admin-login.js';
 
 // Redis client (was missing: every redis.* call threw ReferenceError and
@@ -27,11 +27,42 @@ const redis = new Redis({
   token: process.env.UPSTASH_REDIS_REST_TOKEN,
 });
 
-// 300 per 10 min per IP: the whole venue shares one public IP, and the
-// 9:30-10:00 rush is ~135-150 submissions. 100 would 429 students past #100.
-// Duplicates are already blocked per phone+email, and junk is flagged.
-const RL_LIMIT = 300;
+// 600 per 10 min per IP: the whole venue shares one public IP, and the
+// 9:30-10:00 rush is ~135-150 submissions. 300 would 429 students once
+// timed-out retries burn counts. Duplicates are already blocked per
+// phone+email, and junk is flagged.
+const RL_LIMIT = 600;
 const RL_WINDOW = 600;   // per 10 minutes
+
+// Marker TTL, local to this file: 7 days. The shared MARKER_TTL in
+// api/admin-login.js is still 30 days and this file may NOT edit that file;
+// align the shared constant to 7 days later so every marker agrees.
+// (The marker only bounds the uniqueness claim; the stored record is the
+// real duplicate guard, via the hgetall scan backstop.)
+const LOCAL_MARKER_TTL = 7 * 24 * 3600;
+
+// One generic duplicate message for BOTH phone and email matches: the two
+// old messages ("This phone number is…" vs "This email is…") acted as an
+// oracle revealing which identifier was already registered.
+const DUPLICATE_ERROR = 'Already registered for this event';
+
+// Scan the stored records for a real duplicate of this phone/email for
+// this event. Returns 'phone' | 'email' | null. THROWS if the scan itself
+// fails, so callers can fail closed instead of guessing.
+// (A marker key alone is NOT proof: a function killed between the marker
+// SET NX and the HSET leaves an orphan marker with no record behind it.)
+async function findDuplicate(ev, phoneNorm, emailNorm) {
+  const all = await redis.hgetall('celesta:regs');
+  if (!all) return null;
+  for (const v of Object.values(all)) {
+    let r = null;
+    try { r = typeof v === 'object' ? v : JSON.parse(v); } catch { r = null; }
+    if (!r || (r.eventSlug !== ev.slug && r.event !== ev.name)) continue;
+    if (normPhone(r.phone) === phoneNorm) return 'phone';
+    if (emailNorm && r.email && String(r.email).trim().toLowerCase() === emailNorm.toLowerCase()) return 'email';
+  }
+  return null;
+}
 
 // Client IP: trust only what the platform sets. Vercel overwrites x-real-ip
 // with the connecting IP and appends it as the LAST entry of X-Forwarded-For.
@@ -143,23 +174,18 @@ export default async function handler(req, res) {
   const emailNorm = String(email || '').trim();
 
   // Duplicate: same phone or same email already registered for THIS event.
-  // (Same student in a different event is fine.)
+  // (Same student in a different event is fine.) One generic 409 either
+  // way — never reveal which identifier matched.
+  // FAIL CLOSED: if the scan itself fails we cannot prove this is not a
+  // duplicate, so refuse (503) instead of writing blind.
   try {
-    const all = await redis.hgetall('celesta:regs');
-    if (all) {
-      for (const v of Object.values(all)) {
-        let r = null;
-        try { r = typeof v === 'object' ? v : JSON.parse(v); } catch { r = null; }
-        if (!r || (r.eventSlug !== ev.slug && r.event !== ev.name)) continue;
-        if (normPhone(r.phone) === phoneNorm) {
-          return res.status(409).json({ error: 'This phone number is already registered for ' + ev.name });
-        }
-        if (emailNorm && r.email && String(r.email).trim().toLowerCase() === emailNorm.toLowerCase()) {
-          return res.status(409).json({ error: 'This email is already registered for ' + ev.name });
-        }
-      }
+    if (await findDuplicate(ev, phoneNorm, emailNorm)) {
+      return res.status(409).json({ error: DUPLICATE_ERROR });
     }
-  } catch { /* duplicate check unavailable — continue, storage write will still run */ }
+  } catch (e) {
+    console.error('duplicate scan failed', e);
+    return res.status(503).json({ error: 'Please try again' });
+  }
 
   // Rate limit AFTER validation: invalid requests don't burn quota, and a
   // flood of junk still gets stopped before the write. Fail open: if Redis is
@@ -172,7 +198,10 @@ export default async function handler(req, res) {
       catch { try { await redis.del(key); } catch {} } // never leave a key with no TTL
     }
     if (n > RL_LIMIT) return res.status(429).json({ error: 'Too many registrations from this device. Try again in a few minutes.' });
-  } catch { /* rate limit unavailable — continue */ }
+  } catch (e) {
+    // Rate limiting is a soft guard: log the failure and continue.
+    console.error('rate limit check failed', e);
+  }
 
   // Soft flags for the admin (never blocks a real student).
   const reasons = [];
@@ -203,20 +232,56 @@ export default async function handler(req, res) {
   // Atomic uniqueness claim: SET NX so two concurrent submissions with the
   // same phone/email for this event cannot both write (the scan above is the
   // backstop for rows created before markers existed).
+  // A marker that exists with NO stored record behind it is an orphan
+  // (the function was killed between the marker SET and the HSET, or a
+  // failed write never rolled it back): delete it and reclaim the claim
+  // instead of blocking the real student forever. A 409 is returned only
+  // when a real stored record exists.
   const mk = regMarkerKeys(ev.slug, phoneNorm, emailNorm);
   try {
     if (mk.phone) {
-      const ok = await redis.set(mk.phone, id, { nx: true, ex: MARKER_TTL });
-      if (!ok) return res.status(409).json({ error: 'This phone number is already registered for ' + ev.name });
-    }
-    if (mk.email) {
-      const ok = await redis.set(mk.email, id, { nx: true, ex: MARKER_TTL });
+      let ok = await redis.set(mk.phone, id, { nx: true, ex: LOCAL_MARKER_TTL });
       if (!ok) {
-        if (mk.phone) try { await redis.del(mk.phone); } catch {}
-        return res.status(409).json({ error: 'This email is already registered for ' + ev.name });
+        let dup;
+        try { dup = await findDuplicate(ev, phoneNorm, emailNorm); }
+        catch (e) { console.error('duplicate verify failed', e); return res.status(503).json({ error: 'Please try again' }); }
+        if (dup) return res.status(409).json({ error: DUPLICATE_ERROR });
+        try { await redis.del(mk.phone); } catch {}
+        ok = await redis.set(mk.phone, id, { nx: true, ex: LOCAL_MARKER_TTL });
+        if (!ok) return res.status(409).json({ error: DUPLICATE_ERROR });
       }
     }
-  } catch { /* marker store unavailable — fall through to the scan-checked write */ }
+    if (mk.email) {
+      let ok = await redis.set(mk.email, id, { nx: true, ex: LOCAL_MARKER_TTL });
+      if (!ok) {
+        let dup;
+        try { dup = await findDuplicate(ev, phoneNorm, emailNorm); }
+        catch (e) {
+          console.error('duplicate verify failed', e);
+          if (mk.phone) try { await redis.del(mk.phone); } catch {}
+          return res.status(503).json({ error: 'Please try again' });
+        }
+        if (dup) {
+          if (mk.phone) try { await redis.del(mk.phone); } catch {}
+          return res.status(409).json({ error: DUPLICATE_ERROR });
+        }
+        try { await redis.del(mk.email); } catch {}
+        ok = await redis.set(mk.email, id, { nx: true, ex: LOCAL_MARKER_TTL });
+        if (!ok) {
+          if (mk.phone) try { await redis.del(mk.phone); } catch {}
+          return res.status(409).json({ error: DUPLICATE_ERROR });
+        }
+      }
+    }
+  } catch (e) {
+    // Marker store failed: the scan already passed, so a failed marker
+    // means the uniqueness backstop is gone. Fail closed (503) and roll
+    // back any marker already claimed, so the retry is not blocked.
+    console.error('marker store failed', e);
+    if (mk.phone) try { await redis.del(mk.phone); } catch {}
+    if (mk.email) try { await redis.del(mk.email); } catch {}
+    return res.status(503).json({ error: 'Please try again' });
+  }
 
   // Chest number, assigned at REGISTRATION time (owner's call). Per-event
   // atomic sequence (Redis INCR) so two simultaneous registrations never
@@ -237,8 +302,20 @@ export default async function handler(req, res) {
   }
 
   try {
-    await redis.hset('celesta:regs', { [id]: JSON.stringify(record) });
-    await redis.zadd('celesta:reglist', { score: Date.now(), member: id });
+    // HSET + ZADD together in one pipeline so they land atomically: two
+    // separate awaits could leave the record in the hash but missing from
+    // reglist (invisible in the admin list, yet blocking re-registration)
+    // if Vercel kills the function between them. Falls back to sequential
+    // calls only if the client has no pipeline (local test stubs).
+    if (typeof redis.pipeline === 'function') {
+      const p = redis.pipeline();
+      p.hset('celesta:regs', { [id]: JSON.stringify(record) });
+      p.zadd('celesta:reglist', { score: Date.now(), member: id });
+      await p.exec();
+    } else {
+      await redis.hset('celesta:regs', { [id]: JSON.stringify(record) });
+      await redis.zadd('celesta:reglist', { score: Date.now(), member: id });
+    }
   } catch (e) {
     console.error('register write failed', e);
     // Roll the markers back so a failed write doesn't block the student.
@@ -250,10 +327,13 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Storage unavailable' });
   }
 
-  // Confirmation email, best-effort: it is awaited (with an 8s cap inside
-  // sendMail) so Vercel never kills it mid-send, but a mail failure NEVER
-  // fails the registration or changes the ticket the student gets.
-  // When Gmail is not configured, sendMail returns false immediately.
+  // Confirmation email, best-effort and NOT awaited: it is fired in the
+  // background so the 8s SMTP step never sits inside the 10s Vercel limit
+  // (a kill mid-send used to leave the student seeing a failure, then a
+  // confusing 409 on retry with no ticket id). emailSent reports whether
+  // mail is configured, i.e. whether an email will be sent. A mail failure
+  // NEVER fails the registration or changes the ticket the student gets.
+  // When Gmail is not configured, no mail is sent and emailSent is false.
   let emailSent = false;
   if (emailNorm) {
     try {
@@ -261,9 +341,13 @@ export default async function handler(req, res) {
         event: ev.name, name, school, members: record.members,
         phone: phoneNorm, fee: ev.fee || '', id, team: teamSize,
       });
-      emailSent = await sendMail({ to: emailNorm, ...mail });
+      if (mailConfigured()) {
+        emailSent = true;
+        sendMail({ to: emailNorm, ...mail }).catch(e => console.error('confirmation email failed', e));
+      }
     } catch (e) {
       console.error('confirmation email failed', e);
+      emailSent = false;
     }
   }
   return res.status(200).json(emailNorm ? { ok: true, id, emailSent } : { ok: true, id });

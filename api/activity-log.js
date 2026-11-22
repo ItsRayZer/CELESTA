@@ -256,7 +256,8 @@ async function applyUndo(u) {
       return { ok: true, message: prev ? 'Previous poster restored' : 'Poster reset to the original' };
     }
     return { ok: false, error: 'Unknown undo type' };
-  } catch {
+  } catch (e) {
+    console.error('activity-log applyUndo failed', e);
     return { ok: false, error: 'Storage unavailable' };
   }
 }
@@ -269,7 +270,8 @@ export default async function handler(req, res) {
     try {
       const entries = await recentEntries(MAX_ENTRIES);
       return res.status(200).json({ entries });
-    } catch {
+    } catch (e) {
+      console.error('activity-log handler failed', e);
       return res.status(500).json({ error: 'Storage unavailable' });
     }
   }
@@ -292,7 +294,8 @@ export default async function handler(req, res) {
         target: orig.target, undoes: id,
       }, req);
       return res.status(200).json({ ok: true, message: r.message });
-    } catch {
+    } catch (e) {
+      console.error('activity-log handler failed', e);
       return res.status(500).json({ error: 'Storage unavailable' });
     }
   }

@@ -22,8 +22,10 @@ const RELAY_TIMEOUT_MS = 8000;
 // 1. Origin/Referer allowlist — stops casual direct calls to the endpoint
 //    from curl or another site. A determined caller can spoof Origin, so
 //    this is a first layer only; the rate limit and daily cap are the
-//    real guards. Deployment URLs are NOT allowlisted, so the AI silently
-//    falls back to local answers when the site is opened via one.
+//    real guards. The live domain AND this project's own Vercel
+//    deployment hosts are allowlisted, so the AI works on test
+//    deployments too — a deployment-only 403 used to make the chatbot
+//    untestable before promoting. Any other origin is still rejected.
 // 2. Per-IP rate limit: 60 requests per 10 minutes (venue Wi-Fi shares
 //    one public IP for 150-200 students, so 20 was too low).
 // 3. Daily global cap: 1000 AI calls per day. Past that, 429. This is
@@ -45,10 +47,19 @@ const ALLOWED_HOSTS = new Set([
   'localhost',
   '127.0.0.1',
 ]);
+// This project's own Vercel deployment hosts: any celesta-* preview /
+// branch deployment of this repo (e.g. celesta-66a42m6jd-...vercel.app),
+// plus the two named project hosts (also in ALLOWED_HOSTS above).
+// Any other *.vercel.app host is still rejected — the allowlist stays
+// closed, no wildcard origins, no '*'.
+const PROJECT_DEPLOY_HOST = /^(celesta-[a-z0-9-]+|spark-fest|celesta-fest)\.vercel\.app$/;
 function originAllowed(req) {
   const val = String(req.headers['origin'] || req.headers['referer'] || '').trim();
   if (!val) return false;
-  try { return ALLOWED_HOSTS.has(new URL(val).hostname); } catch { return false; }
+  try {
+    const host = new URL(val).hostname;
+    return ALLOWED_HOSTS.has(host) || PROJECT_DEPLOY_HOST.test(host);
+  } catch { return false; }
 }
 async function redisRateLimited(ip) {
   try {

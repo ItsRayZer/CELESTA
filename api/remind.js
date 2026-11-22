@@ -1,11 +1,13 @@
 // GET /api/remind — daily reminder cron (Vercel cron, 1:00 AM UTC = 6:30 AM
 // IST). Sends reminder emails ONLY on 26 Nov 2026 ("tomorrow is SPARK") and
 // 27 Nov 2026 ("today is the day"). On any other date it does nothing.
-// Idempotent: mailed reg IDs are kept in one Redis Set per reminder day, so
-// a re-run on the same day never resends. Redis cost per run: ~4 commands
-// (loadEvents HVALS + HGETALL + SMEMBERS + one SADD).
-// Auth: the Vercel cron header (x-vercel-cron: 1) OR ?secret= matching the
-// REMIND_SECRET env var. Anything else gets 403.
+// Idempotent: mailed reg IDs are SADDed to one Redis Set per reminder day
+// IMMEDIATELY after each successful send, so a Vercel kill mid-run (or a
+// re-trigger) never resends to someone already mailed. Redis cost per run:
+// loadEvents HVALS + HGETALL + SMEMBERS + one SADD + EXPIRE per sent mail.
+// Auth: ONLY ?secret= matching the REMIND_SECRET env var, or an
+// Authorization header carrying it. The bare x-vercel-cron header alone
+// NEVER authorises (it is forgeable with curl). Anything else gets 403.
 // Skips silently (ok) when Gmail is not configured.
 import { Redis } from '@upstash/redis';
 import { sendMail, buildReminderEmail, mailConfigured } from '../lib/email.js';
@@ -31,10 +33,18 @@ function istToday() {
 export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
-  const isCron = req.headers['x-vercel-cron'] === '1';
+  // Secret required on EVERY invocation. The bare x-vercel-cron header is
+  // NOT trusted: anyone can forge `x-vercel-cron: 1` with curl, so the
+  // header alone must never authorise. Only ?secret= matching REMIND_SECRET
+  // or an Authorization header carrying it (bare or "Bearer <secret>")
+  // authorises. If REMIND_SECRET is unset, nothing authorises (fail closed).
   const secret = String(req.query.secret || '');
-  const secretOk = !!process.env.REMIND_SECRET && secret !== '' && secret === process.env.REMIND_SECRET;
-  if (!isCron && !secretOk) return res.status(403).json({ error: 'Forbidden' });
+  const authHeader = String(req.headers.authorization || '').trim();
+  const headerSecret = authHeader.replace(/^Bearer\s+/i, '').trim();
+  const secretOk = !!process.env.REMIND_SECRET
+    && ((secret !== '' && secret === process.env.REMIND_SECRET)
+      || (headerSecret !== '' && headerSecret === process.env.REMIND_SECRET));
+  if (!secretOk) return res.status(403).json({ error: 'Forbidden' });
 
   const day = istToday();
   const kind = REMIND_DAYS[day];
@@ -72,25 +82,26 @@ export default async function handler(req, res) {
 
     let sent = 0;
     let failed = 0;
-    const sentIds = [];
     for (const r of pending) {
       try {
         const mail = buildReminderEmail({ reg: r, fee: feeBySlug[r.eventSlug] || '', kind });
         const ok = await sendMail({ to: String(r.email).trim(), ...mail });
-        if (ok) { sent++; sentIds.push(r.id); } else failed++;
+        if (ok) {
+          sent++;
+          // Record THIS recipient immediately, before moving to the next:
+          // sends are sequential and Vercel kills the function at 10s, so
+          // a single SADD after the loop would record nothing and a
+          // re-trigger would resend to everyone already mailed.
+          try {
+            await redis.sadd(key, r.id);
+            await redis.expire(key, 604800); // 7 days
+          } catch (e) {
+            console.error('remind sadd failed', r.id, e);
+          }
+        } else failed++;
       } catch (e) {
         console.error('remind send failed', r.id, e);
         failed++;
-      }
-    }
-
-    // Record the mailed ids in ONE SADD, then let the key tidy itself up.
-    if (sentIds.length) {
-      try {
-        await redis.sadd(key, ...sentIds);
-        await redis.expire(key, 604800); // 7 days
-      } catch (e) {
-        console.error('remind sadd failed', e);
       }
     }
 

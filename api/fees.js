@@ -6,6 +6,7 @@
 // There is deliberately NO public phone lookup anywhere on this site —
 // the public /api/ticket?phone= endpoint was removed for that reason.
 import { Redis } from '@upstash/redis';
+import crypto from 'node:crypto';
 import { verify, parseVal, normPhone, validPhone } from './admin-login.js';
 import { loadEvents } from './events.js';
 
@@ -127,7 +128,9 @@ export default async function handler(req, res) {
         const evList = events.map(function (ev) {
           const list = regs.filter(function (r) { return r.eventSlug === ev.slug || r.event === ev.name; });
           const paidList = list.filter(function (r) { return r.paid; });
-          const collected = paidList.reduce(function (s, r) { return s + (Number(r.amount || 0) || parseFee(feeMap[ev.slug])); }, 0);
+          // Only fall back to the live fee when amount is missing/null/
+          // undefined. An explicit amount of 0 is 0, not the full fee.
+          const collected = paidList.reduce(function (s, r) { return s + (r.amount === undefined || r.amount === null ? parseFee(feeMap[ev.slug]) : Number(r.amount || 0)); }, 0);
           const remaining = list.filter(function (r) { return !r.paid; }).reduce(function (s) { return s + parseFee(feeMap[ev.slug]); }, 0);
           const evHist = history.filter(function (h) { return h.eventSlug === ev.slug; });
           return {
@@ -218,12 +221,43 @@ export default async function handler(req, res) {
       if (method !== 'cash' && method !== 'gpay') {
         return res.status(400).json({ error: 'Method must be cash or gpay' });
       }
+      // Per-registration lock: two admins tapping mark-paid at once must
+      // not both read paid=false and both write + push history. The lock
+      // is best-effort (10s TTL); a contender re-reads the record and
+      // reports its current state instead of writing.
+      const lockKey = 'celesta:paylock:' + id;
+      const lockVal = crypto.randomUUID();
+      let locked = false;
       try {
+        const got = await redis.set(lockKey, lockVal, { nx: true, ex: 10 });
+        locked = !!got;
+        if (!locked) {
+          const cur = parseVal(await redis.hget('celesta:regs', id));
+          if (!cur) return res.status(404).json({ error: 'Not found' });
+          if (cur.paid) {
+            const feeMap = {};
+            try {
+              (await loadEvents()).forEach(function (e) { if (e && e.slug) feeMap[e.slug] = e.fee || ''; });
+            } catch { /* fee display falls back to the record */ }
+            return res.status(200).json({ ok: true, reg: pubReg(cur, feeMap[cur.eventSlug] || ''), already: true });
+          }
+          return res.status(409).json({ error: 'already being processed, try again' });
+        }
+        // Re-read under the lock: the record may have been paid between
+        // the lock attempt and now.
         const rec = parseVal(await redis.hget('celesta:regs', id));
         if (!rec) return res.status(404).json({ error: 'Not found' });
-        // Idempotent: already paid AND has a chest → return unchanged, no
-        // double-count, no second history entry.
-        if (rec.paid && rec.chest) {
+        // Idempotent: already paid → return unchanged, no double-count,
+        // no second history entry, and never overwrite paidAt/paidMethod.
+        // A paid record without a chest only gets a chest assigned; its
+        // payment fields are left exactly as they were.
+        if (rec.paid) {
+          if (!rec.chest) {
+            try {
+              rec.chest = await nextChest(rec.eventSlug);
+              await redis.hset('celesta:regs', { [id]: JSON.stringify(rec) });
+            } catch (e) { console.error('fees chest assign failed', e); }
+          }
           const feeMap = {};
           try {
             (await loadEvents()).forEach(function (e) { if (e && e.slug) feeMap[e.slug] = e.fee || ''; });
@@ -241,24 +275,25 @@ export default async function handler(req, res) {
           (await loadEvents()).forEach(function (e) { if (e && e.slug) feeMap[e.slug] = e.fee || ''; });
         } catch { /* fee display falls back to the record */ }
         const amount = parseFee(feeMap[rec.eventSlug]) || Number(rec.amount || 0);
-        const wasPaid = !!rec.paid;
         rec.paid = true;
         rec.amount = amount;
         rec.paidMethod = method;
         rec.paidAt = new Date().toISOString();
         await redis.hset('celesta:regs', { [id]: JSON.stringify(rec) });
-        // History only for a fresh payment — never for a repeat tap, and
-        // never for a chest-only fix on an already-paid record.
-        if (!wasPaid) {
-          await pushHistory({
-            id: rec.id, chest: rec.chest || '', event: rec.event, eventSlug: rec.eventSlug,
-            name: rec.name, amount, method, at: rec.paidAt, by: 'admin',
-          });
-        }
+        // Fresh payment only — under the lock, and after the re-read
+        // above, this runs at most once per record.
+        await pushHistory({
+          id: rec.id, chest: rec.chest || '', event: rec.event, eventSlug: rec.eventSlug,
+          name: rec.name, amount, method, at: rec.paidAt, by: 'admin',
+        });
         return res.status(200).json({ ok: true, reg: pubReg(rec, feeMap[rec.eventSlug] || '') });
       } catch (e) {
         console.error('fees mark-paid failed', e);
         return res.status(500).json({ error: 'Storage unavailable' });
+      } finally {
+        if (locked) {
+          try { await redis.del(lockKey); } catch { /* lock expires on its own */ }
+        }
       }
     }
 
@@ -280,14 +315,16 @@ export default async function handler(req, res) {
         // Keep the chest: it was assigned at registration and belongs to
         // the student, not to the payment.
         await redis.hset('celesta:regs', { [id]: JSON.stringify(rec) });
-        // Remove the matching history entry, if present.
+        // Remove ALL matching history entries, if present. A past race
+        // could have pushed duplicates (which may differ in `at`, so match
+        // by id and remove every distinct stored string, count 0 = all).
         try {
           const raw = await redis.lrange(HISTORY_KEY, 0, HISTORY_CAP - 1);
-          const target = (raw || []).find(function (v) {
+          const targets = [...new Set((raw || []).filter(function (v) {
             const p = parseVal(v);
             return p && p.id === id;
-          });
-          if (target) await redis.lrem(HISTORY_KEY, 1, target);
+          }))];
+          for (const target of targets) await redis.lrem(HISTORY_KEY, 0, target);
         } catch (e) {
           console.error('fees history removal failed', e);
         }
