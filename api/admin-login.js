@@ -59,7 +59,7 @@ export function regMarkerKeys(slug, phoneNorm, emailNorm) {
     email: emailNorm ? 'celesta:reg:email:' + slug + ':' + String(emailNorm).trim().toLowerCase() : null,
   };
 }
-export const MARKER_TTL = 30 * 24 * 3600; // 30 days: bounds damage from a stale marker
+export const MARKER_TTL = 7 * 24 * 3600; // 7 days: bounds damage from a stale marker
 
 export function parseVal(v) {
   if (v == null) return null;
@@ -75,6 +75,7 @@ export default async function handler(req, res) {
   const writePw = process.env.ADMIN_WRITE_PW;
 
   if (!readPw || !writePw || !process.env.ADMIN_SECRET) {
+    console.error('admin-login config missing: ADMIN_READ_PW/ADMIN_WRITE_PW/ADMIN_SECRET not set');
     return res.status(500).json({ error: 'Admin passwords not configured in Vercel env vars' });
   }
 

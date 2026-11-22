@@ -26,6 +26,26 @@ const redis = new Redis({
 const KEY = 'celesta:activity';
 const MAX_ENTRIES = 500;
 
+// Payment-history mirror (same entry shape as api/registrations.js and
+// api/fees.js pushHistory). Kept local to avoid a circular import.
+const HISTORY_KEY = 'celesta:fees:history';
+const HISTORY_CAP = 500;
+
+async function pushHistory(entry) {
+  await redis.lpush(HISTORY_KEY, JSON.stringify(entry));
+  try { await redis.ltrim(HISTORY_KEY, 0, HISTORY_CAP - 1); } catch { /* cap is a nicety */ }
+}
+
+// Remove EVERY history entry for one registration (count 0 = all).
+async function removeHistoryFor(id) {
+  const raw = await redis.lrange(HISTORY_KEY, 0, HISTORY_CAP - 1);
+  const targets = [...new Set((raw || []).filter(function (v) {
+    const p = parseVal(v);
+    return p && p.id === id;
+  }))];
+  for (const target of targets) await redis.lrem(HISTORY_KEY, 0, target);
+}
+
 // Device type + browser, parsed from the user-agent. Best effort only.
 function parseDevice(ua) {
   if (!ua) return 'Unknown device';
@@ -154,6 +174,41 @@ async function applyUndo(u) {
         if (curMk.phone && curMk.phone !== newMk.phone) await redis.del(curMk.phone);
         if (curMk.email && curMk.email !== newMk.email) await redis.del(curMk.email);
       } catch { /* markers are a backstop */ }
+      // Mirror the payment history the same way registrations.js PATCH
+      // does: a restored paid flip moves the history with it. A history
+      // failure must not fail the undo — the record is already saved.
+      try {
+        const wasPaid = !!rec.paid, isPaid = !!restored.paid;
+        if (!wasPaid && isPaid) {
+          await pushHistory({
+            id: restored.id, chest: restored.chest || '', event: restored.event, eventSlug: restored.eventSlug,
+            name: restored.name, amount: Number(restored.amount || 0), method: restored.paidMethod || '',
+            at: restored.paidAt || new Date().toISOString(), by: 'admin',
+          });
+        } else if (wasPaid && !isPaid) {
+          await removeHistoryFor(u.id);
+        } else if (wasPaid && isPaid && restored.amount !== rec.amount) {
+          // Amount restored on a still-paid record: rewrite its history
+          // entry with the restored amount, keeping the original method/at.
+          let prev = null;
+          try {
+            const rawHist = await redis.lrange(HISTORY_KEY, 0, HISTORY_CAP - 1);
+            for (const v of rawHist || []) {
+              const p = parseVal(v);
+              if (p && p.id === u.id) { prev = p; break; }
+            }
+          } catch { /* fall back to the record's own payment fields */ }
+          await removeHistoryFor(u.id);
+          await pushHistory({
+            id: restored.id, chest: restored.chest || '', event: restored.event, eventSlug: restored.eventSlug,
+            name: restored.name, amount: Number(restored.amount || 0),
+            method: (prev && prev.method) || restored.paidMethod || '',
+            at: (prev && prev.at) || restored.paidAt || new Date().toISOString(), by: 'admin',
+          });
+        }
+      } catch (e) {
+        console.error('activity-log history mirror failed', e);
+      }
       return { ok: true, message: 'Registration restored to its previous values' };
     }
     if (u.kind === 'reg-add') {
@@ -181,6 +236,19 @@ async function applyUndo(u) {
       } catch { /* markers are a backstop; continue */ }
       await redis.hset('celesta:regs', { [rec.id]: JSON.stringify(rec) });
       await redis.zadd('celesta:reglist', { score: Date.parse(rec.at) || Date.now(), member: rec.id });
+      // Undo of a paid delete restores the record: re-push its history
+      // entry the same way registrations.js PATCH does on a paid flip.
+      if (rec.paid) {
+        try {
+          await pushHistory({
+            id: rec.id, chest: rec.chest || '', event: rec.event, eventSlug: rec.eventSlug,
+            name: rec.name, amount: Number(rec.amount || 0), method: rec.paidMethod || '',
+            at: rec.paidAt || new Date().toISOString(), by: 'admin',
+          });
+        } catch (e) {
+          console.error('activity-log history mirror failed', e);
+        }
+      }
       return { ok: true, message: 'Registration restored' };
     }
     if (u.kind === 'event-delete') {

@@ -792,12 +792,16 @@ function render(){
 }
 
 async function togglePay(id,wasPaid){
-  let amount=0;
+  let amount=0, paidMethod='';
   if(!wasPaid){
     const v=prompt('Payment amount (₹):','');
     if(v===null)return;
     amount=parseInt(v,10);
     if(!amount||amount<=0){toast('Enter a valid amount above ₹0');return;}
+    const m=prompt('Payment method — type cash or gpay:','cash');
+    if(m===null)return;
+    paidMethod=String(m).trim().toLowerCase();
+    if(paidMethod!=='cash'&&paidMethod!=='gpay'){toast('Enter cash or gpay');return;}
   }
   // Optimistic: show the change instantly, undo it if the server says no.
   const x=REGS.find(r=>r.id===id);
@@ -807,7 +811,7 @@ async function togglePay(id,wasPaid){
   $('sPaid').textContent=REG_PAID_N;$('sAmt').textContent=fmt(REG_PAID_AMT);$('sPend').textContent=REG_TOTAL-REG_PAID_N;
   const undo=()=>{if(x){x.paid=oldPaid;x.amount=oldAmt;}if(!wasPaid){REG_PAID_N--;REG_PAID_AMT-=amount;}else{REG_PAID_N++;REG_PAID_AMT+=oldAmt;}render();};
   try{
-    const r=await fetch('/api/registrations',{method:'PATCH',headers:authHeaders(true),body:JSON.stringify({id,paid:!wasPaid,amount})});
+    const r=await fetch('/api/registrations',{method:'PATCH',headers:authHeaders(true),body:JSON.stringify({id,paid:!wasPaid,amount,paidMethod:!wasPaid?paidMethod:undefined})});
     if(r.ok){
       // Reconcile with the server's saved record: a refresh that fired
       // mid-PATCH would otherwise show the old paid state until the

@@ -415,6 +415,7 @@ export default async function handler(req, res) {
         .map(e => ({ ...e, poster: posterSlugs.has(e.slug) }));
       return res.status(200).json({ events: list });
     } catch (e) {
+      console.error('events list failed, serving defaults', e);
       return res.status(200).json({ events: DEFAULT_EVENTS.filter(e => e.visible) });
     }
   }

@@ -34,12 +34,11 @@ const redis = new Redis({
 const RL_LIMIT = 600;
 const RL_WINDOW = 600;   // per 10 minutes
 
-// Marker TTL, local to this file: 7 days. The shared MARKER_TTL in
-// api/admin-login.js is still 30 days and this file may NOT edit that file;
-// align the shared constant to 7 days later so every marker agrees.
+// Marker TTL is single-sourced from api/admin-login.js (shared MARKER_TTL,
+// imported above): every marker path uses the same value, so a marker set
+// here and a marker set by the PATCH/undo paths always agree.
 // (The marker only bounds the uniqueness claim; the stored record is the
 // real duplicate guard, via the hgetall scan backstop.)
-const LOCAL_MARKER_TTL = 7 * 24 * 3600;
 
 // One generic duplicate message for BOTH phone and email matches: the two
 // old messages ("This phone number is…" vs "This email is…") acted as an
@@ -143,7 +142,7 @@ export default async function handler(req, res) {
   let ev = null;
   let storageDown = false;
   try {
-    const events = await loadEvents();
+    const events = await loadEvents({ strict: true });
     ev = events.find(e => e.slug === event || e.name === event) || null;
   } catch (e) {
     storageDown = true;
@@ -172,6 +171,15 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Enter a valid 10-digit mobile number' });
   }
   const emailNorm = String(email || '').trim();
+  // Email format is validated HERE, before the duplicate scan / marker
+  // claim: without this, an invalid string like "not-an-email" is treated
+  // as a real identity and matches a stored record (or a leftover marker)
+  // carrying the same string, returning a misleading 409 "Already
+  // registered". Email is optional (empty = no email), but a supplied
+  // email must be well-formed.
+  if (emailNorm && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailNorm)) {
+    return res.status(400).json({ error: 'Enter a valid email address' });
+  }
 
   // Duplicate: same phone or same email already registered for THIS event.
   // (Same student in a different event is fine.) One generic 409 either
@@ -243,6 +251,17 @@ export default async function handler(req, res) {
     } catch (e) { break; }
     id = newRegId();
   }
+  // Final uniqueness check: the loop above can exit with an unchecked id —
+  // the 5th-attempt regenerate is never checked, and an HGET error breaks
+  // out unchecked. One last hget; if the id exists (or the check itself
+  // fails), refuse instead of writing.
+  try {
+    const finalCheck = await redis.hget('celesta:regs', id);
+    if (finalCheck) return res.status(503).json({ error: 'Please try again' });
+  } catch (e) {
+    console.error('final id check failed', e);
+    return res.status(503).json({ error: 'Please try again' });
+  }
   const record = {
     id, event: ev.name, eventSlug: ev.slug, name, school, phone: phoneNorm, email: emailNorm, team: teamSize,
     teamName: teamName || '', members: Array.isArray(members) ? members.map(String) : [],
@@ -261,19 +280,19 @@ export default async function handler(req, res) {
   const mk = regMarkerKeys(ev.slug, phoneNorm, emailNorm);
   try {
     if (mk.phone) {
-      let ok = await redis.set(mk.phone, id, { nx: true, ex: LOCAL_MARKER_TTL });
+      let ok = await redis.set(mk.phone, id, { nx: true, ex: MARKER_TTL });
       if (!ok) {
         let dup;
         try { dup = await findDuplicate(ev, phoneNorm, emailNorm); }
         catch (e) { console.error('duplicate verify failed', e); return res.status(503).json({ error: 'Please try again' }); }
         if (dup) return res.status(409).json({ error: DUPLICATE_ERROR });
         try { await redis.del(mk.phone); } catch {}
-        ok = await redis.set(mk.phone, id, { nx: true, ex: LOCAL_MARKER_TTL });
+        ok = await redis.set(mk.phone, id, { nx: true, ex: MARKER_TTL });
         if (!ok) return res.status(409).json({ error: DUPLICATE_ERROR });
       }
     }
     if (mk.email) {
-      let ok = await redis.set(mk.email, id, { nx: true, ex: LOCAL_MARKER_TTL });
+      let ok = await redis.set(mk.email, id, { nx: true, ex: MARKER_TTL });
       if (!ok) {
         let dup;
         try { dup = await findDuplicate(ev, phoneNorm, emailNorm); }
@@ -287,7 +306,7 @@ export default async function handler(req, res) {
           return res.status(409).json({ error: DUPLICATE_ERROR });
         }
         try { await redis.del(mk.email); } catch {}
-        ok = await redis.set(mk.email, id, { nx: true, ex: LOCAL_MARKER_TTL });
+        ok = await redis.set(mk.email, id, { nx: true, ex: MARKER_TTL });
         if (!ok) {
           if (mk.phone) try { await redis.del(mk.phone); } catch {}
           return res.status(409).json({ error: DUPLICATE_ERROR });
@@ -364,7 +383,18 @@ export default async function handler(req, res) {
       });
       if (mailConfigured()) {
         emailSent = true;
-        sendMail({ to: emailNorm, ...mail }).catch(e => console.error('confirmation email failed', e));
+        const sendPromise = sendMail({ to: emailNorm, ...mail });
+        sendPromise.catch(e => console.error('confirmation email failed', e));
+        // Keep the send alive past the response when the platform offers
+        // waitUntil (Vercel @vercel/functions). That package is NOT a
+        // dependency here, so the dynamic import fails fast and is caught
+        // — the send stays best-effort fire-and-forget and nothing crashes
+        // if waitUntil is unavailable. If the package is ever added, the
+        // same code starts using it with no further change.
+        try {
+          const { waitUntil } = await import('@vercel/functions');
+          if (typeof waitUntil === 'function') waitUntil(sendPromise);
+        } catch {}
       }
     } catch (e) {
       console.error('confirmation email failed', e);

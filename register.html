@@ -304,6 +304,20 @@
       if(lab)lab.textContent=n<2?'Other team members':'Other team members ('+(n-1)+' more)';
     }
     if(isSelect){teamSel.addEventListener('change',syncMembers);syncMembers();}
+    // F-26: cap the members box at team-1 names as the user types, so
+    // they cannot enter more names than the team size allows.
+    var memTa=document.getElementById('in-members');
+    if(memTa){
+      memTa.addEventListener('input',function(){
+        var n=parseInt(teamSel.value,10)||1;
+        var max=Math.max(0,n-1), lines=memTa.value.split(/\n/), kept=[], count=0;
+        for(var i=0;i<lines.length;i++){
+          if(lines[i].trim()){count++;if(count>max)continue;}
+          kept.push(lines[i]);
+        }
+        if(kept.length!==lines.length)memTa.value=kept.join('\n');
+      });
+    }
     form.addEventListener('input',function(ev){
       var f=ev.target.closest&&ev.target.closest('.field');
       if(f)f.classList.remove('invalid');
@@ -327,7 +341,7 @@
       mark('phone',/^[6-9]\d{9}$/.test(phone));
       mark('email',!email||/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email));
       mark('team',team>=e.teamMin&&team<=e.teamMax);
-      if(team>1)mark('members',list.length>=team-1);
+      if(team>1)mark('members',list.length===team-1);
       var agree=document.getElementById('in-agree');
       if(agree)mark('agree',agree.checked);
       if(!ok){if(first&&first.scrollIntoView)first.scrollIntoView({behavior:'smooth',block:'center'});return;}

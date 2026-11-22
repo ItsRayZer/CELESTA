@@ -84,6 +84,7 @@ export default async function handler(req, res) {
     if (req.method === 'GET') res.setHeader('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300');
     return res.status(200).json({ total, today });
   } catch (e) {
+    console.error('visits failed', e);
     return res.status(200).json({ total: 0, today: 0 });
   }
 }

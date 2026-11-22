@@ -913,7 +913,7 @@ nav button.on { background: #fff; color: #000; }
     card.style.cssText='background:linear-gradient(135deg,rgba(10,132,255,.4),rgba(191,90,242,.4));border:1px solid rgba(255,255,255,.28)';
     card.innerHTML='<div class="w-10 h-10 rounded-full flex items-center justify-center font-black shrink-0" style="background:#fff;color:#000">'+esc((r.teamName||r.name||'?')[0].toUpperCase())+'</div>'
       +'<div class="min-w-0 flex-1"><div class="font-extrabold truncate stu-name">'+esc(r.teamName||r.name)+'</div>'
-      +'<div class="text-xs" style="color:rgba(255,255,255,.75)">CHEST '+(r.chest||'—')+' / '+(r.paid?'fee cleared':inr(r.feeAmount)+' due')+'</div></div>'
+      +'<div class="text-xs" style="color:rgba(255,255,255,.75)">CHEST '+esc(r.chest||'—')+' / '+(r.paid?'fee cleared':inr(r.feeAmount)+' due')+'</div></div>'
       +'<button type="button" class="btn b-ghost !py-2 text-xs" id="btn-change-student">Change</button>';
     $('btn-change-student').onclick=function(){selectedId=null;$('collect-detail').classList.add('hide');card.classList.add('hide');renderCollectList();};
     // detail
@@ -964,10 +964,15 @@ nav button.on { background: #fff; color: #000; }
   function lookupById(code){
     if(code===lastIdLookup)return;
     lastIdLookup=code;
-    fetch('/api/ticket?id='+encodeURIComponent(code)).then(function(r){return r.json();}).then(function(d){
-      if(d&&d.ok&&d.ticket){openScannedCollect(d.ticket);return;}
-      toast('No registration found for this code',1);
-    }).catch(function(){toast('Lookup failed',1);});
+    fetch('/api/ticket?id='+encodeURIComponent(code)).then(function(r){
+      var st=r.status;
+      return r.json().then(function(d){
+        if(d&&d.ok&&d.ticket){openScannedCollect(d.ticket);return;}
+        lastIdLookup='';
+        if(st===429){toast('Too many lookups — wait a moment and try again',1);return;}
+        toast('No registration found for this code',1);
+      });
+    }).catch(function(){lastIdLookup='';toast('Lookup failed',1);});
   }
   function maybeIdLookup(now){
     var raw=($('student-search-input')?$('student-search-input').value:'').trim();
@@ -1002,30 +1007,51 @@ nav button.on { background: #fff; color: #000; }
     var cb=$('pc-confirm');
     cb.className='paybtn '+(method==='cash'?'cash':'gpay')+' flex-1';
     cb.textContent='Confirm · '+(method==='cash'?'Cash':'GPay')+' '+(r.feeAmount?inr(r.feeAmount):(r.fee||''));
+    cb.disabled=markPaidInFlight;
     $('pay-confirm-modal').classList.remove('hide');
   }
   function closePayConfirm(){pendingPayMethod=null;$('pay-confirm-modal').classList.add('hide');}
+  var markPaidInFlight=false;
   function doMarkPaid(){
     var method=pendingPayMethod;
     if(!method||!selectedId)return;
+    if(markPaidInFlight)return;
+    markPaidInFlight=true;
     var r=findReg(selectedId);
     closePayConfirm();
+    var prevCash=$('btn-pay-cash').disabled, prevGpay=$('btn-pay-gpay').disabled, prevConfirm=$('pc-confirm').disabled;
+    $('pc-confirm').disabled=true;
+    $('btn-pay-cash').disabled=true;
+    $('btn-pay-gpay').disabled=true;
+    function done(){markPaidInFlight=false;$('pc-confirm').disabled=prevConfirm;$('btn-pay-cash').disabled=prevCash;$('btn-pay-gpay').disabled=prevGpay;}
     $('collect-msg').textContent='Saving…';$('collect-msg').className='msg';
     api('/api/fees?action=mark-paid',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:selectedId,method:method})}).then(function(res){
+      done();
       if(res.status===403){toast('Write access required',1);return;}
+      if(res.status===409){toast('Payment already in progress — refreshing…');refreshAll();return;}
       if(res.data&&res.data.ok){
         var chest=(res.data.reg&&res.data.reg.chest)||(r&&r.chest)||'';
         toast('Marked paid · Chest '+(chest||''));
         $('collect-msg').textContent='Paid by '+(method==='cash'?'Cash':'GPay')+' · Chest '+(chest||'—')+' — write this number on the card.';
         $('collect-msg').className='msg ok';
+        $('btn-pay-cash').disabled=true;$('btn-pay-gpay').disabled=true;
         refreshAll();
       }else{toast((res.data&&res.data.error)||'Could not mark paid',1);}
-    }).catch(function(){toast('Connection failed',1);});
+    }).catch(function(){done();toast('Connection failed',1);});
   }
   $('btn-pay-cash').onclick=function(){confirmPay('cash');};
   $('btn-pay-gpay').onclick=function(){confirmPay('gpay');};
   $('pc-confirm').onclick=function(){doMarkPaid();};
   $('pc-cancel').onclick=function(){closePayConfirm();};
+  // Esc / backdrop close for the pay-confirm modal and the scanner overlay,
+  // matching the receipt modal's backdrop-click pattern below.
+  $('pay-confirm-modal').addEventListener('click',function(e){if(e.target===$('pay-confirm-modal'))closePayConfirm();});
+  $('scan-overlay').addEventListener('click',function(e){if(e.target===$('scan-overlay'))closeScanner();});
+  document.addEventListener('keydown',function(e){
+    if(e.key!=='Escape')return;
+    if(!$('pay-confirm-modal').classList.contains('hide'))closePayConfirm();
+    else if(!$('scan-overlay').classList.contains('hide'))closeScanner();
+  });
   $('btn-mark-unpaid').onclick=function(){
     if(!selectedId)return;
     if(role!=='write'){toast('Write access required',1);return;}
@@ -1234,7 +1260,9 @@ nav button.on { background: #fff; color: #000; }
     return '<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="'+H+'" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none" style="width:100%;height:40px;display:block">'+bars+'</svg>'
       +'<div style="text-align:center;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px;font-weight:700;letter-spacing:.35em;color:#666;margin-top:6px">'+esc(s)+'</div>';
   }
+  var currentReceipt=null;
   function openReceipt(r){
+    currentReceipt=r;
     var name=r.teamName||r.name;
     var paid=!!r.paid;
     var amount=paid?(r.amount||r.feeAmount||0):(r.feeAmount||0);
@@ -1271,13 +1299,99 @@ nav button.on { background: #fff; color: #000; }
     $('rm').classList.remove('hide');
   }
   $('rc-close').onclick=function(){$('rm').classList.add('hide');};
+  // SVG receipt fallback (ported from ticket.html downloadTicketSVG): builds
+  // the receipt from the receipt DATA, not the page, so the admin still gets
+  // a file when html2canvas fails to load or throws. Renders the SVG to a
+  // PNG via canvas; if that fails too, saves the raw .svg.
+  function downloadReceiptSVG(r){
+    var btn=$('rc-download');
+    if(btn){btn.disabled=true;btn.textContent='Preparing receipt…';}
+    var memberList=[r.name].concat(r.members||[]);
+    var paid=!!r.paid;
+    var amount=paid?(r.amount||r.feeAmount||0):(r.feeAmount||0);
+    var method=paid?(r.paidMethod==='cash'?'Cash':'GPay'):'Not paid';
+    var W=1080, H=1480, px=72, y=0, svg='';
+    svg+='<svg xmlns="http://www.w3.org/2000/svg" width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'">';
+    svg+='<rect width="'+W+'" height="'+H+'" fill="#1a0b2e"/>';
+    svg+='<rect x="0" y="0" width="'+W+'" height="56" fill="#d6ff3f"/>';
+    svg+='<text x="'+(W/2)+'" y="38" text-anchor="middle" font-family="Arial,sans-serif" font-size="26" font-weight="900" letter-spacing="4" fill="#000">'+(paid?'FEE RECEIPT  +  FEE RECEIPT  +  FEE RECEIPT':'SPARK TICKET  +  SPARK TICKET  +  SPARK TICKET')+'</text>';
+    y=56+48;
+    svg+='<text x="'+px+'" y="'+(y+10)+'" font-family="Arial,sans-serif" font-size="24" letter-spacing="4" fill="rgba(255,255,255,.7)">SPARK 2K26 · '+(paid?'OFFICIAL RECEIPT':'OFFICIAL TICKET')+'</text>';
+    svg+='<text x="'+(W-px)+'" y="'+(y+10)+'" text-anchor="end" font-family="Arial,sans-serif" font-size="26" font-weight="900" fill="'+(paid?'#22c55e':'#fbbf24')+'">'+(paid?'PAID IN FULL':'PAY AT VENUE')+'</text>';
+    y+=64;
+    svg+='<text x="'+px+'" y="'+(y+48)+'" font-family="Arial,sans-serif" font-size="64" font-weight="900" fill="#fff">'+esc(r.event)+'</text>';
+    y+=88;
+    svg+='<text x="'+px+'" y="'+(y+10)+'" font-family="Arial,sans-serif" font-size="26" letter-spacing="3" fill="rgba(255,255,255,.65)">'+(paid?'YOU PAID':'FEE DUE')+'</text>';
+    y+=52;
+    svg+='<text x="'+px+'" y="'+(y+44)+'" font-family="Arial,sans-serif" font-size="96" font-weight="900" fill="#fff">'+esc(inr(amount))+'</text>';
+    y+=88;
+    svg+='<text x="'+px+'" y="'+(y+10)+'" font-family="Arial,sans-serif" font-size="26" letter-spacing="3" fill="rgba(255,255,255,.65)">'+(r.teamName?'TEAM':'LEADER')+'</text>';
+    y+=44;
+    svg+='<text x="'+px+'" y="'+(y+30)+'" font-family="Arial,sans-serif" font-size="40" font-weight="900" fill="#fff">'+esc(r.teamName||r.name)+'</text>';
+    svg+='<text x="'+(W-px)+'" y="'+(y+30)+'" text-anchor="end" font-family="monospace" font-size="32" font-weight="700" fill="#fff">CHEST '+esc(r.chest||'—')+'</text>';
+    y+=64;
+    var rows=[
+      {k:'School',v:r.school},
+      {k:'Members',v:memberList.join(', ')+'  ·  Team of '+(r.team||1)},
+      {k:'Phone',v:r.phone},
+      {k:'Method',v:method},
+      {k:'Date',v:paid&&r.paidAt?fmtWhen(r.paidAt):'Fri, 27 Nov 2026 · 10 AM'}
+    ];
+    rows.forEach(function(row){
+      svg+='<text x="'+px+'" y="'+(y+10)+'" font-family="Arial,sans-serif" font-size="28" fill="rgba(255,255,255,.65)">'+esc(row.k)+'</text>';
+      svg+='<text x="'+(W-px)+'" y="'+(y+10)+'" text-anchor="end" font-family="Arial,sans-serif" font-size="28" font-weight="700" fill="#fff">'+esc(row.v)+'</text>';
+      y+=52;
+    });
+    y+=20;
+    var whiteY=y, whiteH=340;
+    svg+='<rect x="0" y="'+whiteY+'" width="'+W+'" height="'+whiteH+'" fill="#fff"/>';
+    var wy=whiteY+56;
+    svg+='<text x="'+px+'" y="'+wy+'" font-family="Arial,sans-serif" font-size="22" letter-spacing="3" fill="#666">VERIFY CODE</text>';
+    svg+='<text x="'+px+'" y="'+(wy+52)+'" font-family="monospace" font-size="38" font-weight="800" fill="#5b21b6">'+esc(r.id)+'</text>';
+    svg+='<text x="'+px+'" y="'+(wy+108)+'" font-family="Arial,sans-serif" font-size="24" fill="#666">Scan at the desk · Show a valid school ID</text>';
+    var qrSize=210, qrX=W-px-qrSize, qrY=whiteY+40;
+    svg+='<rect x="'+qrX+'" y="'+qrY+'" width="'+qrSize+'" height="'+qrSize+'" rx="16" fill="#fff" stroke="#eee"/>';
+    svg+=dotQRshapes(ticketUrl(r.id),qrX,qrY,qrSize);
+    y=whiteY+whiteH+36;
+    svg+='<text x="'+(W/2)+'" y="'+y+'" text-anchor="middle" font-family="Arial,sans-serif" font-size="24" letter-spacing="5" fill="rgba(255,255,255,.6)">KEEP THIS. IT’S YOUR PROOF.</text>';
+    svg+='<text x="'+(W/2)+'" y="'+(H-28)+'" text-anchor="middle" font-family="Arial,sans-serif" font-size="22" letter-spacing="3" fill="rgba(255,255,255,.5)">NEXUS · SPARK 2K26 · MAR AUGUSTHINOSE COLLEGE</text>';
+    svg+='</svg>';
+    var img=new Image();
+    var url='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
+    img.onload=function(){
+      try{
+        var c=document.createElement('canvas');c.width=W;c.height=H;
+        var cx=c.getContext('2d');cx.drawImage(img,0,0,W,H);
+        c.toBlob(function(b){
+          if(!b){saveSVG();return;}
+          var a=document.createElement('a');
+          a.href=URL.createObjectURL(b);
+          a.download='SPARK-2K26-receipt-'+r.id+'.png';
+          document.body.appendChild(a);a.click();a.remove();
+          setTimeout(function(){URL.revokeObjectURL(a.href);},4000);
+          if(btn){btn.disabled=false;btn.textContent='Download';}
+        },'image/png');
+      }catch(err){saveSVG();}
+    };
+    img.onerror=function(){saveSVG();};
+    function saveSVG(){
+      var blob=new Blob([svg],{type:'image/svg+xml'});
+      var a=document.createElement('a');
+      a.href=URL.createObjectURL(blob);
+      a.download='SPARK-2K26-receipt-'+r.id+'.svg';
+      document.body.appendChild(a);a.click();a.remove();
+      setTimeout(function(){URL.revokeObjectURL(a.href);},4000);
+      if(btn){btn.disabled=false;btn.textContent='Download';}
+    }
+    img.src=url;
+  }
   // Download = the EXACT receipt on screen, not a redraw. html2canvas
   // renders the live #rc-card to a PNG, so the download matches the modal
   // pixel for pixel (marquee, watermark, QR, barcode, everything).
   $('rc-download').onclick=function(){
     var card=$('rc-card');
     var btn=$('rc-download');
-    if(!card||typeof html2canvas==='undefined'){toast('Download unavailable',1);return;}
+    if(!card||typeof html2canvas==='undefined'){if(currentReceipt){downloadReceiptSVG(currentReceipt);}else{toast('Download unavailable — use Open Ticket',1);}return;}
     btn.disabled=true;btn.textContent='Saving…';
     var track=card.querySelector('.rc-mq-track');
     var prevAnim=track?track.style.animation:'';
@@ -1286,7 +1400,7 @@ nav button.on { background: #fff; color: #000; }
     html2canvas(card,{scale:2,backgroundColor:'#1a0b2e',useCORS:true,logging:false}).then(function(canvas){
       if(track)track.style.animation=prevAnim;
       canvas.toBlob(function(b){
-        if(!b){btn.disabled=false;btn.textContent='Download';toast('Could not save image',1);return;}
+        if(!b){btn.disabled=false;btn.textContent='Download';if(currentReceipt)downloadReceiptSVG(currentReceipt);else toast('Could not save image',1);return;}
         var a=document.createElement('a');
         a.href=URL.createObjectURL(b);
         a.download='SPARK-2K26-receipt-'+id+'.png';
@@ -1294,7 +1408,7 @@ nav button.on { background: #fff; color: #000; }
         setTimeout(function(){URL.revokeObjectURL(a.href);},4000);
         btn.disabled=false;btn.textContent='Download';
       },'image/png');
-    }).catch(function(){if(track)track.style.animation=prevAnim;btn.disabled=false;btn.textContent='Download';toast('Could not save image',1);});
+    }).catch(function(){if(track)track.style.animation=prevAnim;btn.disabled=false;btn.textContent='Download';if(currentReceipt)downloadReceiptSVG(currentReceipt);else toast('Could not save image',1);});
   };
   $('rm').addEventListener('click',function(e){if(e.target===$('rm'))$('rm').classList.add('hide');});
 

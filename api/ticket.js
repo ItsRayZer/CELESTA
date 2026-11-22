@@ -26,9 +26,13 @@ function clientIp(req) {
   return parts.length ? parts[parts.length - 1] : 'unknown';
 }
 
-// Per-IP rate limit: 60 requests per 10 minutes. Each fetch costs 2 Redis
-// commands, so without this ~5,000 bogus fetches exhaust the daily budget.
-const TICKET_RL_LIMIT = 60;
+// Per-IP rate limit: 600 requests per 10 minutes (raised from 60: the
+// ticket poll shares this bucket venue-wide with counter QR scans, and 60
+// 429s the counters in the rush — see V2-M1. Brute-force math still holds
+// at 600/10 min, ~27,000 years per IP against the 31^8 id space). Each
+// fetch costs 2 Redis commands; the private max-age=60 cache header below
+// is what keeps the poll affordable — do NOT remove it.
+const TICKET_RL_LIMIT = 600;
 const TICKET_RL_WINDOW = 600;
 
 function parseFee(fee) {
@@ -85,7 +89,7 @@ export default async function handler(req, res) {
     if (n > TICKET_RL_LIMIT) {
       return res.status(429).json({ error: 'Too many requests. Try again later.' });
     }
-  } catch { /* rate limit unavailable — serve the ticket */ }
+  } catch (e) { console.error('ticket rate limit check failed', e); /* rate limit unavailable — serve the ticket */ }
   const id = String(req.query.id || '').trim();
   if (!id) {
     return res.status(400).json({ error: 'Missing ticket id' });
@@ -96,7 +100,7 @@ export default async function handler(req, res) {
   // id). A bare chest number (01001) is deliberately NOT accepted here —
   // it is sequential and guessable, so it must never open a ticket.
   if (!/^(reg_[A-Za-z0-9_-]{8,32}|SPK-[A-Z0-9]{8})$/.test(id)) {
-    return res.status(400).json({ error: 'Missing ticket id' });
+    return res.status(400).json({ error: 'Invalid ticket id' });
   }
   try {
     const raw = await redis.hget('celesta:regs', id);

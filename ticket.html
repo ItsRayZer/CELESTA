@@ -31,7 +31,7 @@
   .tk-page .tk-state p{font-size:15px}
   .tk-page #tk-slot{width:100%;max-width:520px;min-width:0;margin:0 auto}
   .tk-page .tk-live{width:100%;max-width:520px;margin:14px auto 0;text-align:center;font-size:12px;color:rgba(255,255,255,.55)}
-  .tk-page .tk-actions{width:100%;max-width:520px;margin:16px auto 0;display:flex;gap:10px}
+  .tk-page .tk-actions{width:100%;max-width:520px;margin:16px auto 0;display:flex;flex-direction:row;gap:10px}
   .tk-page .tk-actions .tk-dl{flex:1;min-width:0}
   .tk-page .tk-actions .tk-share{flex:1;min-width:0}
   .tk-page .tk-dl-note{width:100%;max-width:520px;margin:12px auto 0;text-align:center;font-size:12px;color:rgba(255,255,255,.55);line-height:1.6}
@@ -57,8 +57,9 @@
   .rc-amt{font-size:52px;font-weight:900;line-height:1.05;letter-spacing:-.01em;margin-top:2px}
   .rc-amt small{font-size:22px;font-weight:800;color:rgba(255,255,255,.75)}
   .rc-who{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:16px}
+  .rc-who>div{min-width:0}
   .rc-who .rc-who-label{font-size:10px;font-weight:700;letter-spacing:.22em;color:rgba(255,255,255,.6);text-transform:uppercase}
-  .rc-who .rc-who-name{font-size:19px;font-weight:900;margin-top:3px}
+  .rc-who .rc-who-name{font-size:19px;font-weight:900;margin-top:3px;overflow-wrap:break-word}
   .rc-who .rc-who-date{font-size:12px;color:rgba(255,255,255,.7);margin-top:3px}
   .rc-chest-pill{flex-shrink:0;font-family:ui-monospace,Menlo,monospace;font-size:13px;font-weight:800;padding:8px 12px;border-radius:999px;border:1.5px solid rgba(255,255,255,.45);background:rgba(0,0,0,.25);white-space:nowrap}
   .rc-details{margin-top:16px;border-radius:16px;padding:14px 16px;background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.14);font-size:14px;min-width:0}
@@ -125,6 +126,9 @@
 (function(){
   function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
   function svgEsc(s){return esc(s);}
+  // Update only the button's label span, never textContent on the button
+  // itself: that would wipe the inline SVG icon (V2-m14).
+  function setBtnLabel(btn,txt){var l=btn?btn.querySelector('.tk-btn-label'):null;if(l){l.textContent=txt;}else if(btn){btn.textContent=txt;}}
   function inr(n){return '₹'+Number(n||0).toLocaleString('en-IN');}
   // Spark dot QR: a real QR code drawn as dots, finder squares kept solid so
   // it still scans. Returns SVG shape elements at (x0,y0) with the size.
@@ -186,7 +190,7 @@
     var btn=document.getElementById('tk-dl');
     var card=document.getElementById('reg-ticket');
     if(!card||typeof html2canvas==='undefined'){downloadTicketSVG(t);return;}
-    if(btn){btn.disabled=true;btn.textContent='Preparing ticket…';}
+    if(btn){btn.disabled=true;setBtnLabel(btn,'Preparing ticket…');}
     // Freeze the scrolling marquee while capturing so the banner is not
     // caught mid-scroll; restore it right after.
     var track=card.querySelector('.rc-mq-track');
@@ -195,19 +199,19 @@
     html2canvas(card,{scale:2,backgroundColor:'#1a0b2e',useCORS:true,logging:false}).then(function(canvas){
       if(track)track.style.animation=prevAnim;
       canvas.toBlob(function(b){
-        if(!b){downloadTicketSVG(t);if(btn){btn.disabled=false;btn.textContent='Download ticket';}return;}
+        if(!b){downloadTicketSVG(t);if(btn){btn.disabled=false;setBtnLabel(btn,'Download ticket');}return;}
         var a=document.createElement('a');
         a.href=URL.createObjectURL(b);
         a.download='SPARK-2K26-ticket-'+t.id+'.png';
         document.body.appendChild(a);a.click();a.remove();
         setTimeout(function(){URL.revokeObjectURL(a.href);},4000);
-        if(btn){btn.disabled=false;btn.textContent='Download ticket';}
+        if(btn){btn.disabled=false;setBtnLabel(btn,'Download ticket');}
       },'image/png');
     }).catch(function(){if(track)track.style.animation=prevAnim;downloadTicketSVG(t);});
   }
   function downloadTicketSVG(t){
     var btn=document.getElementById('tk-dl');
-    if(btn){btn.disabled=true;btn.textContent='Preparing ticket…';}
+    if(btn){btn.disabled=true;setBtnLabel(btn,'Preparing ticket…');}
     // Build the download from the ticket DATA, not from the page text, so
     // the image never garbles names. Same new receipt design as the page.
     var memberList=[t.name].concat(t.members||[]);
@@ -233,7 +237,7 @@
     svg+='<text x="'+px+'" y="'+(y+10)+'" font-family="Arial,sans-serif" font-size="26" letter-spacing="3" fill="rgba(255,255,255,.65)">'+(t.teamName?'TEAM':'LEADER')+'</text>';
     y+=44;
     svg+='<text x="'+px+'" y="'+(y+30)+'" font-family="Arial,sans-serif" font-size="40" font-weight="900" fill="#fff">'+svgEsc(t.teamName||t.name)+'</text>';
-    svg+='<text x="'+(W-px)+'" y="'+(y+30)+'" text-anchor="end" font-family="monospace" font-size="32" font-weight="700" fill="#fff">CHEST '+(t.chest||'—')+'</text>';
+    svg+='<text x="'+(W-px)+'" y="'+(y+30)+'" text-anchor="end" font-family="monospace" font-size="32" font-weight="700" fill="#fff">CHEST '+esc(t.chest||'—')+'</text>';
     y+=64;
     var rows=[
       {k:'School',v:t.school},
@@ -275,7 +279,7 @@
           a.download='SPARK-2K26-ticket-'+t.id+'.png';
           document.body.appendChild(a);a.click();a.remove();
           setTimeout(function(){URL.revokeObjectURL(a.href);},4000);
-          if(btn){btn.disabled=false;btn.textContent='Download ticket';}
+          if(btn){btn.disabled=false;setBtnLabel(btn,'Download ticket');}
         },'image/png');
       }catch(err){saveSVG();}
     };
@@ -287,7 +291,7 @@
       a.download='SPARK-2K26-ticket-'+t.id+'.svg';
       document.body.appendChild(a);a.click();a.remove();
       setTimeout(function(){URL.revokeObjectURL(a.href);},4000);
-      if(btn){btn.disabled=false;btn.textContent='Download ticket';}
+      if(btn){btn.disabled=false;setBtnLabel(btn,'Download ticket');}
     }
     img.src=url;
   }
@@ -296,6 +300,23 @@
   var slot=document.getElementById('tk-slot');
   var liveNote=document.getElementById('tk-live');
   var current=null, pollTimer=null;
+  // Ticket fetch with a ~10 s timeout so a hung request cannot stall the
+  // page (or the poll) forever. Used by the first load and by the poll.
+  function ticketFetch(){
+    var c=new AbortController();
+    var to=setTimeout(function(){c.abort();},10000);
+    return fetch('/api/ticket?id='+encodeURIComponent(id),{signal:c.signal}).then(function(r){clearTimeout(to);return r;},function(e){clearTimeout(to);throw e;});
+  }
+  // Polling has stopped (10 min cap): offer a manual refresh instead.
+  function showRefresh(){
+    liveNote.hidden=false;
+    liveNote.textContent='';
+    liveNote.appendChild(document.createTextNode('Still waiting for payment? '));
+    var b=document.createElement('button');
+    b.type='button'; b.textContent='Tap to refresh';
+    b.addEventListener('click',function(){location.reload();});
+    liveNote.appendChild(b);
+  }
   if(!id){
     state.innerHTML='<h1>Ticket not found</h1><p>This ticket link is missing its ID. Please open the ticket from your registration confirmation.</p>';
     return;
@@ -335,7 +356,7 @@
       +'<div class="rc-who"><div><div class="rc-who-label">'+(t.teamName?'Team':'Leader')+'</div>'
       +'<div class="rc-who-name">'+esc(t.teamName||t.name)+'</div>'
       +'<div class="rc-who-date">'+esc(when)+'</div></div>'
-      +'<span class="rc-chest-pill">CHEST '+(t.chest||'—')+'</span></div>'
+      +'<span class="rc-chest-pill">CHEST '+esc(t.chest||'—')+'</span></div>'
       +'<div class="rc-details">'+rows+'</div>'
       +'</div></div>'
       +'<div class="rc-white">'
@@ -348,8 +369,8 @@
       +'<div class="rc-proof">KEEP THIS. IT’S YOUR PROOF.</div>'
       +'<div class="rc-issuer">issued by NEXUS · SPARK 2K26</div>'
       +'</div></div>'
-      +'<div class="tk-actions"><button class="tk-dl" id="tk-dl" type="button"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 11 5 5 5-5"/><path d="M4 21h16"/></svg>Download ticket</button>'
-      +'<button class="tk-share" id="tk-share" type="button"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 10.5 6.8-4M8.6 13.5l6.8 4"/></svg>Share ticket</button></div>'
+      +'<div class="tk-actions"><button class="tk-dl" id="tk-dl" type="button"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 11 5 5 5-5"/><path d="M4 21h16"/></svg><span class="tk-btn-label">Download ticket</span></button>'
+      +'<button class="tk-share" id="tk-share" type="button"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 10.5 6.8-4M8.6 13.5l6.8 4"/></svg><span class="tk-btn-label">Share ticket</span></button></div>'
       +'<p class="tk-dl-note">Keep this ticket safe. You will need it at the venue.'
       +(emailed?'<br>Confirmation email on its way to '+esc(emailed)+'.</p>':'</p>');
     document.title=t.event+' — Your Ticket | SPARK 2K26';
@@ -359,25 +380,42 @@
     if(sh)sh.addEventListener('click',function(){
       var shareData={title:'SPARK 2K26 Ticket — '+t.event,text:'My SPARK 2K26 ticket · Chest '+(t.chest||'')+' · Verify '+t.id,url:qrText};
       if(navigator.share){navigator.share(shareData).catch(function(){});}
-      else if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(qrText).then(function(){sh.textContent='Link copied';setTimeout(function(){sh.textContent='Share ticket';},2000);});}
+      else if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(qrText).then(function(){setBtnLabel(sh,'Link copied');setTimeout(function(){setBtnLabel(sh,'Share ticket');},2000);});}
       else{location.href=qrText;}
     });
-    // Live update: while unpaid, re-check every 15s (only while the page is
+    // Live update: while unpaid, re-check every 60s (only while the page is
     // visible). The moment the counter marks it paid, the ticket flips to
-    // the receipt by itself. Polling stops once paid.
+    // the receipt by itself. Polling stops once paid, or after 10 minutes
+    // (a "Tap to refresh" button is shown instead), so an open tab cannot
+    // hammer the shared per-IP ticket bucket. A 429 skips the next tick.
     liveNote.hidden=paid;
     if(pollTimer){clearInterval(pollTimer);pollTimer=null;}
     if(!paid){
+      var pollStart=Date.now(), pollBackoff=false;
       pollTimer=setInterval(function(){
         if(document.hidden)return;
-        fetch('/api/ticket?id='+encodeURIComponent(id)).then(function(r){return r.json();}).then(function(d){
+        if(pollBackoff){pollBackoff=false;return;}
+        if(Date.now()-pollStart>=600000){clearInterval(pollTimer);pollTimer=null;showRefresh();return;}
+        ticketFetch().then(function(r){
+          if(r.status===429){pollBackoff=true;return null;}
+          return r.json();
+        }).then(function(d){
           if(d&&d.ok&&d.ticket&&d.ticket.paid){render(d.ticket);}
         }).catch(function(){});
-      },15000);
+      },60000);
     }
   }
-  fetch('/api/ticket?id='+encodeURIComponent(id)).then(function(r){return r.json();}).then(function(d){
-    if(!d||!d.ok||!d.ticket){
+  ticketFetch().then(function(r){
+    if(r.status===429){
+      state.innerHTML='<h1>Too many requests</h1><p>Too many people are loading tickets right now. Please wait a moment and try again.</p><p><button type="button" id="tk-retry">Try again</button></p>';
+      var rb=document.getElementById('tk-retry');
+      if(rb)rb.addEventListener('click',function(){location.reload();});
+      return null;
+    }
+    return r.json();
+  }).then(function(d){
+    if(!d)return;
+    if(!d.ok||!d.ticket){
       state.innerHTML='<h1>Ticket not found</h1><p>We could not find a registration with this ID. It may have been removed, or the link is wrong.</p>';
       return;
     }

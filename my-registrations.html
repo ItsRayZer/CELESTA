@@ -101,8 +101,21 @@
       +'</article>';
   }
   function fetchTicket(id){
-    return fetch('/api/ticket?id='+encodeURIComponent(id)).then(function(r){return r.json();})
-      .then(function(d){return (d&&d.ok&&d.ticket)?d.ticket:null;}).catch(function(){return null;});
+    // 10s timeout: a hung fetch must fail visibly, not hang renderSaved.
+    var ctl=('AbortController' in window)?new AbortController():null;
+    var to=ctl?setTimeout(function(){try{ctl.abort();}catch(e){}},10000):null;
+    function done(v){if(to)clearTimeout(to);return v;}
+    return fetch('/api/ticket?id='+encodeURIComponent(id),{signal:ctl?ctl.signal:undefined})
+      .then(function(r){
+        if(r.status===404)return done({gone:true});
+        if(!r.ok)return done({failed:true});
+        return r.json();
+      })
+      .then(function(d){
+        if(d&&d.gone)return done({gone:true});
+        if(d&&d.failed)return done({failed:true});
+        return done((d&&d.ok&&d.ticket)?d.ticket:{failed:true});
+      }).catch(function(){return done({failed:true});});
   }
   function emptyHTML(){
     return '<p class="mr-empty">No registrations here yet.</p>'
@@ -118,16 +131,27 @@
     }
     savedList.innerHTML='<p class="mr-loading">Loading your saved registrations…</p>';
     Promise.all(ids.map(fetchTicket)).then(function(ts){
-      var found=ts.filter(Boolean);
-      // Drop IDs that no longer exist so the saved list stays clean.
-      if(found.length!==ids.length){
-        saveIds(found.map(function(t){return t.id;}));
+      var found=[], failed=[], gone={};
+      ts.forEach(function(t,i){
+        if(!t)return;
+        if(t.gone)gone[ids[i]]=true;
+        else if(t.failed)failed.push(ids[i]);
+        else found.push(t);
+      });
+      // Prune ONLY confirmed-gone ids. A transient failure (429/500/
+      // network/timeout) must never wipe a saved ticket.
+      if(Object.keys(gone).length){
+        saveIds(ids.filter(function(id){return !gone[id];}));
       }
-      if(!found.length){
+      if(!found.length&&!failed.length){
         savedList.innerHTML=emptyHTML();
         return;
       }
-      savedList.innerHTML=found.map(cardHTML).join('');
+      var html=found.map(cardHTML).join('');
+      if(failed.length){
+        html+='<p class="mr-empty">Couldn\u2019t load '+failed.length+' saved registration'+(failed.length>1?'s':'')+' \u2014 check connection and refresh.</p>';
+      }
+      savedList.innerHTML=html;
     });
   }
   renderSaved();

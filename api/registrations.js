@@ -1,6 +1,7 @@
 // GET /api/registrations — list all (read/write)
 // PATCH /api/registrations — update payment status (write only)
 import { Redis } from '@upstash/redis';
+import crypto from 'node:crypto';
 
 const redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL,
@@ -147,11 +148,56 @@ export default async function handler(req, res) {
               return res.status(409).json({ error: 'Already registered for this event' });
             }
           }
-        } catch { /* duplicate check unavailable — continue */ }
+        } catch (e) {
+          // Fail closed: a scan failure must not let an edit create a
+          // duplicate phone/email (mirrors api/register.js).
+          console.error('registrations duplicate scan failed', e);
+          return res.status(503).json({ error: 'Please try again' });
+        }
+      }
+      // A paid flip needs a payment method: without one the history entry
+      // counts in neither cash nor gpay and the ledger understates.
+      let flipMethod = null;
+      if (paid === true && !rec.paid) {
+        flipMethod = typeof req.body.paidMethod === 'string' ? req.body.paidMethod.trim() : '';
+        if (flipMethod !== 'cash' && flipMethod !== 'gpay') {
+          return res.status(400).json({ error: 'Payment method (cash/gpay) is required' });
+        }
+      }
+      // Paylock (same as fees mark-paid): two admins flipping the same
+      // record at once must not both push history. Only when the paid
+      // state is changing. Best-effort, 10s TTL.
+      const paidFlipping = typeof paid === 'boolean' && paid !== !!rec.paid;
+      const lockKey = 'celesta:paylock:' + id;
+      const lockVal = crypto.randomUUID();
+      let locked = false, skipHistory = false;
+      const releasePaylock = async () => {
+        if (!locked) return;
+        try { await redis.eval("if redis.call('get',KEYS[1])==ARGV[1] then return redis.call('del',KEYS[1]) end", [lockKey], [lockVal]); } catch { /* lock expires on its own */ }
+      };
+      if (paidFlipping) {
+        try {
+          locked = !!(await redis.set(lockKey, lockVal, { nx: true, ex: 10 }));
+        } catch { locked = false; }
+        if (!locked) {
+          // Contender holds the lock: re-read. If the flip already
+          // happened, keep our other edits but do not push history again.
+          const cur = parseVal(await redis.hget('celesta:regs', id));
+          if (!cur) return res.status(404).json({ error: 'Not found' });
+          if (!!cur.paid === paid) skipHistory = true;
+          else return res.status(409).json({ error: 'already being processed, try again' });
+        } else {
+          // Re-read under the lock: the record may have been flipped
+          // between our first read and the lock.
+          const fresh = parseVal(await redis.hget('celesta:regs', id));
+          if (!fresh) { await releasePaylock(); return res.status(404).json({ error: 'Not found' }); }
+          if (!!fresh.paid === paid) skipHistory = true;
+        }
       }
       const before = {};
       for (const k of ['paid', 'amount', 'name', 'school', 'phone', 'email', 'teamName', 'team', 'members']) before[k] = rec[k];
       if (typeof paid === 'boolean') rec.paid = paid;
+      if (flipMethod) rec.paidMethod = flipMethod;
       if (typeof amount === 'number') rec.amount = amount;
       // full edit: name, school, phone, email, team size, team name, members
       for (const k of ['name', 'school', 'phone', 'email', 'teamName']) {
@@ -182,6 +228,7 @@ export default async function handler(req, res) {
           }
           if (!ok) {
             for (const k of claimedNew) { try { await redis.del(k); } catch {} }
+            await releasePaylock();
             return res.status(409).json({ error: 'This phone/email is already registered for ' + rec.event });
           }
         } catch { /* markers are a backstop; continue to save */ }
@@ -202,7 +249,7 @@ export default async function handler(req, res) {
       // must not fail the PATCH — the record is already saved.
       try {
         const wasPaid = !!before.paid, isPaid = !!rec.paid;
-        if (!wasPaid && isPaid) {
+        if (!skipHistory && !wasPaid && isPaid) {
           await pushHistory({
             id: rec.id, chest: rec.chest || '', event: rec.event, eventSlug: rec.eventSlug,
             name: rec.name, amount: Number(rec.amount || 0), method: rec.paidMethod || '',
@@ -232,6 +279,7 @@ export default async function handler(req, res) {
       } catch (e) {
         console.error('registrations history mirror failed', e);
       }
+      await releasePaylock();
       // Log only what actually changed, with the old values for undo.
       const changed = {};
       const bits = [];

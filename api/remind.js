@@ -82,16 +82,21 @@ export default async function handler(req, res) {
 
     let sent = 0;
     let failed = 0;
-    for (const r of pending) {
+    // Batched fan-out (V2-M3): strictly sequential sends (~0.5-2 s each)
+    // mail only ~5-20 students under a 10 s cap. Send in batches of ~10
+    // concurrent SMTP sessions with a ~3 s per-mail cap, so one run covers
+    // far more under either a 10 s or a 300 s cap. The per-mail SADD
+    // design is preserved: each recipient is marked sent IMMEDIATELY after
+    // its OWN mail completes, inside its own task — a killed run never
+    // re-sends to someone already mailed, and a slow mail cannot eat a
+    // whole run.
+    const BATCH_SIZE = 10;
+    const sendOne = async (r) => {
       try {
         const mail = buildReminderEmail({ reg: r, fee: feeBySlug[r.eventSlug] || '', kind });
-        const ok = await sendMail({ to: String(r.email).trim(), ...mail });
+        const ok = await sendMail({ to: String(r.email).trim(), ...mail, timeoutMs: 3000 });
         if (ok) {
           sent++;
-          // Record THIS recipient immediately, before moving to the next:
-          // sends are sequential and Vercel kills the function at 10s, so
-          // a single SADD after the loop would record nothing and a
-          // re-trigger would resend to everyone already mailed.
           try {
             await redis.sadd(key, r.id);
             await redis.expire(key, 604800); // 7 days
@@ -103,6 +108,9 @@ export default async function handler(req, res) {
         console.error('remind send failed', r.id, e);
         failed++;
       }
+    };
+    for (let i = 0; i < pending.length; i += BATCH_SIZE) {
+      await Promise.allSettled(pending.slice(i, i + BATCH_SIZE).map(sendOne));
     }
 
     return res.status(200).json({ ok: true, sent, failed, day, kind, total: regs.length, remaining });

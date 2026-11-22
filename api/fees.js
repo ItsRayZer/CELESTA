@@ -292,13 +292,38 @@ export default async function handler(req, res) {
         return res.status(500).json({ error: 'Storage unavailable' });
       } finally {
         if (locked) {
-          try { await redis.del(lockKey); } catch { /* lock expires on its own */ }
+          // Token-checked release: only delete the lock if it is still
+          // ours (a plain DEL could remove a successor's lock).
+          try { await redis.eval("if redis.call('get',KEYS[1])==ARGV[1] then return redis.call('del',KEYS[1]) end", [lockKey], [lockVal]); } catch { /* lock expires on its own */ }
         }
       }
     }
 
     if (action === 'mark-unpaid') {
+      // Same per-registration paylock as mark-paid: a concurrent mark-paid
+      // and mark-unpaid on the same record must not both push/remove
+      // history. Best-effort (10s TTL); a contender re-reads the record
+      // and reports its current state instead of writing.
+      const lockKey = 'celesta:paylock:' + id;
+      const lockVal = crypto.randomUUID();
+      let locked = false;
       try {
+        const got = await redis.set(lockKey, lockVal, { nx: true, ex: 10 });
+        locked = !!got;
+        if (!locked) {
+          const cur = parseVal(await redis.hget('celesta:regs', id));
+          if (!cur) return res.status(404).json({ error: 'Not found' });
+          if (!cur.paid) {
+            const feeMap = {};
+            try {
+              (await loadEvents()).forEach(function (e) { if (e && e.slug) feeMap[e.slug] = e.fee || ''; });
+            } catch { /* fee display falls back to the record */ }
+            return res.status(200).json({ ok: true, reg: pubReg(cur, feeMap[cur.eventSlug] || ''), already: true });
+          }
+          return res.status(409).json({ error: 'already being processed, try again' });
+        }
+        // Re-read under the lock: the record may have been paid/unpaid
+        // between the lock attempt and now.
         const rec = parseVal(await redis.hget('celesta:regs', id));
         if (!rec) return res.status(404).json({ error: 'Not found' });
         if (!rec.paid) {
@@ -336,6 +361,11 @@ export default async function handler(req, res) {
       } catch (e) {
         console.error('fees mark-unpaid failed', e);
         return res.status(500).json({ error: 'Storage unavailable' });
+      } finally {
+        if (locked) {
+          // Token-checked release: only delete the lock if it is still ours.
+          try { await redis.eval("if redis.call('get',KEYS[1])==ARGV[1] then return redis.call('del',KEYS[1]) end", [lockKey], [lockVal]); } catch { /* lock expires on its own */ }
+        }
       }
     }
 
