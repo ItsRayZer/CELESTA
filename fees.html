@@ -764,7 +764,7 @@ nav button.on { background: #fff; color: #000; }
           +'<span class="chip shrink-0" style="color:'+COLOR[st]+'">'+chipLabel+'</span>'
           +'<div class="flex gap-1.5 shrink-0">'
           +(r.paid?'<button type="button" class="btn b-ghost !py-1.5 !px-2.5 text-[11px]" data-invoice="'+esc(r.id)+'">View Invoice</button>':'')
-          +(r.paid?'<span class="btn b-ghost !py-1.5 !px-2.5 text-[11px]" style="opacity:.6">Paid</span>':'<button type="button" class="btn b-main !py-1.5 !px-2.5 text-[11px]" data-collect="'+esc(r.id)+'">Collect</button>')
+          +(r.paid?'<span class="btn b-ghost !py-1.5 !px-2.5 text-[11px]" style="opacity:.6">Paid</span>':'<button type="button" class="btn b-ghost !py-1.5 !px-2.5 text-[11px]" data-ticket="'+esc(r.id)+'">View ticket</button><button type="button" class="btn b-main !py-1.5 !px-2.5 text-[11px]" data-collect="'+esc(r.id)+'">Collect</button>')
           +'</div></div>';
         return;
       }
@@ -781,7 +781,7 @@ nav button.on { background: #fff; color: #000; }
         +'<div class="'+(big?'h-2.5':'h-1.5')+' rounded-full overflow-hidden" style="background:rgba(255,255,255,.1)">'
         +'<div class="'+(big?'h-2.5':'h-1.5')+' rounded-full" style="width:'+pct+'%;background:linear-gradient(90deg,#0a84ff,#bf5af2,#ff375f)"></div></div></div>'
         +'<div class="'+(view==='box'?'flex flex-col gap-1.5':'flex gap-2')+'">'
-        +(r.paid?'<button type="button" class="btn b-ghost !py-2 flex-1 text-xs" data-invoice="'+esc(r.id)+'">View Invoice</button>':'<span class="text-[11px] py-2 flex-1 text-center" style="color:var(--mut)">No payment yet</span>')
+        +(r.paid?'<button type="button" class="btn b-ghost !py-2 flex-1 text-xs" data-invoice="'+esc(r.id)+'">View Invoice</button>':'<button type="button" class="btn b-ghost !py-2 flex-1 text-xs" data-ticket="'+esc(r.id)+'">View ticket</button>')
         +(r.paid?'<span class="btn b-ghost !py-2 flex-1 text-xs" style="opacity:.6;cursor:default">Paid</span>':'<button type="button" class="btn b-main !py-2 flex-1 text-xs" data-collect="'+esc(r.id)+'">Collect</button>')
         +'</div></div>';
     });
@@ -793,6 +793,9 @@ nav button.on { background: #fff; color: #000; }
     });
     Array.prototype.forEach.call(grid.querySelectorAll('[data-collect]'),function(b){
       b.onclick=function(){selectStudent(b.getAttribute('data-collect'));setTab('collect');};
+    });
+    Array.prototype.forEach.call(grid.querySelectorAll('[data-ticket]'),function(b){
+      b.onclick=function(){window.open('/ticket?id='+encodeURIComponent(b.getAttribute('data-ticket')),'_blank');};
     });
     Array.prototype.forEach.call(grid.querySelectorAll('[data-id]'),function(el){
       el.onclick=function(){var r=findReg(el.getAttribute('data-id'));if(r&&r.paid)openReceipt(r);else if(r){selectStudent(r.id);setTab('collect');}};
