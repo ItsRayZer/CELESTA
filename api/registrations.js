@@ -347,5 +347,54 @@ export default async function handler(req, res) {
     }
   }
 
+  if (req.method === 'POST') {
+    if (role !== 'write') return res.status(403).json({ error: 'Write access required' });
+    const { action, dryRun } = req.body || {};
+    if (action !== 'backfill-chest') return res.status(400).json({ error: 'Unknown action' });
+    // Backfill chest numbers for registrations that have none. Some
+    // registrations were stored without a chest when the INCR at
+    // registration time failed (the record still went through, and the
+    // fees app only assigns a chest on mark-paid). This gives them a
+    // chest NOW, in registration-time order per event, continuing the
+    // existing per-event sequence (never renumbers anyone who already
+    // has a chest, never reuses a number, never deletes anything).
+    const CHEST_CODES = { 'prompting': '01', 'quiz': '02', 'treasure-hunt': '03', 'reels-competition': '04' };
+    try {
+      const all = await redis.hgetall('celesta:regs');
+      const missing = [];
+      if (all) for (const [k, v] of Object.entries(all)) {
+        const r = parseVal(v);
+        if (r && !r.chest) missing.push(r);
+      }
+      // Earliest registrant first, per event.
+      missing.sort(function (a, b) { return new Date(a.at || 0) - new Date(b.at || 0); });
+      const assigned = [];
+      for (const r of missing) {
+        const slug = r.eventSlug || '';
+        const code = CHEST_CODES[slug] || '00';
+        if (dryRun) {
+          assigned.push({ id: r.id, name: r.name, event: r.event, eventSlug: slug, at: r.at, wouldBe: code + '???' });
+          continue;
+        }
+        const seq = await redis.incr('celesta:chestseq:' + slug);
+        const chest = code + String(seq).padStart(3, '0');
+        r.chest = chest;
+        await redis.hset('celesta:regs', { [r.id]: JSON.stringify(r) });
+        assigned.push({ id: r.id, name: r.name, event: r.event, eventSlug: slug, at: r.at, chest });
+      }
+      if (!dryRun && assigned.length) {
+        await appendLog({
+          actor: 'write', action: 'Chest numbers backfilled',
+          detail: assigned.length + ' registration(s) given a chest number: ' + assigned.map(function (a) { return a.name + ' ' + a.chest; }).join(', '),
+          target: { kind: 'registration', id: assigned[0].id, name: assigned[0].name },
+        }, req);
+      }
+      return res.status(200).json({ ok: true, dryRun: !!dryRun, count: assigned.length, assigned });
+    } catch (e) {
+      console.error('registrations backfill-chest failed', e);
+      return res.status(500).json({ error: 'Storage unavailable' });
+    }
+  }
+
   return res.status(405).json({ error: 'Method not allowed' });
 }
