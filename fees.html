@@ -241,7 +241,7 @@ nav button.on { background: #fff; color: #000; }
           <img src="/assets/logo.webp" alt="SPARK" width="34" height="34" class="shrink-0" style="width:34px;height:34px;object-fit:contain">
         </div>
         <div class="flex items-center gap-2 shrink-0">
-          <button id="btn-plans" type="button" class="btn b-ghost !py-1.5 !px-3 text-xs shrink-0">Events</button>
+          <button id="btn-plans" type="button" class="btn b-ghost !py-1.5 !px-2.5 text-sm shrink-0" aria-label="Back to events">←</button>
           <select id="plan-select" class="inp !w-auto !py-1.5 text-xs max-w-[110px] sm:max-w-[160px] truncate"></select>
           <button id="btn-admin-lock" type="button" class="btn b-lime !py-1.5 !px-3 text-xs shrink-0">Lock Admin</button>
         </div>
@@ -372,7 +372,6 @@ nav button.on { background: #fff; color: #000; }
 
     <nav class="fixed bottom-0 inset-x-0 z-30 flex justify-center px-4" style="padding-bottom:calc(12px + env(safe-area-inset-bottom))">
       <div class="flex gap-0.5 p-1 rounded-full bg-black/80 backdrop-blur-xl border border-white/10 w-full max-w-md">
-        <button type="button" id="btn-back" class="btn flex-1 !rounded-full !py-2.5 !px-2 !text-[12px]">← Back</button>
         <button data-t="students" class="btn flex-1 !rounded-full !py-2.5 !px-2 !text-[12px] on">Students</button>
         <button data-t="ledger" class="btn flex-1 !rounded-full !py-2.5 !px-2 !text-[12px]">History</button>
         <button data-t="funds" class="btn flex-1 !rounded-full !py-2.5 !px-2 !text-[12px]">Funds</button>
@@ -667,7 +666,6 @@ nav button.on { background: #fff; color: #000; }
     window.scrollTo({top:0});
   }
   $('btn-plans').onclick=backHome;
-  $('btn-back').onclick=backHome;
   $('plan-select').addEventListener('change',function(){openEvent(this.value);});
 
   // ---------- tabs ----------
