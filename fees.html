@@ -1215,17 +1215,24 @@ nav button.on { background: #fff; color: #000; }
   // ---------- receipt modal (SPARK 2K26 purple theme) ----------
   // Deterministic pseudo-barcode from the id: bar widths from each char.
   // Decorative (the QR is the real scan target), but unique per ticket.
+  // Sleek modern barcode from the id: many thin bars (not the chunky old
+  // supermarket look). The SVG uses width="100%" as its attribute too, so
+  // it has NO fixed 520px intrinsic width — a fixed width attribute gave
+  // the card a 520px min-content that forced it wider than a phone screen
+  // (flex min-width:auto), which was the mobile overflow bug on the ticket.
   function barcodeSVG(id){
-    var s=String(id||'SPK'), x=0, bars='', W=520, H=44;
-    var total=0, widths=[];
-    for(var i=0;i<s.length;i++){var w=1+(s.charCodeAt(i)%4);widths.push(w);total+=w+1;}
-    var scale=W/total;
-    for(var j=0;j<widths.length;j++){
-      var bw=Math.max(1,Math.round(widths[j]*scale));
-      bars+='<rect x="'+x+'" y="0" width="'+bw+'" height="'+H+'" fill="#111"/>';
-      x+=bw+Math.max(1,Math.round(scale));
+    var s=String(id||'SPK'), bars='', x=0, W=240, H=40;
+    var seed=0;for(var k=0;k<s.length;k++)seed=(seed*31+s.charCodeAt(k))>>>0;
+    var n=64;
+    for(var i=0;i<n;i++){
+      seed=(seed*1103515245+12345)>>>0;
+      var w=1+((seed>>16)%3);
+      if(((seed>>8)%5)<3){bars+='<rect x="'+x+'" y="0" width="'+w+'" height="'+H+'" fill="#111"/>';}
+      x+=w+1;
+      if(x>=W)break;
     }
-    return '<svg xmlns="http://www.w3.org/2000/svg" width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'" style="width:100%;height:44px;display:block">'+bars+'</svg>';
+    return '<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="'+H+'" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none" style="width:100%;height:40px;display:block">'+bars+'</svg>'
+      +'<div style="text-align:center;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px;font-weight:700;letter-spacing:.35em;color:#666;margin-top:6px">'+esc(s)+'</div>';
   }
   function openReceipt(r){
     var name=r.teamName||r.name;

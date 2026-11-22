@@ -11,25 +11,25 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=Marcellus&display=swap">
 <link rel="stylesheet" href="/styles.css?v=65">
-<link rel="stylesheet" href="/theme-purple.css?v=12">
+<link rel="stylesheet" href="/theme-purple.css?v=13">
 <noscript><style>.reveal{opacity:1 !important;transform:none !important}</style></noscript>
 <style>
-  html{background:#060608}body{background:#060608}
-  .tk-page{min-height:100svh;display:flex;flex-direction:column;align-items:center;padding:20px 16px 48px}
-  .tk-page .tk-top{width:100%;max-width:520px;display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+  html{background:#060608;overflow-x:hidden}body{background:#060608;overflow-x:hidden}
+  .tk-page{min-height:100svh;display:flex;flex-direction:column;align-items:center;padding:20px 16px 48px;min-width:0}
+  .tk-page .tk-top{width:100%;max-width:520px;min-width:0;display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
   .tk-page .tk-top a{color:rgba(255,255,255,.75);text-decoration:none;font-size:14px}
   .tk-page .tk-top b{color:#fff;font-size:13px;letter-spacing:.22em;text-transform:uppercase}
-  .tk-page .tk-state{width:100%;max-width:520px;color:rgba(255,255,255,.8);text-align:center;padding:60px 0;line-height:1.6}
+  .tk-page .tk-state{width:100%;max-width:520px;min-width:0;color:rgba(255,255,255,.8);text-align:center;padding:60px 0;line-height:1.6}
   .tk-page .tk-state h1{color:#fff;font-size:24px;margin-bottom:8px}
   .tk-page .tk-state p{font-size:15px}
-  .tk-page .tk-live{width:100%;max-width:520px;text-align:center;font-size:12px;color:rgba(255,255,255,.55);margin-top:14px}
-  .tk-page .tk-actions{width:100%;max-width:520px;display:flex;gap:10px;margin-top:16px}
-  .tk-page .tk-actions .tk-dl{flex:1}
-  .tk-page .tk-actions .tk-share{flex:1}
-  .tk-page .tk-dl-note{width:100%;max-width:520px;text-align:center;font-size:12px;color:rgba(255,255,255,.55);margin-top:12px;line-height:1.6}
+  .tk-page .tk-live{width:100%;max-width:520px;min-width:0;text-align:center;font-size:12px;color:rgba(255,255,255,.55);margin-top:14px}
+  .tk-page .tk-actions{width:100%;max-width:520px;min-width:0;display:flex;gap:10px;margin-top:16px}
+  .tk-page .tk-actions .tk-dl{flex:1;min-width:0}
+  .tk-page .tk-actions .tk-share{flex:1;min-width:0}
+  .tk-page .tk-dl-note{width:100%;max-width:520px;min-width:0;text-align:center;font-size:12px;color:rgba(255,255,255,.55);margin-top:12px;line-height:1.6}
 
   /* ===== Unified ticket / receipt card (Fees-receipt layout, SPARK purple) ===== */
-  .rc-card{width:100%;max-width:520px;border-radius:28px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.55);font-family:system-ui,-apple-system,'Segoe UI',Arial,sans-serif;color:#fff;background:#1a0b2e}
+  .rc-card{width:100%;max-width:520px;min-width:0;border-radius:28px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.55);font-family:system-ui,-apple-system,'Segoe UI',Arial,sans-serif;color:#fff;background:#1a0b2e}
   .rc-marquee{background:#d6ff3f;color:#000;overflow:hidden;white-space:nowrap;padding:8px 0;font-weight:900;font-size:13px;letter-spacing:.18em;line-height:1}
   .rc-marquee .rc-mq-track{display:inline-block;white-space:nowrap;animation:rcmq 16s linear infinite}
   .rc-marquee .rc-mq-track span{padding-right:12px}
@@ -53,10 +53,10 @@
   .rc-who .rc-who-name{font-size:19px;font-weight:900;margin-top:3px}
   .rc-who .rc-who-date{font-size:12px;color:rgba(255,255,255,.7);margin-top:3px}
   .rc-chest-pill{flex-shrink:0;font-family:ui-monospace,Menlo,monospace;font-size:13px;font-weight:800;padding:8px 12px;border-radius:999px;border:1.5px solid rgba(255,255,255,.45);background:rgba(0,0,0,.25);white-space:nowrap}
-  .rc-details{margin-top:16px;border-radius:16px;padding:14px 16px;background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.14);font-size:14px}
-  .rc-details .rc-row{display:flex;justify-content:space-between;gap:12px;padding:3px 0}
-  .rc-details .rc-row span{color:rgba(255,255,255,.6)}
-  .rc-details .rc-row b{text-align:right;font-weight:700}
+  .rc-details{margin-top:16px;border-radius:16px;padding:14px 16px;background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.14);font-size:14px;min-width:0}
+  .rc-details .rc-row{display:flex;justify-content:space-between;gap:12px;padding:3px 0;min-width:0}
+  .rc-details .rc-row span{color:rgba(255,255,255,.6);flex-shrink:0}
+  .rc-details .rc-row b{text-align:right;font-weight:700;min-width:0;overflow-wrap:break-word}
   .rc-white{background:#fff;color:#111;padding:18px 20px 20px}
   .rc-split{display:flex;gap:16px}
   .rc-split .rc-cell{flex:1}
@@ -71,8 +71,9 @@
   .rc-qr-side{flex:1;min-width:0;padding-right:2px;overflow-wrap:break-word}
   .rc-qr-side .rc-cell-label{font-size:10px;font-weight:800;letter-spacing:.18em;color:#666;text-transform:uppercase}
   .rc-qr-side .rc-cell-val{font-size:13px;font-weight:700;margin-top:4px;line-height:1.5;word-break:break-word}
-  .rc-barcode{margin-top:16px}
-  .rc-barcode svg{width:100%;height:44px;display:block}
+  .rc-barcode{margin-top:16px;min-width:0}
+  .rc-barcode svg{width:100%;max-width:100%;height:44px;display:block}
+  .rc-barcode .rc-bc-code{text-align:center;font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:11px;font-weight:700;letter-spacing:.35em;color:#666;margin-top:6px}
   .rc-proof{text-align:center;font-size:12px;font-weight:800;letter-spacing:.28em;color:#999;margin-top:14px}
   .rc-issuer{text-align:center;font-size:11px;color:#999;margin-top:6px}
 </style>
@@ -120,19 +121,24 @@
   function dotQRsvg(text,size){
     return '<svg xmlns="http://www.w3.org/2000/svg" width="'+size+'" height="'+size+'" viewBox="0 0 '+size+' '+size+'"><rect width="'+size+'" height="'+size+'" rx="16" fill="#fff"/>'+dotQRshapes(text,0,0,size)+'</svg>';
   }
-  // Deterministic pseudo-barcode from the id: bar widths from each char.
-  // Decorative (the QR is the real scan target), but unique per ticket.
+  // Sleek modern barcode from the id: many thin bars (not the chunky old
+  // supermarket look). The SVG uses width="100%" as its attribute too, so
+  // it has NO fixed 520px intrinsic width — a fixed width attribute gave
+  // the card a 520px min-content that forced it wider than a phone screen
+  // (flex min-width:auto), which was the mobile overflow bug.
   function barcodeSVG(id){
-    var s=String(id||'SPK'), x=0, bars='', W=520, H=44, unit=2;
-    var total=0, widths=[];
-    for(var i=0;i<s.length;i++){var w=1+(s.charCodeAt(i)%4);widths.push(w);total+=w+1;}
-    var scale=W/total;
-    for(var j=0;j<widths.length;j++){
-      var bw=Math.max(1,Math.round(widths[j]*scale));
-      bars+='<rect x="'+x+'" y="0" width="'+bw+'" height="'+H+'" fill="#111"/>';
-      x+=bw+Math.max(1,Math.round(scale));
+    var s=String(id||'SPK'), bars='', x=0, W=240, H=40;
+    var seed=0;for(var k=0;k<s.length;k++)seed=(seed*31+s.charCodeAt(k))>>>0;
+    var n=64;
+    for(var i=0;i<n;i++){
+      seed=(seed*1103515245+12345)>>>0;
+      var w=1+((seed>>16)%3);
+      if(((seed>>8)%5)<3){bars+='<rect x="'+x+'" y="0" width="'+w+'" height="'+H+'" fill="#111"/>';}
+      x+=w+1;
+      if(x>=W)break;
     }
-    return '<svg xmlns="http://www.w3.org/2000/svg" width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'">'+bars+'</svg>';
+    return '<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="'+H+'" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none" style="width:100%;height:40px;display:block">'+bars+'</svg>'
+      +'<div class="rc-bc-code">'+esc(s)+'</div>';
   }
   function fmtWhen(iso){
     try{
@@ -312,8 +318,8 @@
       +'<div class="rc-proof">KEEP THIS. IT’S YOUR PROOF.</div>'
       +'<div class="rc-issuer">issued by NEXUS · SPARK 2K26</div>'
       +'</div></div>'
-      +'<div class="tk-actions"><button class="tk-dl" id="tk-dl" type="button">Download ticket</button>'
-      +'<button class="tk-share" id="tk-share" type="button">Share ticket</button></div>'
+      +'<div class="tk-actions"><button class="tk-dl" id="tk-dl" type="button"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 11 5 5 5-5"/><path d="M4 21h16"/></svg>Download ticket</button>'
+      +'<button class="tk-share" id="tk-share" type="button"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 10.5 6.8-4M8.6 13.5l6.8 4"/></svg>Share ticket</button></div>'
       +'<p class="tk-dl-note">Keep this ticket safe. You will need it at the venue.'
       +(emailed?'<br>Confirmation email on its way to '+esc(emailed)+'.</p>':'</p>');
     document.title=t.event+' — Your Ticket | SPARK 2K26';
