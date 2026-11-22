@@ -228,9 +228,9 @@
     }
     // Team name: only for team events. It is REQUIRED (owner's call).
     var teamNameRow=isSolo?'':'<div class="field" id="f-teamname"><label for="in-teamname">Team name</label><input id="in-teamname" type="text" placeholder="Your team name" maxlength="80"><div class="err">Enter your team name.</div></div>';
-    // Other members: only for team events. One block per member, each
-    // with Name (must) + Phone (optional) + Email (optional). The leader
-    // is Member 1; these blocks are Member 2, 3, 4.
+    // Other members: only for team events. One block per member, Name
+    // only (owner's call, 23 Nov: no phone or email for members). The
+    // leader is Member 1; these blocks are Member 2, 3, 4.
     var membersRow='';
     if(!isSolo){
       var others=e.teamMax-1;
@@ -238,8 +238,6 @@
         var mn=mi+2;
         membersRow+='<div class="mem" id="mem-block-'+mi+'"><div class="mem-head">Member '+mn+'</div>'
           +'<div class="field" id="f-mem'+mi+'-name"><label for="in-mem'+mi+'-name">Name</label><input id="in-mem'+mi+'-name" type="text" placeholder="Full name" maxlength="100"><div class="err">Enter member '+mn+'\'s name.</div></div>'
-          +'<div class="field" id="f-mem'+mi+'-phone"><label for="in-mem'+mi+'-phone">Phone (optional)</label><input id="in-mem'+mi+'-phone" type="tel" inputmode="numeric" maxlength="13" placeholder="10-digit mobile"><div class="err">Enter a valid 10-digit mobile number.</div></div>'
-          +'<div class="field" id="f-mem'+mi+'-email"><label for="in-mem'+mi+'-email">Email (optional)</label><input id="in-mem'+mi+'-email" type="email" placeholder="you@example.com" maxlength="254"><div class="err">Enter a valid email address.</div></div>'
           +'</div>';
       }
     }
@@ -361,13 +359,12 @@
           team=parseInt(val('team'),10), teamname=val('teamname');
       if(phone.length===12&&phone.slice(0,2)==='91')phone=phone.slice(2);
       else if(phone.length===11&&phone.charAt(0)==='0')phone=phone.slice(1);
-      function normPh(p){p=(p||'').replace(/\D/g,'');if(p.length===12&&p.slice(0,2)==='91')p=p.slice(2);else if(p.length===11&&p.charAt(0)==='0')p=p.slice(1);return p;}
-      // Members, one by one: Name must, Phone + Email optional.
+      // Members, one by one: Name only (no phone or email for members).
       var list=[];
       if(team>1){
         var need=team-1;
         for(var mi=0;mi<need;mi++){
-          list.push({name:val('mem'+mi+'-name'),phone:normPh(val('mem'+mi+'-phone')),email:val('mem'+mi+'-email')});
+          list.push(val('mem'+mi+'-name'));
         }
       }
       mark('name',name.length>=2);
@@ -381,9 +378,7 @@
         else teamNameErr('Enter your team name.');
         mark('teamname',teamname.length>=2&&!teamNameTaken);
         list.forEach(function(m,i){
-          mark('mem'+i+'-name',m.name.length>=2);
-          mark('mem'+i+'-phone',!m.phone||/^[6-9]\d{9}$/.test(m.phone));
-          mark('mem'+i+'-email',!m.email||/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(m.email));
+          mark('mem'+i+'-name',(m||'').length>=2);
         });
       }
       var agree=document.getElementById('in-agree');
