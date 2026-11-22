@@ -353,3 +353,36 @@
     }, 400);
   }
 })();
+
+/* ---------- Hide the bottom pill menu over the venue map (owner's call, 23 Nov) ----------
+   The fixed bottom pill (#pill, the "galaxy menu") floats over the venue map
+   and covers part of it. When the venue section (or the footer right below
+   it) fills the screen, fade the pill out completely so the map shows
+   perfectly. It comes back as soon as the user scrolls back up. Home page
+   only (#venue exists only on index.html). */
+(function(){
+  var pill = document.getElementById('pill');
+  var venue = document.getElementById('venue');
+  if(!pill || !venue) return;
+  var st = document.createElement('style');
+  st.textContent = '#pill{transition:border-color .45s,box-shadow .45s,opacity .35s,transform .35s}'
+    + '#pill.pill-hidden{opacity:0;pointer-events:none;transform:translateX(-50%) translateY(24px)}';
+  document.head.appendChild(st);
+  var foot = document.querySelector('footer');
+  var ticking = false;
+  function check(){
+    ticking = false;
+    var vh = window.innerHeight || document.documentElement.clientHeight;
+    var v = venue.getBoundingClientRect();
+    var f = foot ? foot.getBoundingClientRect() : null;
+    var over = (v.top < vh * 0.92 && v.bottom > vh * 0.15)
+      || (f && f.top < vh * 0.92 && f.bottom > vh * 0.15);
+    pill.classList.toggle('pill-hidden', !!over);
+  }
+  function onScroll(){
+    if(!ticking){ ticking = true; requestAnimationFrame(check); }
+  }
+  window.addEventListener('scroll', onScroll, {passive:true});
+  window.addEventListener('resize', onScroll);
+  check();
+})();
