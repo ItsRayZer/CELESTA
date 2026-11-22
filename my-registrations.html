@@ -37,7 +37,10 @@
   .mr-rows dt{color:rgba(255,255,255,.65);flex:none}
   .mr-rows dd{margin:0;color:#fff;font-weight:600;text-align:right;word-break:break-word}
   .mr-rows dd small{display:block;font-weight:400;color:rgba(255,255,255,.7)}
-  .mr-ticket{display:inline-block;margin-top:12px;color:#fff;font-size:14px;font-weight:700;text-decoration:none;border-bottom:1px solid rgba(255,255,255,.4);padding-bottom:2px}
+  .mr-ticket{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:52px;margin-top:14px;background:#fff;color:#5b21b6;font-size:16px;font-weight:800;text-decoration:none;border-radius:99px}
+  .mr-ticket:active{transform:scale(.98)}
+  .mr-events{display:flex;align-items:center;justify-content:center;width:100%;height:52px;margin-top:12px;background:rgba(255,255,255,.07);color:#fff;font-size:16px;font-weight:700;text-decoration:none;border-radius:99px;border:1px solid rgba(255,255,255,.35)}
+  .mr-events:active{transform:scale(.98)}
   .mr-empty{color:rgba(255,255,255,.65);font-size:15px;line-height:1.6;margin:0 0 12px}
   .mr-empty a{color:#fff}
   .mr-cta{display:block;width:100%;text-align:center;background:linear-gradient(135deg,#7b3dff,#8f47e6);border:0;border-radius:14px;padding:16px;font-size:17px;font-weight:700;color:#fff;text-decoration:none;margin:4px 0 14px;font-family:inherit}
@@ -97,7 +100,7 @@
       +(t.fee?'<div><dt>Fee</dt><dd>'+esc(t.fee)+'</dd></div>':'')
       +'<div><dt>Date</dt><dd>Fri, 27 Nov 2026 · 10 AM</dd></div>'
       +'</dl>'
-      +'<a class="mr-ticket" href="/ticket?id='+encodeURIComponent(t.id)+'">View ticket &rarr;</a>'
+      +'<a class="mr-ticket" href="/ticket?id='+encodeURIComponent(t.id)+'">View ticket</a>'
       +'</article>';
   }
   function fetchTicket(id){
@@ -151,6 +154,7 @@
       if(failed.length){
         html+='<p class="mr-empty">Couldn\u2019t load '+failed.length+' saved registration'+(failed.length>1?'s':'')+' \u2014 check connection and refresh.</p>';
       }
+      html+='<a class="mr-events" href="/events">See all events</a>';
       savedList.innerHTML=html;
     });
   }
