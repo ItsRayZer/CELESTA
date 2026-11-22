@@ -30,7 +30,7 @@
       "source": "/(.*)"
     },
     {
-      "source": "/fees*",
+      "source": "/fees/:path*",
       "headers": [
         {
           "key": "Permissions-Policy",
