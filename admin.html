@@ -165,9 +165,9 @@ tbody tr.flash{animation:flash 2.4s ease}
 .addform select option{background:var(--optbg)}
 .addform input:focus,.addform select:focus{border-color:var(--gold)}
 /* modal */
-#modal,#modal-ev{position:fixed;inset:0;z-index:150;background:rgba(0,0,0,.7);display:none;align-items:flex-end;justify-content:center}
-#modal.show,#modal-ev.show{display:flex}
-@media(min-width:720px){#modal,#modal-ev{align-items:center}}
+#modal,#modal-ev,#modal-pw{position:fixed;inset:0;z-index:150;background:rgba(0,0,0,.7);display:none;align-items:flex-end;justify-content:center}
+#modal.show,#modal-ev.show,#modal-pw.show{display:flex}
+@media(min-width:720px){#modal,#modal-ev,#modal-pw{align-items:center}}
 .mcard{width:100%;max-width:480px;padding:24px;max-height:88vh;overflow-y:auto;border-radius:20px 20px 0 0}
 @media(min-width:720px){.mcard{border-radius:20px}}
 .mcard h3{font-size:19px;margin-bottom:14px}
@@ -371,6 +371,20 @@ tbody tr:hover{background:var(--hover)}
     <div class="row">
       <button class="abtn" id="modalCancel" style="flex:1">Cancel</button>
       <button class="abtn go" id="modalSave" style="flex:1">Save changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN PASSWORD RE-AUTH MODAL (sensitive actions: event delete, mark invalid/valid) -->
+<div id="modal-pw">
+  <div class="glass mcard">
+    <h3>Admin password</h3>
+    <p class="mut" id="pwText" style="margin:0 0 12px"></p>
+    <label>ADMIN PASSWORD</label><input id="pwInput" type="password" autocomplete="current-password" placeholder="Enter admin password">
+    <p class="mut" id="pwErr" style="margin:8px 0 0;color:#ff6b6b;display:none"></p>
+    <div class="row" style="margin-top:14px">
+      <button class="abtn" id="modalPwCancel" style="flex:1">Cancel</button>
+      <button class="abtn go" id="modalPwConfirm" style="flex:1">Confirm</button>
     </div>
   </div>
 </div>
@@ -824,14 +838,45 @@ async function togglePay(id,wasPaid){
   }catch(e){undo();toast('Failed');}
 }
 
+// Re-confirm the ADMIN write password before a sensitive action.
+// Returns true only if the admin write password is correct (the fees
+// counter password and read-only password do not pass). Wrong attempts
+// count toward the login lockout.
+function askAdminPw(label){
+  return new Promise(resolve=>{
+    $('pwText').textContent=label+' Enter the admin password to confirm.';
+    $('pwInput').value='';
+    $('pwErr').style.display='none';
+    $('pwErr').textContent='';
+    $('modal-pw').classList.add('show');
+    $('pwInput').focus();
+    const close=ok=>{$('modal-pw').classList.remove('show');$('modalPwConfirm').onclick=null;$('modalPwCancel').onclick=null;$('pwInput').onkeydown=null;resolve(ok);};
+    $('modalPwCancel').onclick=()=>close(false);
+    $('pwInput').onkeydown=e=>{if(e.key==='Enter')$('modalPwConfirm').click();};
+    $('modalPwConfirm').onclick=async()=>{
+      const pw=$('pwInput').value;
+      if(!pw){$('pwErr').textContent='Enter the admin password.';$('pwErr').style.display='block';return;}
+      $('modalPwConfirm').disabled=true;
+      try{
+        const r=await fetch('/api/admin-login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw,verifyWrite:true})});
+        const d=await r.json().catch(()=>({}));
+        if(r.ok&&d.ok){close(true);return;}
+        $('pwErr').textContent=d.error||'Wrong password';$('pwErr').style.display='block';
+        $('pwInput').value='';$('pwInput').focus();
+      }catch(e){$('pwErr').textContent='Could not verify. Try again.';$('pwErr').style.display='block';}
+      $('modalPwConfirm').disabled=false;
+    };
+  });
+}
+
 async function toggleInvalid(id,wasInvalid){
   const x=REGS.find(r=>r.id===id);
   if(!x)return;
   const makeInvalid=!wasInvalid;
   if(makeInvalid){
-    if(!confirm('Mark registration of '+x.name+' ('+x.event+') as INVALID? It will still show in the list as invalid.'))return;
+    if(!(await askAdminPw('Mark registration of '+x.name+' ('+x.event+') as INVALID? It will still show in the list as invalid.')))return;
   }else{
-    if(!confirm('Mark registration of '+x.name+' ('+x.event+') as valid again?'))return;
+    if(!(await askAdminPw('Mark registration of '+x.name+' ('+x.event+') as valid again?')))return;
   }
   try{
     const r=await fetch('/api/registrations',{method:'PATCH',headers:authHeaders(true),body:JSON.stringify({id,invalid:makeInvalid})});
@@ -1157,7 +1202,7 @@ async function delEvent(slug){
   if(!e)return;
   const n=evRegCount(e.slug,e.name);
   if(n>0){toast('This event has '+n+' registration(s). Hide it instead of deleting.');return;}
-  if(!confirm('Delete the event "'+e.name+'"? This cannot be undone.'))return;
+  if(!(await askAdminPw('Delete the event "'+e.name+'"? This cannot be undone.')))return;
   try{
     const r=await fetch('/api/events?slug='+slug,{method:'DELETE',headers:authHeaders(false)});
     const d=await r.json().catch(()=>({}));

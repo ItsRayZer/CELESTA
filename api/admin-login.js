@@ -70,7 +70,7 @@ export function parseVal(v) {
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   
-  const { password } = req.body || {};
+  const { password, verifyWrite } = req.body || {};
   const readPw = process.env.ADMIN_READ_PW;
   const writePw = process.env.ADMIN_WRITE_PW;
   const feesPw = process.env.FEES_PW;
@@ -96,7 +96,18 @@ export default async function handler(req, res) {
   const writeHash = createHash('sha256').update(writePw).digest();
   const readHash = createHash('sha256').update(readPw).digest();
   const feesHash = feesPw ? createHash('sha256').update(feesPw).digest() : null;
-  if (pwHash && timingSafeEqual(pwHash, writeHash)) {
+  // verifyWrite mode: re-confirm the ADMIN write password before a
+  // sensitive action (event delete, mark invalid/valid). Only the true
+  // admin write password passes — the fees counter password and the
+  // read-only password do NOT. A wrong password falls through to the
+  // normal lockout counting below.
+  if (verifyWrite) {
+    if (pwHash && timingSafeEqual(pwHash, writeHash)) {
+      try { await redis.del(failKey); } catch { /* ignore */ }
+      await appendLog({ type: 'login', actor: 'write', action: 'Admin password re-confirmed for a sensitive action' }, req);
+      return res.status(200).json({ ok: true, role: 'write' });
+    }
+  } else if (pwHash && timingSafeEqual(pwHash, writeHash)) {
     try { await redis.del(failKey); } catch { /* ignore */ }
     await appendLog({ type: 'login', actor: 'write', action: 'Full-access admin logged in' }, req);
     return res.status(200).json({ ok: true, role: 'write', token: sign('write') });
@@ -104,12 +115,13 @@ export default async function handler(req, res) {
   // Fees counter password: same full access as the admin write password,
   // so the counters can mark payments in /fees. The admin login still
   // works for /fees too. Only share this password with trusted counters.
-  if (feesHash && pwHash && timingSafeEqual(pwHash, feesHash)) {
+  // Never accepted in verifyWrite mode (re-auth for sensitive actions).
+  if (!verifyWrite && feesHash && pwHash && timingSafeEqual(pwHash, feesHash)) {
     try { await redis.del(failKey); } catch { /* ignore */ }
     await appendLog({ type: 'login', actor: 'write', action: 'Fees counter logged in' }, req);
     return res.status(200).json({ ok: true, role: 'write', token: sign('write') });
   }
-  if (pwHash && timingSafeEqual(pwHash, readHash)) {
+  if (!verifyWrite && pwHash && timingSafeEqual(pwHash, readHash)) {
     try { await redis.del(failKey); } catch { /* ignore */ }
     await appendLog({ type: 'login', actor: 'read', action: 'Read-only admin logged in' }, req);
     return res.status(200).json({ ok: true, role: 'read', token: sign('read') });
