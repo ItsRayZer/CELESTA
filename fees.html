@@ -125,6 +125,11 @@ nav button.on { background: #fff; color: #000; }
 .plan-hero h1{font-size:clamp(34px,10vw,64px);line-height:.96;letter-spacing:-.06em;margin:10px 0 14px}
 .plan-hero p{max-width:500px;color:var(--mut);font-size:14px;line-height:1.55}
 .plan-list{display:grid;gap:12px}
+#event-list{grid-template-columns:repeat(2,1fr)}
+#event-list .plan-card{flex-direction:column;align-items:flex-start;gap:8px;padding:16px}
+#event-list .plan-card-title{font-size:15px}
+#event-list .plan-card-meta{line-height:1.6}
+#event-list .plan-card-arrow{margin-top:2px}
 .plan-card{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:18px 20px;text-decoration:none;color:#fff;background:rgba(255,255,255,.045);border:1px solid var(--line);border-radius:22px;transition:.2s;cursor:pointer;width:100%;text-align:left;font-family:inherit}
 .plan-card:hover{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.22);transform:translateY(-1px)}
 .plan-card-main{min-width:0}
@@ -222,7 +227,7 @@ nav button.on { background: #fff; color: #000; }
     <!-- LANDING BOTTOM MENU: Dashboard (left) + Scan QR (right) -->
     <nav class="fixed bottom-0 inset-x-0 z-30 flex justify-center px-4" style="padding-bottom:calc(12px + env(safe-area-inset-bottom))">
       <div class="flex gap-0.5 p-1 rounded-full bg-black/80 backdrop-blur-xl border border-white/10 w-full max-w-md">
-        <button type="button" id="btn-home-dashboard" class="btn b-ghost flex-1 !rounded-full !py-2.5 !px-2 !text-[12px]">Dashboard</button>
+        <button type="button" id="btn-home-dashboard" class="btn b-ghost flex-1 !rounded-full !py-2.5 !px-2 !text-[12px]">← Dashboard</button>
         <button type="button" id="btn-home-scan" class="btn b-lime flex-1 !rounded-full !py-2.5 !px-2 !text-[12px]">Scan QR</button>
       </div>
     </nav>
