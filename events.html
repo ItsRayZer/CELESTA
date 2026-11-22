@@ -23,7 +23,14 @@
 <link rel="stylesheet" href="/styles.css?v=65">
 <link rel="stylesheet" href="/theme-purple.css?v=6">
 <noscript><style>.reveal{opacity:1 !important;transform:none !important}</style></noscript>
-<style>html{background:#060608}body{background:#060608}</style>
+<style>html{background:#060608}body{background:#060608}
+/* Events-hero meta: same language as the hero itself — left-aligned,
+   bold sans, white date, lavender venue, orange time. No serif, no gold,
+   no centering (the home-page hx-* styles clashed with this page). */
+.ev-meta{margin:20px 0 2px;text-align:left}
+.ev-meta-date{font-size:15px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:#fff}
+.ev-meta-venue{font-size:13px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#d6cbf0;margin-top:7px}
+.ev-meta-venue b{color:#ff7a1a;font-weight:800}</style>
 </head>
 <body class="premium-page">
 
@@ -45,9 +52,10 @@
 
 <div class="p-head gz-head">
   <div class="gz-tag reveal"><span>SPARK 2K26</span><i>✦</i><span>EVENTS</span></div>
-  <div class="hx-date reveal">27 November 2026</div>
-  <div class="hx-venue reveal">Mar Augusthinose College, Ramapuram</div>
-  <div class="hx-sub-row reveal" style="justify-content:center"><span>10 AM</span><i>·</i><span>4 events</span><i>·</i><span class="hx-prize">₹14,250 in prizes</span></div>
+  <div class="ev-meta reveal">
+    <div class="ev-meta-date">27 November 2026</div>
+    <div class="ev-meta-venue">Mar Augusthinose College, Ramapuram &middot; <b>10 AM</b></div>
+  </div>
   <h1 class="reveal"><span id="ev-count-word">FOUR</span> ARENAS,<br><span class="gz-hl">ONE STAGE.</span></h1>
   <p class="reveal" id="ev-sub">Four events. One day. One campus.<br><b>Pick your battle.</b></p>
 </div>
