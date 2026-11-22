@@ -427,8 +427,9 @@ nav button.on { background: #fff; color: #000; }
         <div class="text-center text-[11px] mt-1" style="color:#999">issued by NEXUS · SPARK 2K26</div>
       </div>
     </div>
-    <div class="grid grid-cols-2 gap-2">
+    <div class="grid grid-cols-3 gap-2">
       <a id="rc-open-ticket" href="#" target="_blank" rel="noopener" class="btn b-main text-xs !py-3">Open Ticket</a>
+      <button type="button" class="btn b-lime text-xs !py-3" id="rc-download">Download</button>
       <button type="button" class="btn b-ghost text-xs !py-3" id="rc-close">Close</button>
     </div>
   </div>
@@ -503,6 +504,7 @@ nav button.on { background: #fff; color: #000; }
 
 <script src="/assets/qrcode.min.js?v=1" defer></script>
 <script src="/assets/jsQR.js" defer></script>
+<script src="/assets/html2canvas.min.js?v=1" defer></script>
 <script>
 (function(){
   var TOKEN_KEY='celesta_admin_tok', ROLE_KEY='celesta_admin_role';
@@ -1262,6 +1264,31 @@ nav button.on { background: #fff; color: #000; }
     $('rm').classList.remove('hide');
   }
   $('rc-close').onclick=function(){$('rm').classList.add('hide');};
+  // Download = the EXACT receipt on screen, not a redraw. html2canvas
+  // renders the live #rc-card to a PNG, so the download matches the modal
+  // pixel for pixel (marquee, watermark, QR, barcode, everything).
+  $('rc-download').onclick=function(){
+    var card=$('rc-card');
+    var btn=$('rc-download');
+    if(!card||typeof html2canvas==='undefined'){toast('Download unavailable',1);return;}
+    btn.disabled=true;btn.textContent='Saving…';
+    var track=card.querySelector('.rc-mq-track');
+    var prevAnim=track?track.style.animation:'';
+    if(track)track.style.animation='none';
+    var id=($('rc-verify')?$('rc-verify').textContent:'receipt')||'receipt';
+    html2canvas(card,{scale:2,backgroundColor:'#1a0b2e',useCORS:true,logging:false}).then(function(canvas){
+      if(track)track.style.animation=prevAnim;
+      canvas.toBlob(function(b){
+        if(!b){btn.disabled=false;btn.textContent='Download';toast('Could not save image',1);return;}
+        var a=document.createElement('a');
+        a.href=URL.createObjectURL(b);
+        a.download='SPARK-2K26-receipt-'+id+'.png';
+        document.body.appendChild(a);a.click();a.remove();
+        setTimeout(function(){URL.revokeObjectURL(a.href);},4000);
+        btn.disabled=false;btn.textContent='Download';
+      },'image/png');
+    }).catch(function(){if(track)track.style.animation=prevAnim;btn.disabled=false;btn.textContent='Download';toast('Could not save image',1);});
+  };
   $('rm').addEventListener('click',function(e){if(e.target===$('rm'))$('rm').classList.add('hide');});
 
   // ---------- export CSV ----------

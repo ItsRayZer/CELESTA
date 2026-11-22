@@ -65,12 +65,12 @@
   .rc-verify{margin-top:14px}
   .rc-verify .rc-cell-label{font-size:10px;font-weight:800;letter-spacing:.18em;color:#666;text-transform:uppercase}
   .rc-verify .rc-cell-val{font-family:ui-monospace,Menlo,monospace;font-size:19px;font-weight:800;color:#5b21b6;margin-top:2px;letter-spacing:.04em}
-  .rc-qr-row{display:flex;gap:16px;align-items:center;margin-top:16px}
-  .rc-qr{flex-shrink:0;width:132px;height:132px}
+  .rc-qr-row{display:flex;gap:16px;align-items:flex-start;margin-top:16px}
+  .rc-qr{flex-shrink:0;width:120px;height:120px}
   .rc-qr svg{width:100%;height:100%;display:block}
-  .rc-qr-side{flex:1;min-width:0}
+  .rc-qr-side{flex:1;min-width:0;padding-right:2px;overflow-wrap:break-word}
   .rc-qr-side .rc-cell-label{font-size:10px;font-weight:800;letter-spacing:.18em;color:#666;text-transform:uppercase}
-  .rc-qr-side .rc-cell-val{font-size:13px;font-weight:700;margin-top:4px;line-height:1.5;word-break:break-all}
+  .rc-qr-side .rc-cell-val{font-size:13px;font-weight:700;margin-top:4px;line-height:1.5;word-break:break-word}
   .rc-barcode{margin-top:16px}
   .rc-barcode svg{width:100%;height:44px;display:block}
   .rc-proof{text-align:center;font-size:12px;font-weight:800;letter-spacing:.28em;color:#999;margin-top:14px}
@@ -89,6 +89,7 @@
 </div>
 <script src="/app.js?v=35" defer></script>
 <script src="/assets/qrcode.min.js?v=1" defer></script>
+<script src="/assets/html2canvas.min.js?v=1" defer></script>
 <script>
 (function(){
   function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
@@ -141,7 +142,34 @@
       return d.getDate()+' '+months[d.getMonth()]+' '+d.getFullYear()+', '+h+':'+m+' '+ap;
     }catch(e){return '—';}
   }
+  // Download = the EXACT card on screen, not a redraw. html2canvas renders
+  // the live #reg-ticket element to a PNG, so the download matches the page
+  // pixel for pixel (marquee, watermark, QR, barcode, everything). The old
+  // SVG rebuild is kept only as a fallback if the library fails to load.
   function downloadTicket(t){
+    var btn=document.getElementById('tk-dl');
+    var card=document.getElementById('reg-ticket');
+    if(!card||typeof html2canvas==='undefined'){downloadTicketSVG(t);return;}
+    if(btn){btn.disabled=true;btn.textContent='Preparing ticket…';}
+    // Freeze the scrolling marquee while capturing so the banner is not
+    // caught mid-scroll; restore it right after.
+    var track=card.querySelector('.rc-mq-track');
+    var prevAnim=track?track.style.animation:'';
+    if(track)track.style.animation='none';
+    html2canvas(card,{scale:2,backgroundColor:'#1a0b2e',useCORS:true,logging:false}).then(function(canvas){
+      if(track)track.style.animation=prevAnim;
+      canvas.toBlob(function(b){
+        if(!b){downloadTicketSVG(t);if(btn){btn.disabled=false;btn.textContent='Download ticket';}return;}
+        var a=document.createElement('a');
+        a.href=URL.createObjectURL(b);
+        a.download='SPARK-2K26-ticket-'+t.id+'.png';
+        document.body.appendChild(a);a.click();a.remove();
+        setTimeout(function(){URL.revokeObjectURL(a.href);},4000);
+        if(btn){btn.disabled=false;btn.textContent='Download ticket';}
+      },'image/png');
+    }).catch(function(){if(track)track.style.animation=prevAnim;downloadTicketSVG(t);});
+  }
+  function downloadTicketSVG(t){
     var btn=document.getElementById('tk-dl');
     if(btn){btn.disabled=true;btn.textContent='Preparing ticket…';}
     // Build the download from the ticket DATA, not from the page text, so
@@ -278,8 +306,8 @@
       +'<div class="rc-split"><div class="rc-cell"><div class="rc-cell-label">Cash</div><div class="rc-cell-val">'+esc(inr(cashAmt))+'</div></div>'
       +'<div class="rc-cell"><div class="rc-cell-label">GPay</div><div class="rc-cell-val">'+esc(inr(gpayAmt))+'</div></div></div>'
       +'<div class="rc-verify"><div class="rc-cell-label">Verify code</div><div class="rc-cell-val">'+esc(t.id)+'</div></div>'
-      +'<div class="rc-qr-row"><div class="rc-qr">'+dotQRsvg(qrText,132)+'</div>'
-      +'<div class="rc-qr-side"><div class="rc-cell-label">Scan to verify</div><div class="rc-cell-val">Show this at the registration desk with a valid school ID card for every member. Report by 9:30 AM.</div></div></div>'
+      +'<div class="rc-qr-row"><div class="rc-qr">'+dotQRsvg(qrText,120)+'</div>'
+      +'<div class="rc-qr-side"><div class="rc-cell-label">Scan to verify</div><div class="rc-cell-val">Show this at the desk with a valid school ID. Report by 9:30 AM.</div></div></div>'
       +'<div class="rc-barcode">'+barcodeSVG(t.id)+'</div>'
       +'<div class="rc-proof">KEEP THIS. IT’S YOUR PROOF.</div>'
       +'<div class="rc-issuer">issued by NEXUS · SPARK 2K26</div>'
