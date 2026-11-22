@@ -85,7 +85,7 @@ export default async function handler(req, res) {
 
   if (req.method === 'PATCH') {
     if (role !== 'write') return res.status(403).json({ error: 'Write access required' });
-    const { id, paid, amount } = req.body || {};
+    const { id, paid, amount, invalid } = req.body || {};
     if (!id) return res.status(400).json({ error: 'Missing id' });
     try {
       const raw = await redis.hget('celesta:regs', id);
@@ -99,6 +99,9 @@ export default async function handler(req, res) {
       }
       if (paid !== undefined && typeof paid !== 'boolean') {
         return res.status(400).json({ error: 'Paid must be true or false' });
+      }
+      if (invalid !== undefined && typeof invalid !== 'boolean') {
+        return res.status(400).json({ error: 'Invalid must be true or false' });
       }
       const caps = { name: 100, school: 150, email: 254, teamName: 80 };
       for (const k of Object.keys(caps)) {
@@ -195,8 +198,9 @@ export default async function handler(req, res) {
         }
       }
       const before = {};
-      for (const k of ['paid', 'amount', 'name', 'school', 'phone', 'email', 'teamName', 'team', 'members']) before[k] = rec[k];
+      for (const k of ['paid', 'amount', 'invalid', 'name', 'school', 'phone', 'email', 'teamName', 'team', 'members']) before[k] = rec[k];
       if (typeof paid === 'boolean') rec.paid = paid;
+      if (typeof invalid === 'boolean') rec.invalid = invalid;
       if (flipMethod) rec.paidMethod = flipMethod;
       if (typeof amount === 'number') rec.amount = amount;
       // full edit: name, school, phone, email, team size, team name, members
@@ -289,6 +293,7 @@ export default async function handler(req, res) {
           changed[k] = before[k];
           bits.push(k === 'paid' ? 'paid ' + (before[k] ? 'yes' : 'no') + ' → ' + (rec[k] ? 'yes' : 'no')
             : k === 'amount' ? 'amount ₹' + (before[k] || 0) + ' → ₹' + (rec[k] || 0)
+            : k === 'invalid' ? 'invalid ' + (before[k] ? 'yes' : 'no') + ' → ' + (rec[k] ? 'yes' : 'no')
             : k + ' ' + show(before[k]) + ' → ' + show(rec[k]));
         }
       }

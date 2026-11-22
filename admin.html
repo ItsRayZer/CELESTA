@@ -165,9 +165,9 @@ tbody tr.flash{animation:flash 2.4s ease}
 .addform select option{background:var(--optbg)}
 .addform input:focus,.addform select:focus{border-color:var(--gold)}
 /* modal */
-#modal,#modal-ev{position:fixed;inset:0;z-index:150;background:rgba(0,0,0,.7);display:none;align-items:flex-end;justify-content:center}
-#modal.show,#modal-ev.show{display:flex}
-@media(min-width:720px){#modal,#modal-ev{align-items:center}}
+#modal,#modal-ev,#modal-del{position:fixed;inset:0;z-index:150;background:rgba(0,0,0,.7);display:none;align-items:flex-end;justify-content:center}
+#modal.show,#modal-ev.show,#modal-del.show{display:flex}
+@media(min-width:720px){#modal,#modal-ev,#modal-del{align-items:center}}
 .mcard{width:100%;max-width:480px;padding:24px;max-height:88vh;overflow-y:auto;border-radius:20px 20px 0 0}
 @media(min-width:720px){.mcard{border-radius:20px}}
 .mcard h3{font-size:19px;margin-bottom:14px}
@@ -241,7 +241,7 @@ tbody tr:hover{background:var(--hover)}
 
   <!-- REGISTRATIONS -->
   <section id="sec-reg" class="hidden">
-    <div class="secttl">Registrations <button class="ti" data-tip="Every student sign-up, live. Use search and the filters to find someone, tap an event card to open that event's own page. Full-access accounts can mark fees paid, edit details, or delete a registration.">?</button></div>
+    <div class="secttl">Registrations <button class="ti" data-tip="Every student sign-up, live. Use search and the filters to find someone, tap an event card to open that event's own page. Full-access accounts can mark fees paid, edit details, or mark a registration invalid. Only Mia and RayZer can delete a registration.">?</button></div>
     <div class="secsub" id="regSub">Students who registered for the fest, across all 4 events.</div>
 
     <!-- Event inside page: shown when an event card is tapped; overall view shows the cards -->
@@ -371,6 +371,18 @@ tbody tr:hover{background:var(--hover)}
     <div class="row">
       <button class="abtn" id="modalCancel" style="flex:1">Cancel</button>
       <button class="abtn go" id="modalSave" style="flex:1">Save changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- DELETE CONFIRM MODAL (in-page, not native confirm, so it works with automation) -->
+<div id="modal-del">
+  <div class="glass mcard">
+    <h3>Delete registration?</h3>
+    <p class="mut" id="delText" style="margin:0 0 16px"></p>
+    <div class="row">
+      <button class="abtn" id="modalDelCancel" style="flex:1">Cancel</button>
+      <button class="abtn go" id="modalDelConfirm" style="flex:1;background:#e5484d;border-color:#e5484d">Delete</button>
     </div>
   </div>
 </div>
@@ -777,17 +789,19 @@ function render(){
     const badge=lvl==='ok'?'':lvl==='review'?'<br><span class="risk risk-review">CHECK</span>':'<br><span class="risk risk-bad">BOT</span>';
     const whyLine=(lvl!=='ok'&&why)?'<br><span class="mut">'+esc(why)+'</span>':'';
     return `<tr class="${isNew?'flash':''}">
-    <td><b>${esc(x.name)}</b><br><span class="mut">${esc(x.school)}</span>${x.teamName?'<br><span class="mut">'+esc(x.teamName)+'</span>':''}${badge}${whyLine}</td>
+    <td><b>${esc(x.name)}</b>${x.invalid?' <span class="risk risk-bad">INVALID</span>':''}<br><span class="mut">${esc(x.school)}</span>${x.teamName?'<br><span class="mut">'+esc(x.teamName)+'</span>':''}${badge}${whyLine}</td>
     <td><span class="evtag">${esc(x.event)}</span></td>
     <td>${esc(x.phone)}<br><span class="mut">${esc(x.email||'—')}</span></td>
     <td>${x.team}${Array.isArray(x.members)&&x.members.length?'<br><span class="mut">'+x.members.map(esc).join(', ')+'</span>':''}</td>
     <td>${x.paid?'<span class="amt">'+fmt(x.amount)+'</span><br><span class="mut">PAID</span>':'<span class="mut">UNPAID</span>'}</td>
     <td style="white-space:nowrap">${w?`<button class="paybtn ${x.paid?'paid':''}" data-id="${x.id}" data-paid="${x.paid?1:0}">${x.paid?'Paid':'Mark paid'}</button>
     <button class="mini" data-edit="${x.id}">Edit</button>
+    <button class="mini ${x.invalid?'':'danger'}" data-inv="${x.id}" data-invalid="${x.invalid?1:0}">${x.invalid?'Mark valid':'Mark invalid'}</button>
     <button class="mini danger" data-del="${x.id}">Delete</button>`:'<span class="mut">—</span>'}</td>
   </tr>`;}).join('');
   document.querySelectorAll('.paybtn').forEach(b=>b.onclick=()=>togglePay(b.dataset.id,b.dataset.paid==='1'));
   document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>openEdit(b.dataset.edit));
+  document.querySelectorAll('[data-inv]').forEach(b=>b.onclick=()=>toggleInvalid(b.dataset.inv,b.dataset.invalid==='1'));
   document.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>delReg(b.dataset.del));
 }
 
@@ -824,13 +838,38 @@ async function togglePay(id,wasPaid){
   }catch(e){undo();toast('Failed');}
 }
 
+let DEL_ID=null;
 async function delReg(id){
   const x=REGS.find(r=>r.id===id);
   if(!x)return;
-  if(!confirm('Delete registration of '+x.name+' ('+x.event+')? You can undo this from the Activity Log.'))return;
+  DEL_ID=id;
+  $('delText').textContent='Delete registration of '+x.name+' ('+x.event+')? You can undo this from the Activity Log.';
+  $('modal-del').classList.add('show');
+}
+$('modalDelCancel').onclick=()=>{$('modal-del').classList.remove('show');DEL_ID=null;};
+$('modal-del').addEventListener('click',e=>{if(e.target===$('modal-del')){$('modal-del').classList.remove('show');DEL_ID=null;}});
+$('modalDelConfirm').onclick=async()=>{
+  const id=DEL_ID;if(!id)return;
+  $('modal-del').classList.remove('show');DEL_ID=null;
   try{
     const r=await fetch('/api/registrations',{method:'DELETE',headers:authHeaders(true),body:JSON.stringify({id})});
     if(r.ok){toast('Registration deleted');load();}
+    else toast('Failed');
+  }catch(e){toast('Failed');}
+};
+
+async function toggleInvalid(id,wasInvalid){
+  const x=REGS.find(r=>r.id===id);
+  if(!x)return;
+  const makeInvalid=!wasInvalid;
+  if(makeInvalid){
+    if(!confirm('Mark registration of '+x.name+' ('+x.event+') as INVALID? It will still show in the list as invalid.'))return;
+  }else{
+    if(!confirm('Mark registration of '+x.name+' ('+x.event+') as valid again?'))return;
+  }
+  try{
+    const r=await fetch('/api/registrations',{method:'PATCH',headers:authHeaders(true),body:JSON.stringify({id,invalid:makeInvalid})});
+    if(r.ok){const d=await r.json();if(d.reg){const i=REGS.findIndex(y=>y.id===id);if(i>=0)REGS[i]=d.reg;}render();toast(makeInvalid?'Marked invalid':'Marked valid');}
     else toast('Failed');
   }catch(e){toast('Failed');}
 }

@@ -73,6 +73,7 @@ export default async function handler(req, res) {
   const { password } = req.body || {};
   const readPw = process.env.ADMIN_READ_PW;
   const writePw = process.env.ADMIN_WRITE_PW;
+  const feesPw = process.env.FEES_PW;
 
   if (!readPw || !writePw || !process.env.ADMIN_SECRET) {
     console.error('admin-login config missing: ADMIN_READ_PW/ADMIN_WRITE_PW/ADMIN_SECRET not set');
@@ -94,9 +95,18 @@ export default async function handler(req, res) {
   const pwHash = typeof password === 'string' ? createHash('sha256').update(password).digest() : null;
   const writeHash = createHash('sha256').update(writePw).digest();
   const readHash = createHash('sha256').update(readPw).digest();
+  const feesHash = feesPw ? createHash('sha256').update(feesPw).digest() : null;
   if (pwHash && timingSafeEqual(pwHash, writeHash)) {
     try { await redis.del(failKey); } catch { /* ignore */ }
     await appendLog({ type: 'login', actor: 'write', action: 'Full-access admin logged in' }, req);
+    return res.status(200).json({ ok: true, role: 'write', token: sign('write') });
+  }
+  // Fees counter password: same full access as the admin write password,
+  // so the counters can mark payments in /fees. The admin login still
+  // works for /fees too. Only share this password with trusted counters.
+  if (feesHash && pwHash && timingSafeEqual(pwHash, feesHash)) {
+    try { await redis.del(failKey); } catch { /* ignore */ }
+    await appendLog({ type: 'login', actor: 'write', action: 'Fees counter logged in' }, req);
     return res.status(200).json({ ok: true, role: 'write', token: sign('write') });
   }
   if (pwHash && timingSafeEqual(pwHash, readHash)) {
