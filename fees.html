@@ -372,7 +372,7 @@ nav button.on { background: #fff; color: #000; }
 
     <nav class="fixed bottom-0 inset-x-0 z-30 flex justify-center px-4" style="padding-bottom:calc(12px + env(safe-area-inset-bottom))">
       <div class="flex gap-0.5 p-1 rounded-full bg-black/80 backdrop-blur-xl border border-white/10 w-full max-w-md">
-        <button type="button" class="btn flex-1 !rounded-full !py-2.5 !px-2 !text-[12px]" onclick="location.href='/admin'">Dashboard</button>
+        <button type="button" class="btn flex-1 !rounded-full !py-2.5 !px-2 !text-[12px]" onclick="backHome()">← Back</button>
         <button data-t="students" class="btn flex-1 !rounded-full !py-2.5 !px-2 !text-[12px] on">Students</button>
         <button data-t="ledger" class="btn flex-1 !rounded-full !py-2.5 !px-2 !text-[12px]">History</button>
         <button data-t="funds" class="btn flex-1 !rounded-full !py-2.5 !px-2 !text-[12px]">Funds</button>
@@ -686,7 +686,7 @@ nav button.on { background: #fff; color: #000; }
   }
   document.querySelectorAll('nav button').forEach(function(b){
     var t=b.getAttribute('data-t');
-    if(!t)return; // Dashboard link has no data-t; keep its own navigation to /admin
+    if(!t)return; // Back button has no data-t; keep its own navigation to the event list
     b.onclick=function(){setTab(t);};
   });
 
