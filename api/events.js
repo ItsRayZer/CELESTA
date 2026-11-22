@@ -16,7 +16,7 @@ export const DEFAULT_EVENTS = [
     "slug": "quiz",
     "name": "Quiz",
     "tagline": "Battle of wits across tech, science and general knowledge.",
-    "about": "A fast, team-based quiz covering General Knowledge and Technology. Think quickly, trust your team, and outscore every other school.",
+    "about": "A fast, team-based quiz covering General Knowledge. Think quickly, trust your team, and outscore every other school.",
     "prize1": 2000,
     "prize2": 1000,
     "teamMin": 2,
@@ -26,20 +26,21 @@ export const DEFAULT_EVENTS = [
     "when": "Fri, 27 Nov 2026 \u00b7 10 AM",
     "where": "Mar Augusthinose College, Ramapuram",
     "how": [
-      "General Knowledge and Technology. The quiz consists of questions based on General Knowledge and Technology.",
-      "Multiple rounds. Teams are shortlisted after each round based on performance; only shortlisted teams move to the next round.",
-      "Final round. The team with the highest score in the final round is declared the winner."
+      "General Knowledge. The quiz consists of questions based on General Knowledge.",
+      "Preliminary Round. The competition begins with a Preliminary Round, from which 5 teams are selected to compete in 4 further rounds.",
+      "Highest total score wins. The team with the highest total score across all four rounds is declared the winner."
     ],
     "rules": [
       "Each team must consist of exactly 2 members.",
       "The registration fee is \u20b9100 per team.",
-      "The quiz will consist of questions based on General Knowledge and Technology.",
-      "Participants must answer questions within the given time limit.",
-      "Electronic gadgets, including mobile phones, smartwatches and calculators, are strictly prohibited during the competition.",
+      "The quiz will consist of questions based on General Knowledge.",
+      "Participants must answer within the given time limit.",
+      "Electronic gadgets are strictly prohibited during the competition.",
       "Team members are not allowed to seek help from the audience.",
-      "Participants must behave respectfully towards the quiz master, other teams and the organisers.",
-      "If there is a tie, the quiz master will conduct a tie-breaker round to determine the winner.",
       "Any form of cheating or unfair practice will lead to disqualification.",
+      "The competition will begin with a Preliminary Round, from which 5 teams will be selected.",
+      "The shortlisted 5 teams will compete in 4 further rounds.",
+      "The team with the highest total score across all four rounds will be declared the winner.",
       "The quiz master's decision will be final."
     ],
     "reqs": [
@@ -50,7 +51,7 @@ export const DEFAULT_EVENTS = [
     "order": 3,
     "visible": true,
     "regOpen": true,
-    "rulesV": 4
+    "rulesV": 5
   },
   {
     "slug": "treasure-hunt",

@@ -165,9 +165,9 @@ tbody tr.flash{animation:flash 2.4s ease}
 .addform select option{background:var(--optbg)}
 .addform input:focus,.addform select:focus{border-color:var(--gold)}
 /* modal */
-#modal,#modal-ev,#modal-del{position:fixed;inset:0;z-index:150;background:rgba(0,0,0,.7);display:none;align-items:flex-end;justify-content:center}
-#modal.show,#modal-ev.show,#modal-del.show{display:flex}
-@media(min-width:720px){#modal,#modal-ev,#modal-del{align-items:center}}
+#modal,#modal-ev{position:fixed;inset:0;z-index:150;background:rgba(0,0,0,.7);display:none;align-items:flex-end;justify-content:center}
+#modal.show,#modal-ev.show{display:flex}
+@media(min-width:720px){#modal,#modal-ev{align-items:center}}
 .mcard{width:100%;max-width:480px;padding:24px;max-height:88vh;overflow-y:auto;border-radius:20px 20px 0 0}
 @media(min-width:720px){.mcard{border-radius:20px}}
 .mcard h3{font-size:19px;margin-bottom:14px}
@@ -371,18 +371,6 @@ tbody tr:hover{background:var(--hover)}
     <div class="row">
       <button class="abtn" id="modalCancel" style="flex:1">Cancel</button>
       <button class="abtn go" id="modalSave" style="flex:1">Save changes</button>
-    </div>
-  </div>
-</div>
-
-<!-- DELETE CONFIRM MODAL (in-page, not native confirm, so it works with automation) -->
-<div id="modal-del">
-  <div class="glass mcard">
-    <h3>Delete registration?</h3>
-    <p class="mut" id="delText" style="margin:0 0 16px"></p>
-    <div class="row">
-      <button class="abtn" id="modalDelCancel" style="flex:1">Cancel</button>
-      <button class="abtn go" id="modalDelConfirm" style="flex:1;background:#e5484d;border-color:#e5484d">Delete</button>
     </div>
   </div>
 </div>
@@ -796,13 +784,11 @@ function render(){
     <td>${x.paid?'<span class="amt">'+fmt(x.amount)+'</span><br><span class="mut">PAID</span>':'<span class="mut">UNPAID</span>'}</td>
     <td style="white-space:nowrap">${w?`<button class="paybtn ${x.paid?'paid':''}" data-id="${x.id}" data-paid="${x.paid?1:0}">${x.paid?'Paid':'Mark paid'}</button>
     <button class="mini" data-edit="${x.id}">Edit</button>
-    <button class="mini ${x.invalid?'':'danger'}" data-inv="${x.id}" data-invalid="${x.invalid?1:0}">${x.invalid?'Mark valid':'Mark invalid'}</button>
-    <button class="mini danger" data-del="${x.id}">Delete</button>`:'<span class="mut">—</span>'}</td>
+    <button class="mini ${x.invalid?'':'danger'}" data-inv="${x.id}" data-invalid="${x.invalid?1:0}">${x.invalid?'Mark valid':'Mark invalid'}</button>`:'<span class="mut">—</span>'}</td>
   </tr>`;}).join('');
   document.querySelectorAll('.paybtn').forEach(b=>b.onclick=()=>togglePay(b.dataset.id,b.dataset.paid==='1'));
   document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>openEdit(b.dataset.edit));
   document.querySelectorAll('[data-inv]').forEach(b=>b.onclick=()=>toggleInvalid(b.dataset.inv,b.dataset.invalid==='1'));
-  document.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>delReg(b.dataset.del));
 }
 
 async function togglePay(id,wasPaid){
@@ -837,26 +823,6 @@ async function togglePay(id,wasPaid){
     else{undo();toast('Failed');}
   }catch(e){undo();toast('Failed');}
 }
-
-let DEL_ID=null;
-async function delReg(id){
-  const x=REGS.find(r=>r.id===id);
-  if(!x)return;
-  DEL_ID=id;
-  $('delText').textContent='Delete registration of '+x.name+' ('+x.event+')? You can undo this from the Activity Log.';
-  $('modal-del').classList.add('show');
-}
-$('modalDelCancel').onclick=()=>{$('modal-del').classList.remove('show');DEL_ID=null;};
-$('modal-del').addEventListener('click',e=>{if(e.target===$('modal-del')){$('modal-del').classList.remove('show');DEL_ID=null;}});
-$('modalDelConfirm').onclick=async()=>{
-  const id=DEL_ID;if(!id)return;
-  $('modal-del').classList.remove('show');DEL_ID=null;
-  try{
-    const r=await fetch('/api/registrations',{method:'DELETE',headers:authHeaders(true),body:JSON.stringify({id})});
-    if(r.ok){toast('Registration deleted');load();}
-    else toast('Failed');
-  }catch(e){toast('Failed');}
-};
 
 async function toggleInvalid(id,wasInvalid){
   const x=REGS.find(r=>r.id===id);
