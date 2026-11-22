@@ -259,6 +259,7 @@ tbody tr:hover{background:var(--hover)}
       <select id="fEv"><option value="">All events</option></select>
       <select id="fPay"><option value="">All payments</option><option value="paid">Paid</option><option value="unpaid">Unpaid</option></select>
       <select id="fRisk"><option value="">Bot check: All</option><option value="ok">Looks human</option><option value="review">Check</option><option value="suspicious">Bot</option></select>
+      <button class="mini" id="chestBtn" title="Give a chest number to every registration that is missing one (never changes or removes anything else)">Fix missing chest numbers</button>
     </div>
 
     <div class="glass twrap">
@@ -644,6 +645,7 @@ async function showDash(){
   $('logLink').classList.toggle('hidden',!w);
   $('feesLink').classList.toggle('hidden',!w); // Fees app: full admin (write) only, never read-only
   $('dockFees').classList.toggle('hidden',!w); // Dock Fees item: same write-only gating
+  $('chestBtn').classList.toggle('hidden',!w); // Fix missing chest numbers: write only
   collectFingerprint();
   await ensureEvents();
   const sel=$('fEv');sel.innerHTML='<option value="">All events</option>';
@@ -929,6 +931,21 @@ $('evBackBtn').onclick=closeEvent;
 $('fPay').addEventListener('change',render);
 $('fRisk').addEventListener('change',render);
 $('loadMoreBtn').onclick=()=>load(false);
+// Fix missing chest numbers: gives a chest number to every registration
+// that has none, in registration order per event, continuing the existing
+// sequence. Only adds a chest where it is missing — never changes or
+// removes anything else. Write role only.
+$('chestBtn').onclick=async()=>{
+  const btn=$('chestBtn');if(!btn)return;
+  btn.disabled=true;btn.textContent='Fixing…';
+  try{
+    const r=await fetch('/api/registrations',{method:'POST',headers:authHeaders(true),body:JSON.stringify({action:'backfill-chest',dryRun:false})});
+    const d=await r.json();
+    if(r.ok){toast(d.count?('Chest numbers given to '+d.count+' registration(s)'):'No missing chest numbers');await load(true);}
+    else toast(d.error||'Failed');
+  }catch(e){toast('Failed');}
+  btn.disabled=false;btn.textContent='Fix missing chest numbers';
+};
 
 // ---------- posters ----------
 // Uses the poster flag from /api/events (already loaded into EVENTS_DB),
