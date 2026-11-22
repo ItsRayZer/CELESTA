@@ -63,6 +63,26 @@ async function findDuplicate(ev, phoneNorm, emailNorm) {
   return null;
 }
 
+// Team name uniqueness: a team name is taken if any (valid) registration
+// for the SAME event already has it. Comparison is case-insensitive and
+// trimmed, so "Thunder" and "thunder " are the same name. ONLY the team
+// name is compared — student names are never checked. Invalid (void)
+// registrations do not block a name.
+async function isTeamNameTaken(evSlug, evName, name) {
+  const want = String(name || '').trim().toLowerCase();
+  if (!want) return false;
+  const all = await redis.hgetall('celesta:regs');
+  if (!all) return false;
+  for (const v of Object.values(all)) {
+    let r = null;
+    try { r = typeof v === 'object' ? v : JSON.parse(v); } catch { r = null; }
+    if (!r || r.invalid) continue;
+    if (r.eventSlug !== evSlug && r.event !== evName) continue;
+    if (typeof r.teamName === 'string' && r.teamName.trim().toLowerCase() === want) return true;
+  }
+  return false;
+}
+
 // Client IP: trust only what the platform sets. Vercel overwrites x-real-ip
 // with the connecting IP and appends it as the LAST entry of X-Forwarded-For.
 // The FIRST XFF entry is client-supplied and spoofable, so never use [0].
@@ -103,6 +123,22 @@ export function riskLevelFor(reasons) {
 }
 
 export default async function handler(req, res) {
+  if (req.method === 'GET') {
+    // Team name availability check for the live form:
+    // GET /api/register?event=<slug>&teamName=<name> -> { taken: true/false }
+    const evSlug = String(req.query.event || '').trim();
+    const qName = String(req.query.teamName || '').trim();
+    if (!evSlug || !qName) return res.status(400).json({ error: 'Missing event or team name' });
+    try {
+      const events = await loadEvents();
+      const ev = events.find(e => e.slug === evSlug) || null;
+      const taken = await isTeamNameTaken(evSlug, ev ? ev.name : evSlug, qName);
+      return res.status(200).json({ taken });
+    } catch (e) {
+      console.error('team name check failed', e);
+      return res.status(500).json({ error: 'Could not check team name' });
+    }
+  }
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   let { event, name, school, phone, email, team, teamName, members, website, startedAt } = req.body || {};
@@ -176,6 +212,12 @@ export default async function handler(req, res) {
   // Team name is REQUIRED for team events (owner's call).
   if (teamSize > 1 && !teamName) {
     return res.status(400).json({ error: 'Enter your team name' });
+  }
+  // Team name must be unique within this event (owner's call): only the
+  // TEAM name is checked, never student names. Enforced here too, so a
+  // race between two simultaneous submits cannot create a duplicate.
+  if (teamSize > 1 && teamName && await isTeamNameTaken(ev.slug, ev.name, teamName)) {
+    return res.status(400).json({ error: 'This team name is already taken, try another' });
   }
   // members are the OTHER team members (leader excluded): at most teamMax - 1.
   if (Array.isArray(members) && members.length > ev.teamMax - 1) {

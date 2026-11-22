@@ -312,6 +312,38 @@
       }
     }
     if(isSelect){teamSel.addEventListener('change',syncMembers);syncMembers();}
+    // Team name uniqueness (owner's call): only the TEAM name is checked,
+    // never student names. Live check as the user types (debounced) and
+    // on blur; the red message below the field is the theme's .err.
+    var teamNameTaken=false, teamNameTimer=null;
+    var teamNameEl=document.getElementById('in-teamname');
+    function teamNameErr(txt){
+      var f=document.getElementById('f-teamname');
+      var er=f&&f.querySelector('.err');
+      if(er)er.textContent=txt;
+    }
+    async function checkTeamName(){
+      if(!teamNameEl)return false;
+      var v=teamNameEl.value.trim();
+      if(v.length<2){teamNameTaken=false;teamNameErr('Enter your team name.');return false;}
+      try{
+        var r=await fetch('/api/register?event='+encodeURIComponent(e.slug)+'&teamName='+encodeURIComponent(v));
+        var d=await r.json();
+        teamNameTaken=!!(d&&d.taken);
+      }catch(err){teamNameTaken=false;}
+      if(teamNameTaken)teamNameErr('This team name is already taken, try another');
+      else teamNameErr('Enter your team name.');
+      var f=document.getElementById('f-teamname');
+      if(f)f.classList.toggle('invalid',teamNameTaken);
+      return teamNameTaken;
+    }
+    if(teamNameEl){
+      teamNameEl.addEventListener('input',function(){
+        clearTimeout(teamNameTimer);
+        teamNameTimer=setTimeout(checkTeamName,400);
+      });
+      teamNameEl.addEventListener('blur',checkTeamName);
+    }
     form.addEventListener('input',function(ev){
       var f=ev.target.closest&&ev.target.closest('.field');
       if(f)f.classList.remove('invalid');
@@ -344,7 +376,10 @@
       mark('email',/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email));
       mark('team',team>=e.teamMin&&team<=e.teamMax);
       if(team>1){
-        mark('teamname',teamname.length>=2);
+        await checkTeamName();
+        if(teamNameTaken)teamNameErr('This team name is already taken, try another');
+        else teamNameErr('Enter your team name.');
+        mark('teamname',teamname.length>=2&&!teamNameTaken);
         list.forEach(function(m,i){
           mark('mem'+i+'-name',m.name.length>=2);
           mark('mem'+i+'-phone',!m.phone||/^[6-9]\d{9}$/.test(m.phone));
