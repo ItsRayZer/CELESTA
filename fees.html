@@ -417,6 +417,32 @@ nav button.on { background: #fff; color: #000; }
   </div>
 </div>
 
+<!-- PAYMENT CONFIRMATION MODAL (Collect tab) -->
+<!-- Cash/GPay first opens this modal showing every detail (chest, student,
+     event, school, team, fee, method) so a wrong tap cannot mark the wrong
+     student paid. Nothing is recorded until Confirm is tapped. -->
+<div id="pay-confirm-modal" class="hide fixed inset-0 z-[90] overflow-y-auto" style="background:rgba(0,0,0,.92)">
+  <div class="min-h-full flex flex-col items-center justify-center gap-4 p-4">
+    <div class="w-full max-w-md rounded-3xl p-5" style="background:#0d0d0f;border:1px solid var(--line)">
+      <div class="font-extrabold text-lg">Confirm payment</div>
+      <div class="text-xs mt-1" style="color:var(--mut)">Check every detail before confirming. A wrong payment can be reversed with Mark unpaid.</div>
+      <div class="big-chest mt-3"><span>Chest No.</span><b id="pc-chest">—</b></div>
+      <div class="rounded-2xl p-4 text-sm space-y-2 mt-3" style="background:rgba(255,255,255,.05);border:1px solid var(--line)">
+        <div class="flex justify-between gap-3"><span style="color:var(--mut)">Student</span><b id="pc-name" class="text-right"></b></div>
+        <div class="flex justify-between gap-3"><span style="color:var(--mut)">Event</span><b id="pc-event" class="text-right"></b></div>
+        <div class="flex justify-between gap-3"><span style="color:var(--mut)">School</span><b id="pc-school" class="text-right"></b></div>
+        <div class="flex justify-between gap-3"><span style="color:var(--mut)">Team</span><b id="pc-team" class="text-right"></b></div>
+        <div class="flex justify-between gap-3"><span style="color:var(--mut)">Fee due</span><b id="pc-fee" class="text-right"></b></div>
+        <div class="flex justify-between gap-3"><span style="color:var(--mut)">Method</span><b id="pc-method" class="text-right"></b></div>
+      </div>
+      <div class="flex gap-2 mt-4">
+        <button type="button" id="pc-confirm" class="paybtn cash flex-1">Confirm payment</button>
+        <button type="button" id="pc-cancel" class="btn b-ghost flex-1 !py-3.5">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- QR SCANNER OVERLAY (Collect tab) -->
 <div id="scan-overlay" class="hide fixed inset-0 z-[80] overflow-y-auto" style="background:rgba(0,0,0,.96)">
   <div class="min-h-full flex flex-col items-center justify-center gap-4 p-4">
@@ -911,10 +937,35 @@ nav button.on { background: #fff; color: #000; }
   }
   $('student-search-input').addEventListener('input',function(){renderCollectList();maybePhoneLookup(false);});
   $('btn-collect-search').onclick=function(){$('student-search-input').focus();renderCollectList();maybePhoneLookup(true);};
-  function markPaid(method){
+  // Payment confirmation: Cash/GPay first opens a modal showing every detail
+  // (chest, student, event, school, team, fee, method) so a wrong tap cannot
+  // mark the wrong student paid. Nothing is recorded until Confirm is tapped.
+  var pendingPayMethod=null;
+  function confirmPay(method){
     if(!selectedId)return;
     if(role!=='write'){toast('Write access required',1);return;}
     var r=findReg(selectedId);
+    if(!r)return;
+    pendingPayMethod=method;
+    $('pc-chest').textContent=r.chest||'—';
+    $('pc-name').textContent=r.teamName||r.name||'';
+    $('pc-event').textContent=r.event||'';
+    $('pc-school').textContent=r.school||'';
+    $('pc-team').textContent='Team of '+(r.team||1)+(r.members&&r.members.length?' · '+[r.name].concat(r.members).join(', '):'');
+    $('pc-fee').textContent=r.fee||inr(r.feeAmount);
+    $('pc-method').textContent=method==='cash'?'Cash':'GPay';
+    $('pc-method').style.color=method==='cash'?'var(--lime)':'#4da3ff';
+    var cb=$('pc-confirm');
+    cb.className='paybtn '+(method==='cash'?'cash':'gpay')+' flex-1';
+    cb.textContent='Confirm · '+(method==='cash'?'Cash':'GPay')+' '+(r.feeAmount?inr(r.feeAmount):(r.fee||''));
+    $('pay-confirm-modal').classList.remove('hide');
+  }
+  function closePayConfirm(){pendingPayMethod=null;$('pay-confirm-modal').classList.add('hide');}
+  function doMarkPaid(){
+    var method=pendingPayMethod;
+    if(!method||!selectedId)return;
+    var r=findReg(selectedId);
+    closePayConfirm();
     $('collect-msg').textContent='Saving…';$('collect-msg').className='msg';
     api('/api/fees?action=mark-paid',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:selectedId,method:method})}).then(function(res){
       if(res.status===403){toast('Write access required',1);return;}
@@ -927,8 +978,10 @@ nav button.on { background: #fff; color: #000; }
       }else{toast((res.data&&res.data.error)||'Could not mark paid',1);}
     }).catch(function(){toast('Connection failed',1);});
   }
-  $('btn-pay-cash').onclick=function(){markPaid('cash');};
-  $('btn-pay-gpay').onclick=function(){markPaid('gpay');};
+  $('btn-pay-cash').onclick=function(){confirmPay('cash');};
+  $('btn-pay-gpay').onclick=function(){confirmPay('gpay');};
+  $('pc-confirm').onclick=function(){doMarkPaid();};
+  $('pc-cancel').onclick=function(){closePayConfirm();};
   $('btn-mark-unpaid').onclick=function(){
     if(!selectedId)return;
     if(role!=='write'){toast('Write access required',1);return;}
