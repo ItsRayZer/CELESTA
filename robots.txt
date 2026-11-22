@@ -4,4 +4,4 @@ Disallow: /admin
 Disallow: /admin.html
 Disallow: /api/
 
-Sitemap: https://spark-fest.vercel.app/sitemap.xml
+Sitemap: https://spark.maraugusthinosecollege.org/sitemap.xml
