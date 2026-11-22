@@ -31,6 +31,11 @@ function clientIp(req) {
 const TICKET_RL_LIMIT = 60;
 const TICKET_RL_WINDOW = 600;
 
+function parseFee(fee) {
+  var m = String(fee || '').match(/(\d[\d,]*)/);
+  return m ? parseInt(m[1].replace(/,/g, ''), 10) : 0;
+}
+
 function toTicket(rec, fee) {
   return {
     id: rec.id,
@@ -44,7 +49,13 @@ function toTicket(rec, fee) {
     members: Array.isArray(rec.members) ? rec.members : [],
     phone: rec.phone,
     fee,
+    feeAmount: parseFee(fee),
     paid: !!rec.paid,
+    // Payment receipt fields (only meaningful when paid). Same ticket the
+    // owner already sees via the unguessable id, so no new exposure.
+    amount: rec.amount || 0,
+    paidMethod: rec.paidMethod || '',
+    paidAt: rec.paidAt || '',
     at: rec.at || '',
   };
 }
@@ -80,7 +91,11 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Missing ticket id' });
   }
   // --- Single ticket by id (unchanged behaviour). ---
-  if (!/^reg_[A-Za-z0-9_-]{8,32}$/.test(id)) {
+  // Accepts both the old reg_xxx ids (existing tickets keep working) and
+  // the new SPK-XXXXXXXX ids (the verify code, which IS the registration
+  // id). A bare chest number (01001) is deliberately NOT accepted here —
+  // it is sequential and guessable, so it must never open a ticket.
+  if (!/^(reg_[A-Za-z0-9_-]{8,32}|SPK-[A-Z0-9]{8})$/.test(id)) {
     return res.status(400).json({ error: 'Missing ticket id' });
   }
   try {

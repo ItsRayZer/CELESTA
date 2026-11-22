@@ -218,10 +218,31 @@ export default async function handler(req, res) {
   if (!started || isNaN(started)) reasons.push('no form timing');
   else { const elapsed = Date.now() - started; if (elapsed >= 0 && elapsed < 2000) reasons.push('submitted too fast'); }
 
-  // Registration ID: cryptographically random (96 bits), NOT time-based.
-  // The old form (timestamp + 5 Math.random chars) was guessable in part,
-  // and the ticket link is the only thing protecting a registration.
-  const id = 'reg_' + randomBytes(12).toString('base64url');
+  // Registration ID = the verify code. Short, typeable, human-friendly:
+  // "SPK-" + 8 chars from a clean alphabet (no 0/O, 1/I/L — nothing that
+  // reads wrong on a card or over the phone). ~40 bits of entropy: with the
+  // ticket rate limit (60/10min/IP) brute-forcing is infeasible, and the ID
+  // is random, NOT sequential, so it cannot be counted up like a chest
+  // number. This one ID is the ticket key AND the verify code — the student
+  // says it, writes it, types it; the admin searches it. The chest number
+  // stays separate (sequential, display-only, never a lookup key).
+  var ID_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  function newRegId() {
+    var b = randomBytes(8), s = 'SPK-';
+    for (var i = 0; i < 8; i++) s += ID_ALPHABET[b[i] % ID_ALPHABET.length];
+    return s;
+  }
+  var id = newRegId();
+  // Uniqueness safety net: 40 bits makes a collision ~1 in 10 billion at
+  // fest scale, but never overwrite another student's record. Regenerate
+  // on the (essentially impossible) collision.
+  for (var attempt = 0; attempt < 5; attempt++) {
+    try {
+      var existing = await redis.hget('celesta:regs', id);
+      if (!existing) break;
+    } catch (e) { break; }
+    id = newRegId();
+  }
   const record = {
     id, event: ev.name, eventSlug: ev.slug, name, school, phone: phoneNorm, email: emailNorm, team: teamSize,
     teamName: teamName || '', members: Array.isArray(members) ? members.map(String) : [],

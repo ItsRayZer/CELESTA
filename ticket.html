@@ -22,11 +22,59 @@
   .tk-page .tk-state{width:100%;max-width:520px;color:rgba(255,255,255,.8);text-align:center;padding:60px 0;line-height:1.6}
   .tk-page .tk-state h1{color:#fff;font-size:24px;margin-bottom:8px}
   .tk-page .tk-state p{font-size:15px}
-  .tk-page .tk-wrap{width:100%;max-width:520px}
-  .tk-page .tk-actions{width:100%;max-width:520px}
-  .tk-page .tk-dl-note{width:100%;max-width:520px;text-align:center}
-  .tk-chest{margin:10px 0 0;font-size:15px;letter-spacing:.14em;color:rgba(255,255,255,.85);text-transform:uppercase}
-  .tk-chest b{font-size:26px;letter-spacing:.06em;color:#fff;font-family:monospace,monospace}
+  .tk-page .tk-live{width:100%;max-width:520px;text-align:center;font-size:12px;color:rgba(255,255,255,.55);margin-top:14px}
+  .tk-page .tk-actions{width:100%;max-width:520px;display:flex;gap:10px;margin-top:16px}
+  .tk-page .tk-actions .tk-dl{flex:1}
+  .tk-page .tk-actions .tk-share{flex:1}
+  .tk-page .tk-dl-note{width:100%;max-width:520px;text-align:center;font-size:12px;color:rgba(255,255,255,.55);margin-top:12px;line-height:1.6}
+
+  /* ===== Unified ticket / receipt card (Fees-receipt layout, SPARK purple) ===== */
+  .rc-card{width:100%;max-width:520px;border-radius:28px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.55);font-family:system-ui,-apple-system,'Segoe UI',Arial,sans-serif;color:#fff;background:#1a0b2e}
+  .rc-marquee{background:#d6ff3f;color:#000;overflow:hidden;white-space:nowrap;padding:8px 0;font-weight:900;font-size:13px;letter-spacing:.18em;line-height:1}
+  .rc-marquee .rc-mq-track{display:inline-block;white-space:nowrap;animation:rcmq 16s linear infinite}
+  .rc-marquee .rc-mq-track span{padding-right:12px}
+  @keyframes rcmq{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+  .rc-body{position:relative;overflow:hidden;background:radial-gradient(120% 70% at 85% -10%,rgba(123,61,255,.65) 0%,rgba(123,61,255,0) 60%),radial-gradient(100% 70% at 0% 30%,rgba(143,71,230,.55) 0%,rgba(143,71,230,0) 60%),radial-gradient(90% 60% at 60% 110%,rgba(61,21,150,.55) 0%,rgba(61,21,150,0) 60%),#1a0b2e}
+  .rc-wm{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;overflow:hidden}
+  .rc-wm b{font-size:132px;font-weight:900;letter-spacing:.02em;color:rgba(255,255,255,.05);white-space:nowrap;transform:rotate(-8deg)}
+  .rc-inner{position:relative;padding:20px 20px 18px}
+  .rc-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+  .rc-kicker{font-size:10px;font-weight:700;letter-spacing:.22em;color:rgba(255,255,255,.7);text-transform:uppercase}
+  .rc-name{font-size:22px;font-weight:900;line-height:1.15;margin-top:6px}
+  .rc-sub{font-size:13px;color:rgba(255,255,255,.75);margin-top:4px}
+  .rc-pill{flex-shrink:0;font-size:11px;font-weight:900;letter-spacing:.08em;padding:7px 12px;border-radius:999px;border:2px solid}
+  .rc-pill.paid{color:#22c55e;border-color:#22c55e;background:rgba(34,197,94,.12)}
+  .rc-pill.unpaid{color:#fbbf24;border-color:#fbbf24;background:rgba(251,191,36,.10)}
+  .rc-amt-label{font-size:10px;font-weight:700;letter-spacing:.22em;color:rgba(255,255,255,.65);text-transform:uppercase;margin-top:18px}
+  .rc-amt{font-size:52px;font-weight:900;line-height:1.05;letter-spacing:-.01em;margin-top:2px}
+  .rc-amt small{font-size:22px;font-weight:800;color:rgba(255,255,255,.75)}
+  .rc-who{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:16px}
+  .rc-who .rc-who-label{font-size:10px;font-weight:700;letter-spacing:.22em;color:rgba(255,255,255,.6);text-transform:uppercase}
+  .rc-who .rc-who-name{font-size:19px;font-weight:900;margin-top:3px}
+  .rc-who .rc-who-date{font-size:12px;color:rgba(255,255,255,.7);margin-top:3px}
+  .rc-chest-pill{flex-shrink:0;font-family:ui-monospace,Menlo,monospace;font-size:13px;font-weight:800;padding:8px 12px;border-radius:999px;border:1.5px solid rgba(255,255,255,.45);background:rgba(0,0,0,.25);white-space:nowrap}
+  .rc-details{margin-top:16px;border-radius:16px;padding:14px 16px;background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.14);font-size:14px}
+  .rc-details .rc-row{display:flex;justify-content:space-between;gap:12px;padding:3px 0}
+  .rc-details .rc-row span{color:rgba(255,255,255,.6)}
+  .rc-details .rc-row b{text-align:right;font-weight:700}
+  .rc-white{background:#fff;color:#111;padding:18px 20px 20px}
+  .rc-split{display:flex;gap:16px}
+  .rc-split .rc-cell{flex:1}
+  .rc-split .rc-cell-label{font-size:10px;font-weight:800;letter-spacing:.18em;color:#666;text-transform:uppercase}
+  .rc-split .rc-cell-val{font-size:24px;font-weight:900;margin-top:2px}
+  .rc-verify{margin-top:14px}
+  .rc-verify .rc-cell-label{font-size:10px;font-weight:800;letter-spacing:.18em;color:#666;text-transform:uppercase}
+  .rc-verify .rc-cell-val{font-family:ui-monospace,Menlo,monospace;font-size:19px;font-weight:800;color:#5b21b6;margin-top:2px;letter-spacing:.04em}
+  .rc-qr-row{display:flex;gap:16px;align-items:center;margin-top:16px}
+  .rc-qr{flex-shrink:0;width:132px;height:132px}
+  .rc-qr svg{width:100%;height:100%;display:block}
+  .rc-qr-side{flex:1;min-width:0}
+  .rc-qr-side .rc-cell-label{font-size:10px;font-weight:800;letter-spacing:.18em;color:#666;text-transform:uppercase}
+  .rc-qr-side .rc-cell-val{font-size:13px;font-weight:700;margin-top:4px;line-height:1.5;word-break:break-all}
+  .rc-barcode{margin-top:16px}
+  .rc-barcode svg{width:100%;height:44px;display:block}
+  .rc-proof{text-align:center;font-size:12px;font-weight:800;letter-spacing:.28em;color:#999;margin-top:14px}
+  .rc-issuer{text-align:center;font-size:11px;color:#999;margin-top:6px}
 </style>
 </head>
 <body class="dark-page">
@@ -37,6 +85,7 @@
   </div>
   <div class="tk-state" id="tk-state"><p>Loading your ticket…</p></div>
   <div id="tk-slot"></div>
+  <p class="tk-live" id="tk-live" hidden>Waiting for payment… this page updates itself when the counter marks you paid.</p>
 </div>
 <script src="/app.js?v=35" defer></script>
 <script src="/assets/qrcode.min.js?v=1" defer></script>
@@ -44,6 +93,7 @@
 (function(){
   function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
   function svgEsc(s){return esc(s);}
+  function inr(n){return '₹'+Number(n||0).toLocaleString('en-IN');}
   // Spark dot QR: a real QR code drawn as dots, finder squares kept solid so
   // it still scans. Returns SVG shape elements at (x0,y0) with the size.
   function dotQRshapes(text,x0,y0,size){
@@ -69,64 +119,84 @@
   function dotQRsvg(text,size){
     return '<svg xmlns="http://www.w3.org/2000/svg" width="'+size+'" height="'+size+'" viewBox="0 0 '+size+' '+size+'"><rect width="'+size+'" height="'+size+'" rx="16" fill="#fff"/>'+dotQRshapes(text,0,0,size)+'</svg>';
   }
+  // Deterministic pseudo-barcode from the id: bar widths from each char.
+  // Decorative (the QR is the real scan target), but unique per ticket.
+  function barcodeSVG(id){
+    var s=String(id||'SPK'), x=0, bars='', W=520, H=44, unit=2;
+    var total=0, widths=[];
+    for(var i=0;i<s.length;i++){var w=1+(s.charCodeAt(i)%4);widths.push(w);total+=w+1;}
+    var scale=W/total;
+    for(var j=0;j<widths.length;j++){
+      var bw=Math.max(1,Math.round(widths[j]*scale));
+      bars+='<rect x="'+x+'" y="0" width="'+bw+'" height="'+H+'" fill="#111"/>';
+      x+=bw+Math.max(1,Math.round(scale));
+    }
+    return '<svg xmlns="http://www.w3.org/2000/svg" width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'">'+bars+'</svg>';
+  }
+  function fmtWhen(iso){
+    try{
+      var d=new Date(iso); if(isNaN(d))return '—';
+      var months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      var h=d.getHours(), m=('0'+d.getMinutes()).slice(-2), ap=h>=12?'PM':'AM'; h=h%12||12;
+      return d.getDate()+' '+months[d.getMonth()]+' '+d.getFullYear()+', '+h+':'+m+' '+ap;
+    }catch(e){return '—';}
+  }
   function downloadTicket(t){
     var btn=document.getElementById('tk-dl');
     if(btn){btn.disabled=true;btn.textContent='Preparing ticket…';}
-    // Build the rows from the ticket DATA, not from the page text, so the
-    // download never garbles names (no missing spaces between members or
-    // between the fee and "Pay at the venue").
+    // Build the download from the ticket DATA, not from the page text, so
+    // the image never garbles names. Same new receipt design as the page.
     var memberList=[t.name].concat(t.members||[]);
+    var paid=!!t.paid;
+    var amount=paid?(t.amount||t.feeAmount||0):(t.feeAmount||0);
+    var method=paid?(t.paidMethod==='cash'?'Cash':'GPay'):'Not paid';
+    var W=1080, H=1480, px=72, y=0, svg='';
+    svg+='<svg xmlns="http://www.w3.org/2000/svg" width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'">';
+    svg+='<rect width="'+W+'" height="'+H+'" fill="#1a0b2e"/>';
+    // Lime marquee banner.
+    svg+='<rect x="0" y="0" width="'+W+'" height="56" fill="#d6ff3f"/>';
+    svg+='<text x="'+(W/2)+'" y="38" text-anchor="middle" font-family="Arial,sans-serif" font-size="26" font-weight="900" letter-spacing="4" fill="#000">'+(paid?'FEE RECEIPT  +  FEE RECEIPT  +  FEE RECEIPT':'SPARK TICKET  +  SPARK TICKET  +  SPARK TICKET')+'</text>';
+    y=56+48;
+    svg+='<text x="'+px+'" y="'+(y+10)+'" font-family="Arial,sans-serif" font-size="24" letter-spacing="4" fill="rgba(255,255,255,.7)">SPARK 2K26 · '+(paid?'OFFICIAL RECEIPT':'OFFICIAL TICKET')+'</text>';
+    svg+='<text x="'+(W-px)+'" y="'+(y+10)+'" text-anchor="end" font-family="Arial,sans-serif" font-size="26" font-weight="900" fill="'+(paid?'#22c55e':'#fbbf24')+'">'+(paid?'PAID IN FULL':'PAY AT VENUE')+'</text>';
+    y+=64;
+    svg+='<text x="'+px+'" y="'+(y+48)+'" font-family="Arial,sans-serif" font-size="64" font-weight="900" fill="#fff">'+svgEsc(t.event)+'</text>';
+    y+=88;
+    svg+='<text x="'+px+'" y="'+(y+10)+'" font-family="Arial,sans-serif" font-size="26" letter-spacing="3" fill="rgba(255,255,255,.65)">'+(paid?'YOU PAID':'FEE DUE')+'</text>';
+    y+=52;
+    svg+='<text x="'+px+'" y="'+(y+44)+'" font-family="Arial,sans-serif" font-size="96" font-weight="900" fill="#fff">'+svgEsc(inr(amount))+'</text>';
+    y+=88;
+    svg+='<text x="'+px+'" y="'+(y+10)+'" font-family="Arial,sans-serif" font-size="26" letter-spacing="3" fill="rgba(255,255,255,.65)">'+(t.teamName?'TEAM':'LEADER')+'</text>';
+    y+=44;
+    svg+='<text x="'+px+'" y="'+(y+30)+'" font-family="Arial,sans-serif" font-size="40" font-weight="900" fill="#fff">'+svgEsc(t.teamName||t.name)+'</text>';
+    svg+='<text x="'+(W-px)+'" y="'+(y+30)+'" text-anchor="end" font-family="monospace" font-size="32" font-weight="700" fill="#fff">CHEST '+(t.chest||'—')+'</text>';
+    y+=64;
     var rows=[
-      {k:'Event',v:t.event},
-      {k:'Leader',v:t.name},
       {k:'School',v:t.school},
       {k:'Members',v:memberList.join(', ')+'  ·  Team of '+t.team},
-      {k:'Phone',v:t.phone}
+      {k:'Phone',v:t.phone},
+      {k:'Method',v:method},
+      {k:'Date',v:paid&&t.paidAt?fmtWhen(t.paidAt):'Fri, 27 Nov 2026 · 10 AM'}
     ];
-    if(t.chest)rows.splice(1,0,{k:'Chest No.',v:t.chest});
-    if(t.fee)rows.push({k:'Fee',v:t.fee+'  ·  Pay at the venue'});
-    var qrText='https://spark.maraugusthinosecollege.org/ticket?id='+t.id;
-    // Real ticket shape: main section, perforation with side notches, stub.
-    var W=1080,px=72,rowH=58;
-    var mainH=px+64+88+44+28+rows.length*rowH+16;
-    var stubH=44+210+28+44+44;
-    var H=mainH+stubH+60;
-    var y=px, svg='';
-    svg+='<svg xmlns="http://www.w3.org/2000/svg" width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'">';
-    svg+='<defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7b3dff"/><stop offset=".45" stop-color="#8f47e6"/><stop offset="1" stop-color="#3d1596"/></linearGradient></defs>';
-    svg+='<rect width="'+W+'" height="'+H+'" rx="48" fill="url(#bg)"/>';
-    svg+='<text x="'+px+'" y="'+(y+26)+'" font-family="Arial,sans-serif" font-size="28" letter-spacing="5" fill="rgba(255,255,255,.75)">SPARK 2K26 · REGISTERED</text>';
-    y+=64;
-    svg+='<text x="'+px+'" y="'+(y+40)+'" font-family="Georgia,serif" font-size="58" font-weight="700" fill="#fff">'+svgEsc(t.event)+'</text>';
-    y+=88;
-    svg+='<text x="'+px+'" y="'+(y+10)+'" font-family="Arial,sans-serif" font-size="28" fill="rgba(255,255,255,.85)">Fri, 27 Nov 2026 · 10 AM · Mar Augusthinose College, Ramapuram</text>';
-    y+=44;
-    svg+='<line x1="'+px+'" y1="'+y+'" x2="'+(W-px)+'" y2="'+y+'" stroke="rgba(255,255,255,.35)" stroke-width="2" stroke-dasharray="10 8"/>';
-    y+=28;
     rows.forEach(function(r){
-      svg+='<text x="'+px+'" y="'+(y+10)+'" font-family="Arial,sans-serif" font-size="30" fill="rgba(255,255,255,.75)">'+svgEsc(r.k)+'</text>';
-      svg+='<text x="'+(W-px)+'" y="'+(y+10)+'" text-anchor="end" font-family="Arial,sans-serif" font-size="30" font-weight="700" fill="#fff">'+svgEsc(r.v)+'</text>';
-      y+=rowH;
+      svg+='<text x="'+px+'" y="'+(y+10)+'" font-family="Arial,sans-serif" font-size="28" fill="rgba(255,255,255,.65)">'+svgEsc(r.k)+'</text>';
+      svg+='<text x="'+(W-px)+'" y="'+(y+10)+'" text-anchor="end" font-family="Arial,sans-serif" font-size="28" font-weight="700" fill="#fff">'+svgEsc(r.v)+'</text>';
+      y+=52;
     });
-    y+=16;
-    // Perforation: dashed line + a punched notch on each edge.
-    svg+='<line x1="0" y1="'+y+'" x2="'+W+'" y2="'+y+'" stroke="rgba(255,255,255,.5)" stroke-width="3" stroke-dasharray="14 12"/>';
-    svg+='<circle cx="0" cy="'+y+'" r="26" fill="#060608"/>';
-    svg+='<circle cx="'+W+'" cy="'+y+'" r="26" fill="#060608"/>';
-    y+=44;
-    // Stub: QR + Registration ID.
-    var qrSize=210, qrX=px, qrY=y;
-    svg+='<rect x="'+qrX+'" y="'+qrY+'" width="'+qrSize+'" height="'+qrSize+'" rx="16" fill="#fff"/>';
-    svg+=dotQRshapes(qrText,qrX,qrY,qrSize);
-    var tx=qrX+qrSize+36;
-    svg+='<text x="'+tx+'" y="'+(qrY+52)+'" font-family="Arial,sans-serif" font-size="26" letter-spacing="3" fill="rgba(255,255,255,.75)">REGISTRATION ID</text>';
-    svg+='<text x="'+tx+'" y="'+(qrY+102)+'" font-family="monospace" font-size="34" font-weight="700" letter-spacing="1" fill="#fff">'+svgEsc(t.id)+'</text>';
-    svg+='<text x="'+tx+'" y="'+(qrY+148)+'" font-family="Arial,sans-serif" font-size="26" fill="rgba(255,255,255,.85)">Scan at the desk</text>';
-    y+=qrSize+28;
-    svg+='<text x="'+(W/2)+'" y="'+(y+10)+'" text-anchor="middle" font-family="Arial,sans-serif" font-size="26" fill="rgba(255,255,255,.85)">Show this ticket at the registration desk · Carry a valid school ID</text>';
-    y+=44;
-    svg+='<text x="'+(W/2)+'" y="'+(y+10)+'" text-anchor="middle" font-family="Arial,sans-serif" font-size="26" fill="rgba(255,255,255,.85)">Report by 9:30 AM · 27 November 2026</text>';
-    svg+='<text x="'+(W/2)+'" y="'+(H-36)+'" text-anchor="middle" font-family="Arial,sans-serif" font-size="24" letter-spacing="4" fill="rgba(255,255,255,.6)">NEXUS · SPARK 2K26</text>';
+    y+=20;
+    // White section: verify code + QR.
+    var whiteY=y, whiteH=340;
+    svg+='<rect x="0" y="'+whiteY+'" width="'+W+'" height="'+whiteH+'" fill="#fff"/>';
+    var wy=whiteY+56;
+    svg+='<text x="'+px+'" y="'+wy+'" font-family="Arial,sans-serif" font-size="22" letter-spacing="3" fill="#666">VERIFY CODE</text>';
+    svg+='<text x="'+px+'" y="'+(wy+52)+'" font-family="monospace" font-size="38" font-weight="800" fill="#5b21b6">'+svgEsc(t.id)+'</text>';
+    svg+='<text x="'+px+'" y="'+(wy+108)+'" font-family="Arial,sans-serif" font-size="24" fill="#666">Scan at the desk · Show a valid school ID</text>';
+    var qrSize=210, qrX=W-px-qrSize, qrY=whiteY+40;
+    svg+='<rect x="'+qrX+'" y="'+qrY+'" width="'+qrSize+'" height="'+qrSize+'" rx="16" fill="#fff" stroke="#eee"/>';
+    svg+=dotQRshapes('https://spark.maraugusthinosecollege.org/ticket?id='+t.id,qrX,qrY,qrSize);
+    y=whiteY+whiteH+36;
+    svg+='<text x="'+(W/2)+'" y="'+y+'" text-anchor="middle" font-family="Arial,sans-serif" font-size="24" letter-spacing="5" fill="rgba(255,255,255,.6)">KEEP THIS. IT’S YOUR PROOF.</text>';
+    svg+='<text x="'+(W/2)+'" y="'+(H-28)+'" text-anchor="middle" font-family="Arial,sans-serif" font-size="22" letter-spacing="3" fill="rgba(255,255,255,.5)">NEXUS · SPARK 2K26 · MAR AUGUSTHINOSE COLLEGE</text>';
     svg+='</svg>';
     var img=new Image();
     var url='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
@@ -160,9 +230,87 @@
   var id=new URLSearchParams(location.search).get('id')||'';
   var state=document.getElementById('tk-state');
   var slot=document.getElementById('tk-slot');
+  var liveNote=document.getElementById('tk-live');
+  var current=null, pollTimer=null;
   if(!id){
     state.innerHTML='<h1>Ticket not found</h1><p>This ticket link is missing its ID. Please open the ticket from your registration confirmation.</p>';
     return;
+  }
+  function render(t){
+    current=t;
+    var paid=!!t.paid;
+    var memberList=[t.name].concat(t.members||[]);
+    var amount=paid?(t.amount||t.feeAmount||0):(t.feeAmount||0);
+    var method=paid?(t.paidMethod==='cash'?'Cash':'GPay'):'—';
+    var cashAmt=paid&&t.paidMethod==='cash'?amount:0;
+    var gpayAmt=paid&&t.paidMethod==='gpay'?amount:0;
+    var when=paid&&t.paidAt?fmtWhen(t.paidAt):'Fri, 27 Nov 2026 · 10 AM';
+    var qrText='https://spark.maraugusthinosecollege.org/ticket?id='+t.id;
+    var banner=paid?'FEE RECEIPT + FEE RECEIPT + FEE RECEIPT + FEE RECEIPT + ':'SPARK TICKET + SPARK TICKET + SPARK TICKET + SPARK TICKET + ';
+    var mq='<div class="rc-marquee"><span class="rc-mq-track"><span>'+banner+'</span><span>'+banner+'</span></span></div>';
+    var rows='';
+    rows+='<div class="rc-row"><span>School</span><b>'+esc(t.school)+'</b></div>';
+    rows+='<div class="rc-row"><span>Members</span><b>'+memberList.map(function(m){return esc(m);}).join(', ')+'</b></div>';
+    rows+='<div class="rc-row"><span>Team size</span><b>Team of '+esc(t.team)+'</b></div>';
+    rows+='<div class="rc-row"><span>Phone</span><b>'+esc(t.phone)+'</b></div>';
+    rows+='<div class="rc-row"><span>Method</span><b>'+esc(method)+'</b></div>';
+    // Confirmation email note: register.html stashes the address here when
+    // the confirmation is on its way. Shown once, then cleared.
+    var emailed=null;
+    try{emailed=sessionStorage.getItem('spark_emailed');sessionStorage.removeItem('spark_emailed');}catch(e){}
+    state.style.display='none';
+    slot.innerHTML='<div class="rc-card" id="reg-ticket">'
+      +mq
+      +'<div class="rc-body"><div class="rc-wm"><b>SPARK</b></div><div class="rc-inner">'
+      +'<div class="rc-head"><div><div class="rc-kicker">SPARK 2K26 · '+(paid?'Official Receipt':'Official Ticket')+'</div>'
+      +'<div class="rc-name">'+esc(t.event)+'</div>'
+      +'<div class="rc-sub">Fri, 27 Nov 2026 · 10 AM · Mar Augusthinose College, Ramapuram</div></div>'
+      +'<span class="rc-pill '+(paid?'paid':'unpaid')+'">'+(paid?'PAID IN FULL':'PAY AT VENUE')+'</span></div>'
+      +'<div class="rc-amt-label">'+(paid?'You paid':'Fee due')+'</div>'
+      +'<div class="rc-amt">'+esc(inr(amount))+'</div>'
+      +'<div class="rc-who"><div><div class="rc-who-label">'+(t.teamName?'Team':'Leader')+'</div>'
+      +'<div class="rc-who-name">'+esc(t.teamName||t.name)+'</div>'
+      +'<div class="rc-who-date">'+esc(when)+'</div></div>'
+      +'<span class="rc-chest-pill">CHEST '+(t.chest||'—')+'</span></div>'
+      +'<div class="rc-details">'+rows+'</div>'
+      +'</div></div>'
+      +'<div class="rc-white">'
+      +'<div class="rc-split"><div class="rc-cell"><div class="rc-cell-label">Cash</div><div class="rc-cell-val">'+esc(inr(cashAmt))+'</div></div>'
+      +'<div class="rc-cell"><div class="rc-cell-label">GPay</div><div class="rc-cell-val">'+esc(inr(gpayAmt))+'</div></div></div>'
+      +'<div class="rc-verify"><div class="rc-cell-label">Verify code</div><div class="rc-cell-val">'+esc(t.id)+'</div></div>'
+      +'<div class="rc-qr-row"><div class="rc-qr">'+dotQRsvg(qrText,132)+'</div>'
+      +'<div class="rc-qr-side"><div class="rc-cell-label">Scan to verify</div><div class="rc-cell-val">Show this at the registration desk with a valid school ID card for every member. Report by 9:30 AM.</div></div></div>'
+      +'<div class="rc-barcode">'+barcodeSVG(t.id)+'</div>'
+      +'<div class="rc-proof">KEEP THIS. IT’S YOUR PROOF.</div>'
+      +'<div class="rc-issuer">issued by NEXUS · SPARK 2K26</div>'
+      +'</div></div>'
+      +'<div class="tk-actions"><button class="tk-dl" id="tk-dl" type="button">Download ticket</button>'
+      +'<button class="tk-share" id="tk-share" type="button">Share ticket</button></div>'
+      +'<p class="tk-dl-note">Keep this ticket safe. You will need it at the venue.'
+      +(emailed?'<br>Confirmation email on its way to '+esc(emailed)+'.</p>':'</p>');
+    document.title=t.event+' — Your Ticket | SPARK 2K26';
+    var dl=document.getElementById('tk-dl');
+    if(dl)dl.addEventListener('click',function(){downloadTicket(t);});
+    var sh=document.getElementById('tk-share');
+    if(sh)sh.addEventListener('click',function(){
+      var shareData={title:'SPARK 2K26 Ticket — '+t.event,text:'My SPARK 2K26 ticket · Chest '+(t.chest||'')+' · Verify '+t.id,url:qrText};
+      if(navigator.share){navigator.share(shareData).catch(function(){});}
+      else if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(qrText).then(function(){sh.textContent='Link copied';setTimeout(function(){sh.textContent='Share ticket';},2000);});}
+      else{location.href=qrText;}
+    });
+    // Live update: while unpaid, re-check every 15s (only while the page is
+    // visible). The moment the counter marks it paid, the ticket flips to
+    // the receipt by itself. Polling stops once paid.
+    liveNote.hidden=paid;
+    if(pollTimer){clearInterval(pollTimer);pollTimer=null;}
+    if(!paid){
+      pollTimer=setInterval(function(){
+        if(document.hidden)return;
+        fetch('/api/ticket?id='+encodeURIComponent(id)).then(function(r){return r.json();}).then(function(d){
+          if(d&&d.ok&&d.ticket&&d.ticket.paid){render(d.ticket);}
+        }).catch(function(){});
+      },15000);
+    }
   }
   fetch('/api/ticket?id='+encodeURIComponent(id)).then(function(r){return r.json();}).then(function(d){
     if(!d||!d.ok||!d.ticket){
@@ -182,42 +330,7 @@
       var b=document.querySelector('.myregs-count');
       if(b){b.textContent=saved.length>99?'99+':String(saved.length);b.hidden=saved.length===0;}
     }catch(e){}
-    var memberList=[t.name].concat(t.members||[]);
-    var qrText='https://spark.maraugusthinosecollege.org/ticket?id='+t.id;
-    var rows='';
-    rows+='<div class="tk-row"><span class="tk-k">Event</span><span class="tk-v">'+esc(t.event)+'</span></div>';
-    if(t.teamName)rows+='<div class="tk-row"><span class="tk-k">Team</span><span class="tk-v">'+esc(t.teamName)+'</span></div>';
-    rows+='<div class="tk-row"><span class="tk-k">Leader</span><span class="tk-v">'+esc(t.name)+'</span></div>';
-    rows+='<div class="tk-row"><span class="tk-k">School</span><span class="tk-v">'+esc(t.school)+'</span></div>';
-    rows+='<div class="tk-row"><span class="tk-k">Members</span><span class="tk-v">'+memberList.map(function(m){return esc(m);}).join(', ')+'<small>Team of '+esc(t.team)+'</small></span></div>';
-    rows+='<div class="tk-row"><span class="tk-k">Phone</span><span class="tk-v">'+esc(t.phone)+'</span></div>';
-    if(t.fee)rows+='<div class="tk-row"><span class="tk-k">Fee</span><span class="tk-v">'+esc(t.fee)+'<small>Pay at the venue</small></span></div>';
-    // Confirmation email note: register.html stashes the address here when
-    // the confirmation is on its way. Shown once, then cleared.
-    var emailed=null;
-    try{emailed=sessionStorage.getItem('spark_emailed');sessionStorage.removeItem('spark_emailed');}catch(e){}
-    state.style.display='none';
-    slot.innerHTML='<div class="tk-wrap tk-mini-wrap" id="reg-ticket"><div class="tk tk-mini">'
-      +'<p class="tk-mini-head">SPARK 2K26 · Registered</p>'
-      +'<p class="tk-mini-event">'+esc(t.event)+'</p>'
-      +'<p class="tk-mini-date">Fri, 27 Nov 2026 · 10 AM · Mar Augusthinose College, Ramapuram</p>'
-      +(t.chest?'<p class="tk-chest">Chest No. <b>'+esc(t.chest)+'</b></p>':'')
-      +'<div class="tk-details">'
-      +rows
-      +'</div>'
-      +'<div class="tk-perf" aria-hidden="true"><i></i><i></i></div>'
-      +'<div class="tk-qr-row">'
-      +'<div class="tk-qr">'+dotQRsvg(qrText,160)+'</div><div class="tk-qr-side"><span>Registration ID</span><b>'+esc(t.id)+'</b><em>Scan at the desk</em></div>'
-      +'</div>'
-      +'<p class="tk-note">Show this ticket at the registration desk. Carry a valid school ID card for every member. Report by 9:30 AM.</p>'
-      +'</div></div>'
-      +'<div class="tk-actions"><button class="tk-dl" id="tk-dl" type="button">Download ticket</button>'
-      +'<a class="tk-back" href="/events">See all events</a></div>'
-      +'<p class="tk-dl-note">Keep this ticket safe. You will need it at the venue.</p>'
-      +(emailed?'<p class="tk-dl-note">Confirmation email on its way to '+esc(emailed)+'.</p>':'');
-    document.title=t.event+' — Your Ticket | SPARK 2K26';
-    var dl=document.getElementById('tk-dl');
-    if(dl)dl.addEventListener('click',function(){downloadTicket(t);});
+    render(t);
   }).catch(function(){
     state.innerHTML='<h1>Could not load ticket</h1><p>Please check your connection and try again.</p>';
   });
