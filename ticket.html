@@ -14,19 +14,27 @@
 <link rel="stylesheet" href="/theme-purple.css?v=13">
 <noscript><style>.reveal{opacity:1 !important;transform:none !important}</style></noscript>
 <style>
-  html{background:#060608;overflow-x:hidden}body{background:#060608;overflow-x:hidden}
-  .tk-page{min-height:100svh;display:flex;flex-direction:column;align-items:center;padding:20px 16px 48px;min-width:0}
-  .tk-page .tk-top{width:100%;max-width:520px;min-width:0;display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+  html{background:#060608;overflow-x:hidden;overflow-x:clip}body{background:#060608;overflow-x:hidden;overflow-x:clip}
+  /* Page is a plain block column (NOT flex): every child is width:100% +
+     max-width:520px + margin auto, so nothing can be forced wider than the
+     screen by flex-item min-content. The earlier overflow was #tk-slot —
+     the unstyled wrapper around the card. It was the only flex item with
+     no width and no min-width:0, so the card's content sized it to 520px
+     and it overflowed the phone on both sides. It now has the same
+     width/max-width/min-width as every other row. */
+  .tk-page{min-height:100svh;padding:20px 16px 48px;overflow-x:clip}
+  .tk-page .tk-top{width:100%;max-width:520px;margin:0 auto 18px;display:flex;align-items:center;justify-content:space-between}
   .tk-page .tk-top a{color:rgba(255,255,255,.75);text-decoration:none;font-size:14px}
   .tk-page .tk-top b{color:#fff;font-size:13px;letter-spacing:.22em;text-transform:uppercase}
-  .tk-page .tk-state{width:100%;max-width:520px;min-width:0;color:rgba(255,255,255,.8);text-align:center;padding:60px 0;line-height:1.6}
+  .tk-page .tk-state{width:100%;max-width:520px;margin:0 auto;color:rgba(255,255,255,.8);text-align:center;padding:60px 0;line-height:1.6}
   .tk-page .tk-state h1{color:#fff;font-size:24px;margin-bottom:8px}
   .tk-page .tk-state p{font-size:15px}
-  .tk-page .tk-live{width:100%;max-width:520px;min-width:0;text-align:center;font-size:12px;color:rgba(255,255,255,.55);margin-top:14px}
-  .tk-page .tk-actions{width:100%;max-width:520px;min-width:0;display:flex;gap:10px;margin-top:16px}
+  .tk-page #tk-slot{width:100%;max-width:520px;min-width:0;margin:0 auto}
+  .tk-page .tk-live{width:100%;max-width:520px;margin:14px auto 0;text-align:center;font-size:12px;color:rgba(255,255,255,.55)}
+  .tk-page .tk-actions{width:100%;max-width:520px;margin:16px auto 0;display:flex;gap:10px}
   .tk-page .tk-actions .tk-dl{flex:1;min-width:0}
   .tk-page .tk-actions .tk-share{flex:1;min-width:0}
-  .tk-page .tk-dl-note{width:100%;max-width:520px;min-width:0;text-align:center;font-size:12px;color:rgba(255,255,255,.55);margin-top:12px;line-height:1.6}
+  .tk-page .tk-dl-note{width:100%;max-width:520px;margin:12px auto 0;text-align:center;font-size:12px;color:rgba(255,255,255,.55);line-height:1.6}
 
   /* ===== Unified ticket / receipt card (Fees-receipt layout, SPARK purple) ===== */
   .rc-card{width:100%;max-width:520px;min-width:0;border-radius:28px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.55);font-family:system-ui,-apple-system,'Segoe UI',Arial,sans-serif;color:#fff;background:#1a0b2e}
@@ -76,6 +84,28 @@
   .rc-barcode .rc-bc-code{text-align:center;font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:11px;font-weight:700;letter-spacing:.35em;color:#666;margin-top:6px}
   .rc-proof{text-align:center;font-size:12px;font-weight:800;letter-spacing:.28em;color:#999;margin-top:14px}
   .rc-issuer{text-align:center;font-size:11px;color:#999;margin-top:6px}
+  .rc-card img,.rc-card svg{max-width:100%}
+  /* Compact on phones: the ticket was too big/tall, so less of it was
+     visible at once. Smaller amount, tighter spacing, smaller QR. */
+  @media (max-width:480px){
+    .tk-page{padding:14px 12px 40px}
+    .rc-card{border-radius:22px}
+    .rc-inner{padding:16px 16px 14px}
+    .rc-name{font-size:20px}
+    .rc-amt{font-size:40px}
+    .rc-amt small{font-size:18px}
+    .rc-who-name{font-size:17px}
+    .rc-wm b{font-size:96px}
+    .rc-details{padding:12px 14px;font-size:13px}
+    .rc-white{padding:14px 16px 16px}
+    .rc-split .rc-cell-val{font-size:20px}
+    .rc-verify .rc-cell-val{font-size:17px}
+    .rc-qr{width:96px;height:96px}
+    .rc-qr-row{gap:12px}
+    .rc-barcode svg{height:32px}
+    .rc-barcode .rc-bc-code{font-size:10px}
+    .rc-proof{letter-spacing:.2em}
+  }
 </style>
 </head>
 <body class="dark-page">
