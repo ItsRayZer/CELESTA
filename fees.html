@@ -593,7 +593,7 @@ nav button.on { background: #fff; color: #000; }
   function loadOverview(){
     return api('/api/fees?action=overview').then(function(r){
       if(r.status===401){token='';localStorage.removeItem(TOKEN_KEY);showLogin();return false;}
-      if(r.data&&r.data.ok){overview=r.data;renderHome();return true;}
+      if(r.data&&r.data.ok){overview=r.data;renderHome();maybeDeepLinkCollect();return true;}
       return false;
     }).catch(function(){return false;});
   }
@@ -1162,6 +1162,25 @@ nav button.on { background: #fff; color: #000; }
     $('scan-paid-when').textContent=r.paidAt?fmtWhen(r.paidAt):(r.at?fmtWhen(r.at):'—');
     $('scan-paid').classList.remove('hide');
     $('btn-scan-another').classList.remove('hide');
+  }
+  // Deep link from admin: /fees?collect=<reg-id> opens that student in the
+  // Collect tab (Cash/GPay). Runs once, after the overview loads (so the
+  // event slug can be resolved). The reg id is resolved via the ticket API,
+  // the same lookup the QR scanner uses. The param is cleared so a refresh
+  // does not re-open the student.
+  var deepLinkDone=false;
+  function maybeDeepLinkCollect(){
+    if(deepLinkDone)return;
+    var m=/[?&]collect=([^&]+)/.exec(location.search||'');
+    if(!m)return;
+    if(!overview)return; // not loaded yet; the next refreshAll will retry
+    deepLinkDone=true;
+    var code=decodeURIComponent(m[1]);
+    try{history.replaceState(null,'',location.pathname);}catch(e){}
+    fetch('/api/ticket?id='+encodeURIComponent(code)).then(function(r){return r.json();}).then(function(d){
+      if(d&&d.ok&&d.ticket){openScannedCollect(d.ticket);}
+      else{toast('Could not open that student',1);}
+    }).catch(function(){toast('Could not open that student',1);});
   }
   function openScannedCollect(r){
     closeScanner();

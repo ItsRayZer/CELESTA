@@ -803,11 +803,17 @@ function render(){
     <td>${esc(x.phone)}<br><span class="mut">${esc(x.email||'—')}</span></td>
     <td>${x.team}${Array.isArray(x.members)&&x.members.length?'<br><span class="mut">'+x.members.map(function(m){return esc(memLine(m));}).join(', ')+'</span>':''}</td>
     <td>${x.paid?'<span class="amt">'+fmt(x.amount)+'</span><br><span class="mut">PAID</span>':'<span class="mut">UNPAID</span>'}</td>
-    <td style="white-space:nowrap">${w?`<button class="paybtn ${x.paid?'paid':''}" data-id="${x.id}" data-paid="${x.paid?1:0}">${x.paid?'Paid':'Mark paid'}</button>
+    <td style="white-space:nowrap">${w?`<button class="paybtn ${x.paid?'paid':''}" data-id="${x.id}" data-paid="${x.paid?1:0}">${x.paid?'Paid':'Collect'}</button>
     <button class="mini" data-edit="${x.id}">Edit</button>
     <button class="mini ${x.invalid?'':'danger'}" data-inv="${x.id}" data-invalid="${x.invalid?1:0}">${x.invalid?'Mark valid':'Mark invalid'}</button>`:'<span class="mut">—</span>'}</td>
   </tr>`;}).join('');
-  document.querySelectorAll('.paybtn').forEach(b=>b.onclick=()=>togglePay(b.dataset.id,b.dataset.paid==='1'));
+  // Collect: go to the fees app and auto-select this student, so Cash/GPay
+  // is picked in the clean fees UI. Paid rows keep the quick undo (tap Paid
+  // to mark unpaid again).
+  document.querySelectorAll('.paybtn').forEach(b=>b.onclick=()=>{
+    if(b.dataset.paid==='1'){togglePay(b.dataset.id,true);return;}
+    location.href='/fees?collect='+encodeURIComponent(b.dataset.id);
+  });
   document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>openEdit(b.dataset.edit));
   document.querySelectorAll('[data-inv]').forEach(b=>b.onclick=()=>toggleInvalid(b.dataset.inv,b.dataset.invalid==='1'));
 }
