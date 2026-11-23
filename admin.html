@@ -851,7 +851,7 @@ async function togglePay(id,wasPaid){
 // count toward the login lockout.
 function askAdminPw(label){
   return new Promise(resolve=>{
-    $('pwText').textContent=label+' Enter the admin password to confirm.';
+    $('pwText').textContent=label+' Enter the admin write password to confirm. (The fees and read-only passwords do not work here.)';
     $('pwInput').value='';
     $('pwErr').style.display='none';
     $('pwErr').textContent='';
@@ -864,14 +864,23 @@ function askAdminPw(label){
       const pw=$('pwInput').value;
       if(!pw){$('pwErr').textContent='Enter the admin password.';$('pwErr').style.display='block';return;}
       $('modalPwConfirm').disabled=true;
+      $('modalPwConfirm').textContent='Checking…';
+      // Never hang forever on a slow connection: abort after 15s so the
+      // modal always answers (error + retry) instead of looking stuck.
+      const ctl=new AbortController();
+      const to=setTimeout(()=>ctl.abort(),15000);
       try{
-        const r=await fetch('/api/admin-login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw,verifyWrite:true})});
+        const r=await fetch('/api/admin-login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw,verifyWrite:true}),signal:ctl.signal});
         const d=await r.json().catch(()=>({}));
         if(r.ok&&d.ok){close(true);return;}
         $('pwErr').textContent=d.error||'Wrong password';$('pwErr').style.display='block';
         $('pwInput').value='';$('pwInput').focus();
-      }catch(e){$('pwErr').textContent='Could not verify. Try again.';$('pwErr').style.display='block';}
+      }catch(e){
+        $('pwErr').textContent=(e&&e.name==='AbortError')?'Timed out — slow connection. Try again.':'Could not verify. Try again.';$('pwErr').style.display='block';
+      }
+      clearTimeout(to);
       $('modalPwConfirm').disabled=false;
+      $('modalPwConfirm').textContent='Confirm';
     };
   });
 }
