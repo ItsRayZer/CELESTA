@@ -820,7 +820,7 @@ function render(){
     const badge=lvl==='ok'?'':lvl==='review'?'<br><span class="risk risk-review">CHECK</span>':'<br><span class="risk risk-bad">BOT</span>';
     const whyLine=(lvl!=='ok'&&why)?'<br><span class="mut">'+esc(why)+'</span>':'';
     return `<tr class="${isNew?'flash':''}">
-    <td><b>${esc(x.name)}</b>${x.invalid?' <span class="risk risk-bad">INVALID</span>':''}<br><span class="mut">${esc(x.school)}</span>${x.teamName?'<br><span class="mut">'+esc(x.teamName)+'</span>':''}${badge}${whyLine}</td>
+    <td><b>${esc(x.name)}</b>${x.invalid?' <span class="risk risk-bad">INVALID</span>':''}<br><span class="mut">${esc(x.school)}</span>${x.teamName?'<br><span class="mut">Team: '+esc(x.teamName)+'</span>':''}${x.chest?'<br><span class="mut">Chest: <b>'+esc(x.chest)+'</b></span>':'<br><span class="mut">Chest: —</span>'}${badge}${whyLine}</td>
     <td><span class="evtag">${esc(x.event)}</span></td>
     <td>${esc(x.phone)}<br><span class="mut">${esc(x.email||'—')}</span></td>
     <td>${x.team}${Array.isArray(x.members)&&x.members.length?'<br><span class="mut">'+x.members.map(function(m){return esc(memLine(m));}).join(', ')+'</span>':''}</td>
@@ -828,7 +828,7 @@ function render(){
     <td style="white-space:nowrap">${w?`<button class="paybtn ${x.paid?'paid':''}" data-id="${x.id}" data-paid="${x.paid?1:0}">${x.paid?'Paid':'Collect'}</button>
     <button class="mini" data-edit="${x.id}">Edit</button>
     <button class="mini ${x.invalid?'':'danger'}" data-inv="${x.id}" data-invalid="${x.invalid?1:0}">${x.invalid?'Mark valid':'Mark invalid'}</button>
-    ${isLead()?`<button class="mini danger" data-del="${x.id}">Delete</button>`:''}`:'<span class="mut">—</span>'}</td>
+    ${isLead()?`<button class="mini danger" data-del="${x.id}">Delete</button>`:''}`:''}<button class="mini" data-ticket="${x.id}">Ticket</button></td>
   </tr>`;}).join('');
   // Collect: go to the fees app and auto-select this student, so Cash/GPay
   // is picked in the clean fees UI. Paid rows keep the quick undo (tap Paid
@@ -843,6 +843,9 @@ function render(){
   // again, then permanently removes the registration (and its payment
   // history if paid). Nothing else can delete.
   document.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>delReg(b.dataset.del));
+  // View ticket / receipt: opens the student's ticket page in a new tab.
+  // It shows the ticket before payment and the receipt after payment.
+  document.querySelectorAll('[data-ticket]').forEach(b=>b.onclick=()=>window.open('/ticket?id='+encodeURIComponent(b.dataset.ticket),'_blank'));
 }
 
 async function togglePay(id,wasPaid){
