@@ -397,7 +397,7 @@ export default async function handler(req, res) {
     if (role) {
       res.setHeader('Cache-Control', 'private, no-store');
     } else {
-      res.setHeader('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300');
+      res.setHeader('Cache-Control', 'public, s-maxage=10, stale-while-revalidate=30');
     }
     res.setHeader('Vary', 'Authorization');
     try {
