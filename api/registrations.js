@@ -7,7 +7,7 @@ const redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL,
   token: process.env.UPSTASH_REDIS_REST_TOKEN,
 });
-import { verify, parseVal, normPhone, validPhone, regMarkerKeys, MARKER_TTL } from './admin-login.js';
+import { verify, canWrite, parseVal, normPhone, validPhone, regMarkerKeys, MARKER_TTL } from './admin-login.js';
 import { appendLog } from './activity-log.js';
 import { loadEvents } from './events.js';
 
@@ -84,7 +84,7 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'PATCH') {
-    if (role !== 'write') return res.status(403).json({ error: 'Write access required' });
+    if (!canWrite(role)) return res.status(403).json({ error: 'Write access required' });
     const { id, paid, amount, invalid } = req.body || {};
     if (!id) return res.status(400).json({ error: 'Missing id' });
     try {
@@ -329,7 +329,7 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'DELETE') {
-    if (role !== 'write') return res.status(403).json({ error: 'Write access required' });
+    if (role !== 'lead') return res.status(403).json({ error: 'Tech Lead access required' });
     const { id } = req.body || {};
     if (!id) return res.status(400).json({ error: 'Missing id' });
     try {
@@ -364,7 +364,7 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'POST') {
-    if (role !== 'write') return res.status(403).json({ error: 'Write access required' });
+    if (!canWrite(role)) return res.status(403).json({ error: 'Write access required' });
     const { action, dryRun } = req.body || {};
     if (action !== 'backfill-chest') return res.status(400).json({ error: 'Unknown action' });
     // Backfill chest numbers for registrations that have none. Some

@@ -176,7 +176,7 @@ nav button.on { background: #fff; color: #000; }
     <div class="mark">SPARK 2K26 · ADMIN</div>
     <h1>Fees</h1>
     <p>Collect fees, track who came, and see funds live. Admin only.</p>
-    <input id="pw" type="password" placeholder="Admin or Fees password" autocomplete="current-password">
+    <input id="pw" type="password" placeholder="Admin, Fees or Tech Lead password" autocomplete="current-password">
     <button id="loginBtn" type="button">Unlock Fees</button>
     <div id="loginErr"></div>
     <a class="backlink" href="/admin">Back to dashboard</a>
@@ -244,6 +244,7 @@ nav button.on { background: #fff; color: #000; }
           <button id="btn-plans" type="button" class="btn b-ghost !py-1.5 !px-2.5 text-sm shrink-0" aria-label="Back to events">←</button>
           <select id="plan-select" class="inp !w-auto !py-1.5 text-xs max-w-[110px] sm:max-w-[160px] truncate"></select>
           <button id="btn-admin-lock" type="button" class="btn b-lime !py-1.5 !px-3 text-xs shrink-0">Lock Admin</button>
+          <span id="lead-badge" class="hide" style="font-size:10px;font-weight:800;letter-spacing:.12em;padding:6px 10px;border-radius:99px;background:rgba(191,90,242,.2);border:1px solid rgba(191,90,242,.5);color:#d0a2f7;white-space:nowrap">TECH LEAD</span>
         </div>
       </div>
     </header>
@@ -570,7 +571,7 @@ nav button.on { background: #fff; color: #000; }
 
   // ---------- login ----------
   function showLogin(){$('login').classList.remove('hide');$('app').classList.add('hide');}
-  function showApp(){$('login').classList.add('hide');$('app').classList.remove('hide');}
+  function showApp(){$('login').classList.add('hide');$('app').classList.remove('hide');var lb=$('lead-badge');if(lb)lb.classList.toggle('hide',role!=='lead');}
   function doLogin(){
     var pw=$('pw').value.trim();
     if(!pw){$('loginErr').textContent='Enter the admin password';return;}
@@ -935,7 +936,7 @@ nav button.on { background: #fff; color: #000; }
     $('collect-team').textContent='Team of '+(r.team||1)+(r.members&&r.members.length?' · '+[r.name].concat(memNames(r.members)).join(', '):'');
     $('collect-fee').textContent=(r.fee||inr(r.feeAmount))+(r.paid?' (paid)':'');
     $('collect-status').textContent=r.paid?('Paid · '+(r.paidMethod==='cash'?'Cash':'GPay')):'Unpaid';
-    var canWrite=role==='write';
+    var canWrite=(role==='write'||role==='lead');
     $('btn-pay-cash').disabled=!canWrite||r.paid;
     $('btn-pay-gpay').disabled=!canWrite||r.paid;
     $('btn-mark-unpaid').classList.toggle('hide',!r.paid||!canWrite);
@@ -1002,7 +1003,7 @@ nav button.on { background: #fff; color: #000; }
   var pendingPayMethod=null;
   function confirmPay(method){
     if(!selectedId)return;
-    if(role!=='write'){toast('Write access required',1);return;}
+    if(role!=='write'&&role!=='lead'){toast('Write access required',1);return;}
     var r=findReg(selectedId);
     if(!r)return;
     pendingPayMethod=method;
@@ -1064,7 +1065,7 @@ nav button.on { background: #fff; color: #000; }
   });
   $('btn-mark-unpaid').onclick=function(){
     if(!selectedId)return;
-    if(role!=='write'){toast('Write access required',1);return;}
+    if(role!=='write'&&role!=='lead'){toast('Write access required',1);return;}
     api('/api/fees?action=mark-unpaid',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:selectedId})}).then(function(res){
       if(res.data&&res.data.ok){toast('Marked unpaid');$('collect-msg').textContent='Payment reversed.';$('collect-msg').className='msg';refreshAll();}
       else{toast((res.data&&res.data.error)||'Could not undo',1);}

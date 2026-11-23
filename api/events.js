@@ -3,7 +3,7 @@
 // PATCH  /api/events — update an event by slug (write role only). The slug never changes, so links keep working after a rename.
 // DELETE /api/events?slug=... — delete (write role only). Blocked when registrations exist; hide the event instead.
 import { Redis } from '@upstash/redis';
-import { verify, parseVal } from './admin-login.js';
+import { verify, canWrite, parseVal } from './admin-login.js';
 import { appendLog } from './activity-log.js';
 
 const redis = new Redis({
@@ -422,7 +422,8 @@ export default async function handler(req, res) {
   }
 
   const token = (req.headers.authorization || '').replace('Bearer ', '');
-  if (verify(token) !== 'write') return res.status(403).json({ error: 'Write access required' });
+  const role = verify(token);
+  if (!canWrite(role)) return res.status(403).json({ error: 'Write access required' });
 
   if (req.method === 'POST') {
     try {
@@ -499,6 +500,7 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'DELETE') {
+    if (role !== 'lead') return res.status(403).json({ error: 'Tech Lead access required' });
     const slug = req.query.slug;
     if (!slug) return res.status(400).json({ error: 'Missing slug' });
     try {

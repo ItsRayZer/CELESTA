@@ -42,6 +42,7 @@ body{font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'SF Pro Di
 .topbar .ttl small{display:block;font-size:10px;font-weight:600;letter-spacing:.22em;color:var(--gold);margin-top:2px}
 .rolepill{font-size:10.5px;font-weight:700;letter-spacing:.12em;padding:8px 16px;border-radius:99px;background:var(--inputbg);border:1px solid var(--stroke);color:var(--mut);white-space:nowrap}
 .rolepill.write{background:var(--gold-dim);border-color:rgba(212,168,83,.35);color:var(--gold)}
+.rolepill.lead{background:rgba(191,90,242,.18);border-color:rgba(191,90,242,.5);color:#d0a2f7}
 .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);margin-right:6px;vertical-align:1px}
 .iconbtn{background:var(--cardbg);border:1px solid var(--stroke);color:var(--txt);border-radius:12px;padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer}
 .iconbtn:active{opacity:.7}
@@ -458,7 +459,8 @@ function feeTxt(f){
   const s=String(f).trim();
   return /^\d+(\.\d+)?$/.test(s)?fmt(Number(s)):s;
 }
-function isWrite(){return ROLE==='write';}
+function isWrite(){return ROLE==='write'||ROLE==='lead';}
+function isLead(){return ROLE==='lead';}
 function authHeaders(json){const h={Authorization:'Bearer '+TOKEN,...fpHeaders()};if(json)h['Content-Type']='application/json';return h;}
 
 // ---------- device fingerprint (for the Activity Log) ----------
@@ -637,10 +639,11 @@ $('logoutBtn').onclick=()=>{localStorage.removeItem('celesta_admin_tok');localSt
 // ---------- dashboard ----------
 async function showDash(){
   $('login').classList.add('hidden');$('dash').classList.remove('hidden');$('dock').classList.remove('hidden');
-  const w=isWrite();
-  $('rolePill').textContent=w?'WRITE · FULL ACCESS':'READ · VIEW ONLY';
+  const w=isWrite(), lead=isLead();
+  $('rolePill').textContent=lead?'TECH LEAD · FULL POWER':w?'WRITE · FULL ACCESS':'READ · VIEW ONLY';
   $('rolePill').classList.toggle('write',w);
-  $('roleSub').textContent=w?'FULL ACCESS':'READ ONLY';
+  $('rolePill').classList.toggle('lead',lead);
+  $('roleSub').textContent=lead?'TECH LEAD':w?'FULL ACCESS':'READ ONLY';
   $('addForm').classList.toggle('hidden',!w);
   $('logLink').classList.toggle('hidden',!w);
   $('feesLink').classList.toggle('hidden',!w); // Fees app: full admin (write) only, never read-only
@@ -805,7 +808,8 @@ function render(){
     <td>${x.paid?'<span class="amt">'+fmt(x.amount)+'</span><br><span class="mut">PAID</span>':'<span class="mut">UNPAID</span>'}</td>
     <td style="white-space:nowrap">${w?`<button class="paybtn ${x.paid?'paid':''}" data-id="${x.id}" data-paid="${x.paid?1:0}">${x.paid?'Paid':'Collect'}</button>
     <button class="mini" data-edit="${x.id}">Edit</button>
-    <button class="mini ${x.invalid?'':'danger'}" data-inv="${x.id}" data-invalid="${x.invalid?1:0}">${x.invalid?'Mark valid':'Mark invalid'}</button>`:'<span class="mut">—</span>'}</td>
+    <button class="mini ${x.invalid?'':'danger'}" data-inv="${x.id}" data-invalid="${x.invalid?1:0}">${x.invalid?'Mark valid':'Mark invalid'}</button>
+    ${isLead()?`<button class="mini danger" data-del="${x.id}">Delete</button>`:''}`:'<span class="mut">—</span>'}</td>
   </tr>`;}).join('');
   // Collect: go to the fees app and auto-select this student, so Cash/GPay
   // is picked in the clean fees UI. Paid rows keep the quick undo (tap Paid
@@ -816,6 +820,10 @@ function render(){
   });
   document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>openEdit(b.dataset.edit));
   document.querySelectorAll('[data-inv]').forEach(b=>b.onclick=()=>toggleInvalid(b.dataset.inv,b.dataset.invalid==='1'));
+  // Delete registration: Tech Lead only. Asks for the Tech Lead password
+  // again, then permanently removes the registration (and its payment
+  // history if paid). Nothing else can delete.
+  document.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>delReg(b.dataset.del));
 }
 
 async function togglePay(id,wasPaid){
@@ -889,6 +897,60 @@ function askAdminPw(label){
       $('modalPwConfirm').textContent='Confirm';
     };
   });
+}
+
+// Re-confirm the TECH LEAD password before a delete. Returns true only
+// if the Tech Lead password is correct — the admin write, fees and
+// read-only passwords do NOT pass. Same 15s timeout so it never hangs.
+function askLeadPw(label){
+  return new Promise(resolve=>{
+    $('pwText').textContent=label+' Enter the Tech Lead password to confirm. (The admin, fees and read-only passwords do not work here.)';
+    $('pwInput').value='';
+    $('pwErr').style.display='none';
+    $('pwErr').textContent='';
+    $('modal-pw').classList.add('show');
+    $('pwInput').focus();
+    const close=ok=>{$('modal-pw').classList.remove('show');$('modalPwConfirm').onclick=null;$('modalPwCancel').onclick=null;$('pwInput').onkeydown=null;resolve(ok);};
+    $('modalPwCancel').onclick=()=>close(false);
+    $('pwInput').onkeydown=e=>{if(e.key==='Enter')$('modalPwConfirm').click();};
+    $('modalPwConfirm').onclick=async()=>{
+      const pw=$('pwInput').value;
+      if(!pw){$('pwErr').textContent='Enter the Tech Lead password.';$('pwErr').style.display='block';return;}
+      $('modalPwConfirm').disabled=true;
+      $('modalPwConfirm').textContent='Checking…';
+      const ctl=new AbortController();
+      const to=setTimeout(()=>ctl.abort(),15000);
+      try{
+        const r=await fetch('/api/admin-login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw,verifyLead:true}),signal:ctl.signal});
+        const d=await r.json().catch(()=>({}));
+        if(r.ok&&d.ok){close(true);return;}
+        $('pwErr').textContent=d.error||'Wrong password';$('pwErr').style.display='block';
+        $('pwInput').value='';$('pwInput').focus();
+      }catch(e){
+        $('pwErr').textContent=(e&&e.name==='AbortError')?'Timed out — slow connection. Try again.':'Could not verify. Try again.';$('pwErr').style.display='block';
+      }
+      clearTimeout(to);
+      $('modalPwConfirm').disabled=false;
+      $('modalPwConfirm').textContent='Confirm';
+    };
+  });
+}
+
+// Delete a registration: Tech Lead only. The record and its payment
+// history are removed permanently. Asks for the Tech Lead password first.
+async function delReg(id){
+  const x=REGS.find(r=>r.id===id);
+  if(!x)return;
+  if(!(await askLeadPw('Delete the registration of '+x.name+' ('+x.event+')? This cannot be undone.')))return;
+  try{
+    const r=await fetch('/api/registrations',{method:'DELETE',headers:authHeaders(true),body:JSON.stringify({id})});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok){toast(d.error||'Failed');return;}
+    const i=REGS.findIndex(y=>y.id===id);
+    if(i>=0)REGS.splice(i,1);
+    render();
+    toast('Registration deleted');
+  }catch(e){toast('Failed');}
 }
 
 async function toggleInvalid(id,wasInvalid){
@@ -1144,7 +1206,8 @@ function renderEventsAdmin(){
       <label class="mut" style="display:flex;gap:6px;align-items:center"><input type="checkbox" data-open="${e.slug}" ${e.regOpen?'checked':''} ${w?'':'disabled'}> Reg open</label>
       ${w?`<button class="mini" data-ev-up="${e.slug}" ${i===0?'disabled style="opacity:.4"':''}>Up</button>
       <button class="mini" data-ev-down="${e.slug}" ${i===EVENTS_DB.length-1?'disabled style="opacity:.4"':''}>Down</button>
-      <button class="mini" data-ev-edit="${e.slug}">Edit</button>`:''}
+      <button class="mini" data-ev-edit="${e.slug}">Edit</button>
+      ${isLead()?`<button class="mini danger" data-ev-del="${e.slug}">Delete</button>`:''}`:''}
     </div>`;
   }).join('')||'<div class="empty">No events yet.</div>';
   // Visible and Reg open change what students see and whether they can
@@ -1165,6 +1228,7 @@ function renderEventsAdmin(){
   document.querySelectorAll('[data-ev-up]').forEach(b=>b.onclick=()=>moveEvent(b.dataset.evUp,-1));
   document.querySelectorAll('[data-ev-down]').forEach(b=>b.onclick=()=>moveEvent(b.dataset.evDown,1));
   document.querySelectorAll('[data-ev-edit]').forEach(b=>b.onclick=()=>openEvEdit(b.dataset.evEdit));
+  document.querySelectorAll('[data-ev-del]').forEach(b=>b.onclick=()=>delEvent(b.dataset.evDel));
   document.querySelectorAll('#evAdminList [data-up]').forEach(inp=>inp.onchange=()=>uploadPoster(inp.dataset.up,inp.files[0]));
   document.querySelectorAll('#evAdminList [data-reset]').forEach(b=>b.onclick=()=>resetPoster(b.dataset.reset));
   if(!$('sec-events').classList.contains('hidden'))refreshPosterFlags();
@@ -1250,7 +1314,7 @@ async function delEvent(slug){
   if(!e)return;
   const n=evRegCount(e.slug,e.name);
   if(n>0){toast('This event has '+n+' registration(s). Hide it instead of deleting.');return;}
-  if(!(await askAdminPw('Delete the event "'+e.name+'"? This cannot be undone.')))return;
+  if(!(await askLeadPw('Delete the event "'+e.name+'"? This cannot be undone.')))return;
   try{
     const r=await fetch('/api/events?slug='+slug,{method:'DELETE',headers:authHeaders(false)});
     const d=await r.json().catch(()=>({}));

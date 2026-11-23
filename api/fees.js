@@ -7,7 +7,7 @@
 // the public /api/ticket?phone= endpoint was removed for that reason.
 import { Redis } from '@upstash/redis';
 import crypto from 'node:crypto';
-import { verify, parseVal, normPhone, validPhone } from './admin-login.js';
+import { verify, canWrite, parseVal, normPhone, validPhone } from './admin-login.js';
 import { loadEvents } from './events.js';
 
 const redis = new Redis({
@@ -211,7 +211,7 @@ export default async function handler(req, res) {
 
   // ---------- POST (write role only) ----------
   if (req.method === 'POST') {
-    if (role !== 'write') return res.status(403).json({ error: 'Write access required' });
+    if (!canWrite(role)) return res.status(403).json({ error: 'Write access required' });
     const body = req.body || {};
     const id = String(body.id || '').trim();
     if (!id) return res.status(400).json({ error: 'Missing id' });

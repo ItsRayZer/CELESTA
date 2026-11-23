@@ -29,13 +29,16 @@ export function verify(token) {
   const parts = token.split('.');
   if (parts.length !== 3) return null;
   const [role, exp, sig] = parts;
-  if (!['read', 'write'].includes(role)) return null;
+  if (!['read', 'write', 'lead'].includes(role)) return null;
   if (!/^\d+$/.test(exp)) return null; // non-numeric expiry must not pass
   if (Date.now() > parseInt(exp, 10)) return null;
   const expected = createHmac('sha256', SECRET).update(role + '.' + exp).digest('hex').slice(0, 32);
   if (sig.length !== expected.length || !timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
   return role;
 }
+
+// Tech Lead can do everything write can, plus delete. Read cannot write.
+export function canWrite(role) { return role === 'write' || role === 'lead'; }
 
 // Parse a value read from Redis. The Upstash client auto-parses JSON strings
 // into objects, so a stored record may come back as an object already —
@@ -70,10 +73,11 @@ export function parseVal(v) {
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   
-  const { password, verifyWrite } = req.body || {};
+  const { password, verifyWrite, verifyLead } = req.body || {};
   const readPw = process.env.ADMIN_READ_PW;
   const writePw = process.env.ADMIN_WRITE_PW;
   const feesPw = process.env.FEES_PW;
+  const leadPw = process.env.TECH_LEAD_PW;
 
   if (!readPw || !writePw || !process.env.ADMIN_SECRET) {
     console.error('admin-login config missing: ADMIN_READ_PW/ADMIN_WRITE_PW/ADMIN_SECRET not set');
@@ -96,6 +100,18 @@ export default async function handler(req, res) {
   const writeHash = createHash('sha256').update(writePw).digest();
   const readHash = createHash('sha256').update(readPw).digest();
   const feesHash = feesPw ? createHash('sha256').update(feesPw).digest() : null;
+  const leadHash = leadPw ? createHash('sha256').update(leadPw).digest() : null;
+  // verifyLead mode: re-confirm the TECH LEAD password before a delete
+  // (registration or event). Only the Tech Lead password passes — the
+  // admin write, fees and read-only passwords do NOT. A wrong password
+  // falls through to the normal lockout counting below.
+  if (verifyLead) {
+    if (leadHash && pwHash && timingSafeEqual(pwHash, leadHash)) {
+      try { await redis.del(failKey); } catch { /* ignore */ }
+      await appendLog({ type: 'login', actor: 'lead', action: 'Tech Lead password re-confirmed for a delete' }, req);
+      return res.status(200).json({ ok: true, role: 'lead' });
+    }
+  }
   // verifyWrite mode: re-confirm the ADMIN write password before a
   // sensitive action (event delete, mark invalid/valid). Only the true
   // admin write password passes — the fees counter password and the
@@ -112,16 +128,25 @@ export default async function handler(req, res) {
     await appendLog({ type: 'login', actor: 'write', action: 'Full-access admin logged in' }, req);
     return res.status(200).json({ ok: true, role: 'write', token: sign('write') });
   }
+  // Tech Lead: the only role that can delete. Full powerful mode — can do
+  // everything write can, plus delete registrations and events. Only the
+  // Technical Lead (RayZer) has this password. Never accepted in
+  // verifyWrite mode (that mode is for the admin write password only).
+  if (!verifyWrite && !verifyLead && leadHash && pwHash && timingSafeEqual(pwHash, leadHash)) {
+    try { await redis.del(failKey); } catch { /* ignore */ }
+    await appendLog({ type: 'login', actor: 'lead', action: 'Tech Lead logged in' }, req);
+    return res.status(200).json({ ok: true, role: 'lead', token: sign('lead') });
+  }
   // Fees counter password: same full access as the admin write password,
   // so the counters can mark payments in /fees. The admin login still
   // works for /fees too. Only share this password with trusted counters.
   // Never accepted in verifyWrite mode (re-auth for sensitive actions).
-  if (!verifyWrite && feesHash && pwHash && timingSafeEqual(pwHash, feesHash)) {
+  if (!verifyWrite && !verifyLead && feesHash && pwHash && timingSafeEqual(pwHash, feesHash)) {
     try { await redis.del(failKey); } catch { /* ignore */ }
     await appendLog({ type: 'login', actor: 'write', action: 'Fees counter logged in' }, req);
     return res.status(200).json({ ok: true, role: 'write', token: sign('write') });
   }
-  if (!verifyWrite && pwHash && timingSafeEqual(pwHash, readHash)) {
+  if (!verifyWrite && !verifyLead && pwHash && timingSafeEqual(pwHash, readHash)) {
     try { await redis.del(failKey); } catch { /* ignore */ }
     await appendLog({ type: 'login', actor: 'read', action: 'Read-only admin logged in' }, req);
     return res.status(200).json({ ok: true, role: 'read', token: sign('read') });
