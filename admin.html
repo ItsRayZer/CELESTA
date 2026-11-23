@@ -1147,8 +1147,21 @@ function renderEventsAdmin(){
       <button class="mini" data-ev-edit="${e.slug}">Edit</button>`:''}
     </div>`;
   }).join('')||'<div class="empty">No events yet.</div>';
-  document.querySelectorAll('[data-vis]').forEach(cb=>cb.onchange=()=>saveEvent({slug:cb.dataset.vis,visible:cb.checked}));
-  document.querySelectorAll('[data-open]').forEach(cb=>cb.onchange=()=>saveEvent({slug:cb.dataset.open,regOpen:cb.checked}));
+  // Visible and Reg open change what students see and whether they can
+  // register, so they need the admin write password to confirm first.
+  // If the password is wrong or cancelled, the tick flips back.
+  document.querySelectorAll('[data-vis]').forEach(cb=>cb.onchange=async()=>{
+    const want=cb.checked;
+    const e=EVENTS_DB.find(x=>x.slug===cb.dataset.vis);
+    if(!(await askAdminPw((want?'Show':'Hide')+' the event "'+(e?e.name:cb.dataset.vis)+'" on the public site?'))){cb.checked=!want;return;}
+    saveEvent({slug:cb.dataset.vis,visible:want});
+  });
+  document.querySelectorAll('[data-open]').forEach(cb=>cb.onchange=async()=>{
+    const want=cb.checked;
+    const e=EVENTS_DB.find(x=>x.slug===cb.dataset.open);
+    if(!(await askAdminPw((want?'Open':'Close')+' registrations for "'+(e?e.name:cb.dataset.open)+'"?'))){cb.checked=!want;return;}
+    saveEvent({slug:cb.dataset.open,regOpen:want});
+  });
   document.querySelectorAll('[data-ev-up]').forEach(b=>b.onclick=()=>moveEvent(b.dataset.evUp,-1));
   document.querySelectorAll('[data-ev-down]').forEach(b=>b.onclick=()=>moveEvent(b.dataset.evDown,1));
   document.querySelectorAll('[data-ev-edit]').forEach(b=>b.onclick=()=>openEvEdit(b.dataset.evEdit));
