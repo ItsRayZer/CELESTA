@@ -93,20 +93,31 @@ export default async function handler(req, res) {
     const BATCH_SIZE = 10;
     const sendOne = async (r) => {
       try {
+        // Record the send BEFORE mailing (V3-m06): if the SADD after a
+        // successful mail fails, the next run re-sends to the same student.
+        // Marking first means a killed run never re-sends. If the mark
+        // itself fails, skip the mail (do not send an unrecorded mail).
+        try {
+          await redis.sadd(key, r.id);
+          await redis.expire(key, 604800); // 7 days
+        } catch (e) {
+          console.error('remind sadd failed', r.id, e);
+          failed++;
+          return;
+        }
         const mail = buildReminderEmail({ reg: r, fee: feeBySlug[r.eventSlug] || '', kind });
         const ok = await sendMail({ to: String(r.email).trim(), ...mail, timeoutMs: 3000 });
         if (ok) {
           sent++;
-          try {
-            await redis.sadd(key, r.id);
-            await redis.expire(key, 604800); // 7 days
-          } catch (e) {
-            console.error('remind sadd failed', r.id, e);
-          }
-        } else failed++;
+        } else {
+          failed++;
+          // Mail failed: remove the mark so the next run retries.
+          try { await redis.srem(key, r.id); } catch { /* mark stays; next run may re-send a failed mail */ }
+        }
       } catch (e) {
         console.error('remind send failed', r.id, e);
         failed++;
+        try { await redis.srem(key, r.id); } catch { /* ignore */ }
       }
     };
     for (let i = 0; i < pending.length; i += BATCH_SIZE) {

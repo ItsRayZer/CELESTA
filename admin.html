@@ -462,6 +462,20 @@ function feeTxt(f){
 function isWrite(){return ROLE==='write'||ROLE==='lead';}
 function isLead(){return ROLE==='lead';}
 function authHeaders(json){const h={Authorization:'Bearer '+TOKEN,...fpHeaders()};if(json)h['Content-Type']='application/json';return h;}
+// Centralised 401 -> re-login (V3-m20): any admin call that gets a 401
+// (expired/invalid token) clears the token and reloads to the login
+// screen, instead of showing a generic "Failed". Returns true when the
+// response was a 401 (caller should stop).
+function sessExpired(r){
+  if(r&&r.status===401){
+    localStorage.removeItem('celesta_admin_tok');
+    localStorage.removeItem('celesta_admin_role');
+    toast('Session expired — log in again',1);
+    location.reload();
+    return true;
+  }
+  return false;
+}
 
 // ---------- device fingerprint (for the Activity Log) ----------
 // Everything a browser will tell us, no permissions needed. Stable signals only:
@@ -649,6 +663,11 @@ async function showDash(){
   $('feesLink').classList.toggle('hidden',!w); // Fees app: full admin (write) only, never read-only
   $('dockFees').classList.toggle('hidden',!w); // Dock Fees item: same write-only gating
   $('chestBtn').classList.toggle('hidden',!w); // Fix missing chest numbers: write only
+  // Bulk export (CSV + Full backup) is write/lead only: the read role
+  // can view the list but must not exfiltrate the whole PII database
+  // in one click (V3-M9).
+  $('csvBtn').classList.toggle('hidden',!w);
+  $('backupBtn').classList.toggle('hidden',!w);
   collectFingerprint();
   await ensureEvents();
   const sel=$('fEv');sel.innerHTML='<option value="">All events</option>';
@@ -847,6 +866,7 @@ async function togglePay(id,wasPaid){
   const undo=()=>{if(x){x.paid=oldPaid;x.amount=oldAmt;}if(!wasPaid){REG_PAID_N--;REG_PAID_AMT-=amount;}else{REG_PAID_N++;REG_PAID_AMT+=oldAmt;}render();};
   try{
     const r=await fetch('/api/registrations',{method:'PATCH',headers:authHeaders(true),body:JSON.stringify({id,paid:!wasPaid,amount,paidMethod:!wasPaid?paidMethod:undefined})});
+    if(sessExpired(r))return;
     if(r.ok){
       // Reconcile with the server's saved record: a refresh that fired
       // mid-PATCH would otherwise show the old paid state until the
@@ -869,6 +889,11 @@ function askAdminPw(label){
     $('pwInput').value='';
     $('pwErr').style.display='none';
     $('pwErr').textContent='';
+    // Reset the Confirm button at entry: a previous successful re-auth
+    // left it disabled with "Checking…" — without this the next modal
+    // opens dead (V3-M3).
+    $('modalPwConfirm').disabled=false;
+    $('modalPwConfirm').textContent='Confirm';
     $('modal-pw').classList.add('show');
     $('pwInput').focus();
     const close=ok=>{$('modal-pw').classList.remove('show');$('modalPwConfirm').onclick=null;$('modalPwCancel').onclick=null;$('pwInput').onkeydown=null;resolve(ok);};
@@ -886,7 +911,7 @@ function askAdminPw(label){
       try{
         const r=await fetch('/api/admin-login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw,verifyWrite:true}),signal:ctl.signal});
         const d=await r.json().catch(()=>({}));
-        if(r.ok&&d.ok){close(true);return;}
+        if(r.ok&&d.ok&&d.role==='write'){clearTimeout(to);close(true);return;}
         $('pwErr').textContent=d.error||'Wrong password';$('pwErr').style.display='block';
         $('pwInput').value='';$('pwInput').focus();
       }catch(e){
@@ -908,6 +933,9 @@ function askLeadPw(label){
     $('pwInput').value='';
     $('pwErr').style.display='none';
     $('pwErr').textContent='';
+    // Reset the Confirm button at entry (same V3-M3 dead-button fix as askAdminPw).
+    $('modalPwConfirm').disabled=false;
+    $('modalPwConfirm').textContent='Confirm';
     $('modal-pw').classList.add('show');
     $('pwInput').focus();
     const close=ok=>{$('modal-pw').classList.remove('show');$('modalPwConfirm').onclick=null;$('modalPwCancel').onclick=null;$('pwInput').onkeydown=null;resolve(ok);};
@@ -923,7 +951,7 @@ function askLeadPw(label){
       try{
         const r=await fetch('/api/admin-login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw,verifyLead:true}),signal:ctl.signal});
         const d=await r.json().catch(()=>({}));
-        if(r.ok&&d.ok){close(true);return;}
+        if(r.ok&&d.ok&&d.role==='lead'){clearTimeout(to);close(true);return;}
         $('pwErr').textContent=d.error||'Wrong password';$('pwErr').style.display='block';
         $('pwInput').value='';$('pwInput').focus();
       }catch(e){
@@ -938,19 +966,29 @@ function askLeadPw(label){
 
 // Delete a registration: Tech Lead only. The record and its payment
 // history are removed permanently. Asks for the Tech Lead password first.
+var delBusy=new Set(); // in-flight delete guard (V3-m18): one delete per
+// registration/event at a time, with a 15s timeout so a hung request
+// cannot leave the button dead or fire twice.
 async function delReg(id){
   const x=REGS.find(r=>r.id===id);
   if(!x)return;
+  if(delBusy.has(id))return;
   if(!(await askLeadPw('Delete the registration of '+x.name+' ('+x.event+')? This cannot be undone.')))return;
+  delBusy.add(id);
   try{
-    const r=await fetch('/api/registrations',{method:'DELETE',headers:authHeaders(true),body:JSON.stringify({id})});
+    const ctl=('AbortController' in window)?new AbortController():null;
+    const to=ctl?setTimeout(function(){try{ctl.abort();}catch(e){}},15000):null;
+    const r=await fetch('/api/registrations',{method:'DELETE',headers:authHeaders(true),body:JSON.stringify({id}),signal:ctl?ctl.signal:undefined});
+    if(sessExpired(r))return;
+    if(to)clearTimeout(to);
     const d=await r.json().catch(()=>({}));
     if(!r.ok){toast(d.error||'Failed');return;}
     const i=REGS.findIndex(y=>y.id===id);
     if(i>=0)REGS.splice(i,1);
     render();
     toast('Registration deleted');
-  }catch(e){toast('Failed');}
+  }catch(e){toast(e&&e.name==='AbortError'?'Delete timed out — check the list before retrying':'Failed');}
+  finally{delBusy.delete(id);}
 }
 
 async function toggleInvalid(id,wasInvalid){
@@ -964,6 +1002,7 @@ async function toggleInvalid(id,wasInvalid){
   }
   try{
     const r=await fetch('/api/registrations',{method:'PATCH',headers:authHeaders(true),body:JSON.stringify({id,invalid:makeInvalid})});
+    if(sessExpired(r))return;
     if(r.ok){const d=await r.json();if(d.reg){const i=REGS.findIndex(y=>y.id===id);if(i>=0)REGS[i]=d.reg;}render();toast(makeInvalid?'Marked invalid':'Marked valid');}
     else toast('Failed');
   }catch(e){toast('Failed');}
@@ -987,6 +1026,7 @@ $('modalSave').onclick=async()=>{
     members:$('eMembers').value.split(',').map(s=>s.trim()).filter(Boolean)};
   try{
     const r=await fetch('/api/registrations',{method:'PATCH',headers:authHeaders(true),body:JSON.stringify(body)});
+    if(sessExpired(r))return;
     if(r.ok){toast('Saved');$('modal').classList.remove('show');EDIT_ID=null;load();}
     else toast('Failed');
   }catch(e){toast('Failed');}
@@ -1017,6 +1057,7 @@ $('chestBtn').onclick=async()=>{
   btn.disabled=true;btn.textContent='Fixing…';
   try{
     const r=await fetch('/api/registrations',{method:'POST',headers:authHeaders(true),body:JSON.stringify({action:'backfill-chest',dryRun:false})});
+    if(sessExpired(r))return;
     const d=await r.json();
     if(r.ok){toast(d.count?('Chest numbers given to '+d.count+' registration(s)'):'No missing chest numbers');await load(true);}
     else toast(d.error||'Failed');
@@ -1217,13 +1258,15 @@ function renderEventsAdmin(){
     const want=cb.checked;
     const e=EVENTS_DB.find(x=>x.slug===cb.dataset.vis);
     if(!(await askAdminPw((want?'Show':'Hide')+' the event "'+(e?e.name:cb.dataset.vis)+'" on the public site?'))){cb.checked=!want;return;}
-    saveEvent({slug:cb.dataset.vis,visible:want});
+    // Revert the tick if the save fails (V3-m17), same as the password
+    // confirm above: the checkbox must always match the stored state.
+    if(!(await saveEvent({slug:cb.dataset.vis,visible:want}))){cb.checked=!want;}
   });
   document.querySelectorAll('[data-open]').forEach(cb=>cb.onchange=async()=>{
     const want=cb.checked;
     const e=EVENTS_DB.find(x=>x.slug===cb.dataset.open);
     if(!(await askAdminPw((want?'Open':'Close')+' registrations for "'+(e?e.name:cb.dataset.open)+'"?'))){cb.checked=!want;return;}
-    saveEvent({slug:cb.dataset.open,regOpen:want});
+    if(!(await saveEvent({slug:cb.dataset.open,regOpen:want}))){cb.checked=!want;}
   });
   document.querySelectorAll('[data-ev-up]').forEach(b=>b.onclick=()=>moveEvent(b.dataset.evUp,-1));
   document.querySelectorAll('[data-ev-down]').forEach(b=>b.onclick=()=>moveEvent(b.dataset.evDown,1));
@@ -1237,6 +1280,7 @@ function renderEventsAdmin(){
 async function saveEvent(patch){
   try{
     const r=await fetch('/api/events',{method:'PATCH',headers:authHeaders(true),body:JSON.stringify(patch)});
+    if(sessExpired(r))return;
     const d=await r.json().catch(()=>({}));
     if(!r.ok){toast(d.error||'Failed');return false;}
     await ensureEvents(true);
@@ -1314,15 +1358,22 @@ async function delEvent(slug){
   if(!e)return;
   const n=evRegCount(e.slug,e.name);
   if(n>0){toast('This event has '+n+' registration(s). Hide it instead of deleting.');return;}
+  if(delBusy.has('ev:'+slug))return;
   if(!(await askLeadPw('Delete the event "'+e.name+'"? This cannot be undone.')))return;
+  delBusy.add('ev:'+slug);
   try{
-    const r=await fetch('/api/events?slug='+slug,{method:'DELETE',headers:authHeaders(false)});
+    const ctl=('AbortController' in window)?new AbortController():null;
+    const to=ctl?setTimeout(function(){try{ctl.abort();}catch(e){}},15000):null;
+    const r=await fetch('/api/events?slug='+slug,{method:'DELETE',headers:authHeaders(false),signal:ctl?ctl.signal:undefined});
+    if(sessExpired(r))return;
+    if(to)clearTimeout(to);
     const d=await r.json().catch(()=>({}));
     if(!r.ok){toast(d.error||'Failed');return;}
     await ensureEvents(true);
     renderEventsAdmin();render();
     toast('Event deleted');
-  }catch(e){toast('Failed');}
+  }catch(e){toast(e&&e.name==='AbortError'?'Delete timed out — check the list before retrying':'Failed');}
+  finally{delBusy.delete('ev:'+slug);}
 }
 
 // CSV export: all registrations (paged like the backup), never just the

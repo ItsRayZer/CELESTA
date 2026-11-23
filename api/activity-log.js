@@ -16,7 +16,7 @@
 // Deliberately NOT fingerprinted: battery, network speed, WebGL extension list
 // (Brave randomises it per session) — they change constantly and would fake new devices.
 import { Redis } from '@upstash/redis';
-import { verify, parseVal, regMarkerKeys, normPhone, MARKER_TTL } from './admin-login.js';
+import { verify, canWrite, parseVal, regMarkerKeys, normPhone, MARKER_TTL } from './admin-login.js';
 
 const redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL,
@@ -323,6 +323,49 @@ async function applyUndo(u) {
       if (u.prevKey) { try { await redis.del('celesta:poster-prev:' + u.prevKey); } catch {} }
       return { ok: true, message: prev ? 'Previous poster restored' : 'Poster reset to the original' };
     }
+    if (u.kind === 'reg-deleted') {
+      // Undo of a delete restores the FULL record (phone, email, member
+      // contacts included): the undo payload keeps a complete copy so a
+      // mistaken delete can be fully undone. Same restore path as
+      // reg-add: claim the markers first, refuse if another record took
+      // that phone/email.
+      const rec = u.record;
+      if (!rec || !rec.id) return { ok: false, error: 'Nothing to restore' };
+      const exists = await redis.hget('celesta:regs', rec.id);
+      if (exists) return { ok: false, error: 'Registration already exists' };
+      const mk = regMarkerKeys(rec.eventSlug || rec.event, normPhone(rec.phone), rec.email);
+      try {
+        const claimed = [];
+        for (const key of [mk.phone, mk.email]) {
+          if (!key) continue;
+          const ok = await redis.set(key, rec.id, { nx: true, ex: MARKER_TTL });
+          if (ok) claimed.push(key);
+          else {
+            const owner = await redis.get(key);
+            if (owner !== rec.id) {
+              for (const k of claimed) { try { await redis.del(k); } catch {} }
+              return { ok: false, error: 'That phone/email is now registered to someone else — undo blocked' };
+            }
+          }
+        }
+      } catch { /* markers are a backstop; continue */ }
+      await redis.hset('celesta:regs', { [rec.id]: JSON.stringify(rec) });
+      await redis.zadd('celesta:reglist', { score: Date.parse(rec.at) || Date.now(), member: rec.id });
+      // Undo of a paid delete restores the record: re-push its history
+      // entry the same way registrations.js PATCH does on a paid flip.
+      if (rec.paid) {
+        try {
+          await pushHistory({
+            id: rec.id, chest: rec.chest || '', event: rec.event, eventSlug: rec.eventSlug,
+            name: rec.name, amount: Number(rec.amount || 0), method: rec.paidMethod || '',
+            at: rec.paidAt || new Date().toISOString(), by: 'admin',
+          });
+        } catch (e) {
+          console.error('activity-log history mirror failed', e);
+        }
+      }
+      return { ok: true, message: 'Registration restored' };
+    }
     return { ok: false, error: 'Unknown undo type' };
   } catch (e) {
     console.error('activity-log applyUndo failed', e);
@@ -332,7 +375,7 @@ async function applyUndo(u) {
 
 export default async function handler(req, res) {
   const token = (req.headers.authorization || '').replace('Bearer ', '');
-  if (verify(token) !== 'write') return res.status(403).json({ error: 'Full-access admin only' });
+  if (!canWrite(verify(token))) return res.status(403).json({ error: 'Full-access admin only' });
 
   if (req.method === 'GET') {
     try {

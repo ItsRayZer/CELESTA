@@ -87,9 +87,19 @@ export default async function handler(req, res) {
     if (!canWrite(role)) return res.status(403).json({ error: 'Write access required' });
     const { id, paid, amount, invalid } = req.body || {};
     if (!id) return res.status(400).json({ error: 'Missing id' });
+    // Paylock state lives outside the try so the finally can always
+    // release it, even on a 500 (V3-m02). releasePaylock is idempotent.
+    const lockKey = 'celesta:paylock:' + id;
+    const lockVal = crypto.randomUUID();
+    let locked = false, skipHistory = false;
+    const releasePaylock = async () => {
+      if (!locked) return;
+      locked = false;
+      try { await redis.eval("if redis.call('get',KEYS[1])==ARGV[1] then return redis.call('del',KEYS[1]) end", [lockKey], [lockVal]); } catch { /* lock expires on its own */ }
+    };
     try {
       const raw = await redis.hget('celesta:regs', id);
-      const rec = parseVal(raw);
+      let rec = parseVal(raw);
       if (!rec) return res.status(404).json({ error: 'Not found' });
       // --- Validate the edit the same way /api/register validates a submit ---
       // (an admin typo must not write a negative amount, a bad phone, or a
@@ -171,13 +181,6 @@ export default async function handler(req, res) {
       // record at once must not both push history. Only when the paid
       // state is changing. Best-effort, 10s TTL.
       const paidFlipping = typeof paid === 'boolean' && paid !== !!rec.paid;
-      const lockKey = 'celesta:paylock:' + id;
-      const lockVal = crypto.randomUUID();
-      let locked = false, skipHistory = false;
-      const releasePaylock = async () => {
-        if (!locked) return;
-        try { await redis.eval("if redis.call('get',KEYS[1])==ARGV[1] then return redis.call('del',KEYS[1]) end", [lockKey], [lockVal]); } catch { /* lock expires on its own */ }
-      };
       if (paidFlipping) {
         try {
           locked = !!(await redis.set(lockKey, lockVal, { nx: true, ex: 10 }));
@@ -189,12 +192,17 @@ export default async function handler(req, res) {
           if (!cur) return res.status(404).json({ error: 'Not found' });
           if (!!cur.paid === paid) skipHistory = true;
           else return res.status(409).json({ error: 'already being processed, try again' });
+          // Use the fresh record so our edits do not overwrite a
+          // concurrent payment's method/amount/paidAt (V3-M5).
+          rec = cur;
         } else {
           // Re-read under the lock: the record may have been flipped
           // between our first read and the lock.
           const fresh = parseVal(await redis.hget('celesta:regs', id));
           if (!fresh) { await releasePaylock(); return res.status(404).json({ error: 'Not found' }); }
           if (!!fresh.paid === paid) skipHistory = true;
+          // Use the fresh record (same V3-M5 fix as the contention path).
+          rec = fresh;
         }
       }
       const before = {};
@@ -325,6 +333,10 @@ export default async function handler(req, res) {
     } catch (e) {
       console.error('registrations PATCH failed', e);
       return res.status(500).json({ error: 'Storage unavailable' });
+    } finally {
+      // Always release the paylock, even on a 500 (V3-m02), so the next
+      // retry does not 409 for up to 10 s.
+      await releasePaylock();
     }
   }
 
@@ -349,11 +361,16 @@ export default async function handler(req, res) {
         catch (e) { console.error('registrations history removal failed', e); }
       }
       if (rec) {
+        // Undo keeps the FULL record (phone, email, member contacts
+        // included) so a mistaken delete can be fully restored. The
+        // delete removes it from the live list; the copy lives only in
+        // the secure admin undo log (see privacy.html §5).
         await appendLog({
-          actor: 'write', action: 'Registration deleted',
+          type: 'delete',
+          actor: 'lead', action: 'Registration deleted',
           detail: rec.event + ' — ' + rec.name + ' (Team ' + (rec.team || '?') + ')',
           target: { kind: 'registration', id, name: rec.name },
-          undo: { kind: 'reg-add', record: rec },
+          undo: { kind: 'reg-deleted', id, record: rec },
         }, req);
       }
       return res.status(200).json({ ok: true });

@@ -2,7 +2,7 @@
 // POST /api/poster — upload/replace a poster (write role only). Body: { event, image } where image is a data-URL webp.
 // DELETE /api/poster?event=quiz — remove the custom poster, back to the static asset (write role only).
 import { Redis } from '@upstash/redis';
-import { verify } from './admin-login.js';
+import { verify, canWrite } from './admin-login.js';
 import { appendLog } from './activity-log.js';
 
 const redis = new Redis({
@@ -29,7 +29,15 @@ export default async function handler(req, res) {
       const b64 = await redis.hget('celesta:posters', event);
       if (!b64) return res.status(404).json({ error: 'No custom poster' });
       const buf = Buffer.from(b64, 'base64');
-      res.setHeader('Content-Type', 'image/webp');
+      // Content-Type from the stored bytes (V3-m28): posters are stored
+      // as raw base64 with no format recorded, and PNG/JPEG uploads were
+      // served as image/webp. Detect from the magic bytes; webp is the
+      // fallback for anything undetectable.
+      let ct = 'image/webp';
+      if (buf.length > 12 && buf.toString('ascii', 0, 4) === 'RIFF' && buf.toString('ascii', 8, 12) === 'WEBP') ct = 'image/webp';
+      else if (buf.length > 8 && buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4E && buf[3] === 0x47) ct = 'image/png';
+      else if (buf.length > 3 && buf[0] === 0xFF && buf[1] === 0xD8 && buf[2] === 0xFF) ct = 'image/jpeg';
+      res.setHeader('Content-Type', ct);
       // Posters change rarely; browsers + CDN may cache 5 minutes. The admin
       // appends a cache-buster (?v=) after an upload/reset, so it always
       // sees the fresh poster right away.
@@ -43,7 +51,7 @@ export default async function handler(req, res) {
 
   if (req.method === 'POST' || req.method === 'DELETE') {
     const token = (req.headers.authorization || '').replace('Bearer ', '');
-    if (verify(token) !== 'write') return res.status(403).json({ error: 'Write access required' });
+    if (!canWrite(verify(token))) return res.status(403).json({ error: 'Write access required' });
   }
 
   if (req.method === 'POST') {

@@ -325,7 +325,13 @@
       var v=teamNameEl.value.trim();
       if(v.length<2){teamNameTaken=false;teamNameErr('Enter your team name.');return false;}
       try{
-        var r=await fetch('/api/register?event='+encodeURIComponent(e.slug)+'&teamName='+encodeURIComponent(v));
+        // 8s timeout (V3-m15): a hung availability check must not stall
+        // the submit; a failed check is treated as "not taken" (the
+        // server re-checks on submit anyway).
+        var ctl=('AbortController' in window)?new AbortController():null;
+        var to=ctl?setTimeout(function(){try{ctl.abort();}catch(e){}},8000):null;
+        var r=await fetch('/api/register?event='+encodeURIComponent(e.slug)+'&teamName='+encodeURIComponent(v),{signal:ctl?ctl.signal:undefined});
+        if(to)clearTimeout(to);
         var d=await r.json();
         teamNameTaken=!!(d&&d.taken);
       }catch(err){teamNameTaken=false;}
@@ -346,8 +352,14 @@
       var f=ev.target.closest&&ev.target.closest('.field');
       if(f)f.classList.remove('invalid');
     });
+    var submitting=false;
     form.addEventListener('submit',async function(ev){
       ev.preventDefault();
+      // Double-submit guard, set synchronously at submit start (V3-m14):
+      // the old guard (btn.disabled) ran only after await checkTeamName,
+      // so a fast double-tap could fire two registrations.
+      if(submitting)return;
+      submitting=true;
       var ok=true, first=null;
       function mark(id,good){
         var f=document.getElementById('f-'+id);
@@ -383,7 +395,7 @@
       }
       var agree=document.getElementById('in-agree');
       if(agree)mark('agree',agree.checked);
-      if(!ok){if(first&&first.scrollIntoView)first.scrollIntoView({behavior:'smooth',block:'center'});return;}
+      if(!ok){submitting=false;if(first&&first.scrollIntoView)first.scrollIntoView({behavior:'smooth',block:'center'});return;}
       var btn=form.querySelector('.rg-submit');
       btn.disabled=true;btn.textContent='Registering…';
       var payload={event:e.slug,name:name,school:school,phone:phone,email:email,team:team,teamName:teamname,members:list,website:val('website'),startedAt:startedAt};
@@ -439,6 +451,7 @@
         }
       }finally{
         if(pto)clearTimeout(pto);
+        submitting=false;
         btn.disabled=false;btn.textContent='Register for '+e.name;
       }
     });

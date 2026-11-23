@@ -388,7 +388,7 @@ function cleanEvent(body, existing) {
 export default async function handler(req, res) {
   if (req.method === 'GET') {
     // Events change rarely; the public site fetches this on every page load.
-    // 60s server cache + stale-while-revalidate keeps it fast without
+    // 10s server cache + stale-while-revalidate keeps it fast without
     // ever showing a stale event for long.
     // Authenticated (admin) responses include hidden events, so they must
     // never be shared-cached: only the public variant gets s-maxage.
@@ -417,6 +417,14 @@ export default async function handler(req, res) {
       return res.status(200).json({ events: list });
     } catch (e) {
       console.error('events list failed, serving defaults', e);
+      // Authenticated callers must not silently get stale defaults
+      // (V3-m09): an admin loading the dashboard would see built-in
+      // events with no warning they are stale. Return 503 so the admin
+      // UI surfaces the outage. The public site still gets the defaults
+      // so students see the events even if storage is down.
+      if (role) {
+        return res.status(503).json({ error: 'Events unavailable — storage is down. Please try again.' });
+      }
       return res.status(200).json({ events: DEFAULT_EVENTS.filter(e => e.visible) });
     }
   }

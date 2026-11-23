@@ -297,6 +297,16 @@ export default async function handler(req, res) {
   const started = Number(startedAt);
   if (!started || isNaN(started)) reasons.push('no form timing');
   else { const elapsed = Date.now() - started; if (elapsed >= 0 && elapsed < 2000) reasons.push('submitted too fast'); }
+  // Bot-speed rejection (V3-M7): a submit under 2 seconds is rejected
+  // outright (a human cannot fill the form that fast). The flag above
+  // stays for the admin log; this block is the actual gate, placed
+  // before any ID generation or storage write.
+  if (started && !isNaN(started)) {
+    const elapsed = Date.now() - started;
+    if (elapsed >= 0 && elapsed < 2000) {
+      return res.status(400).json({ error: 'Please take a moment to fill the form before submitting.' });
+    }
+  }
 
   // Registration ID = the verify code. Short, typeable, human-friendly:
   // "SPK-" + 8 chars from a clean alphabet (no 0/O, 1/I/L — nothing that

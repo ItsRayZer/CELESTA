@@ -101,55 +101,61 @@ export default async function handler(req, res) {
   const readHash = createHash('sha256').update(readPw).digest();
   const feesHash = feesPw ? createHash('sha256').update(feesPw).digest() : null;
   const leadHash = leadPw ? createHash('sha256').update(leadPw).digest() : null;
+  // (a) Dual-flag requests are rejected outright: the server must not
+  // trust a client-supplied flag combination.
+  if (verifyLead && verifyWrite) {
+    return res.status(400).json({ error: 'Invalid request' });
+  }
   // verifyLead mode: re-confirm the TECH LEAD password before a delete
   // (registration or event). Only the Tech Lead password passes — the
-  // admin write, fees and read-only passwords do NOT. A wrong password
-  // falls through to the normal lockout counting below.
+  // admin write, fees and read-only passwords do NOT. Fail closed: a
+  // wrong password goes straight to lockout counting + 401 below and
+  // never falls through to any login branch.
   if (verifyLead) {
     if (leadHash && pwHash && timingSafeEqual(pwHash, leadHash)) {
       try { await redis.del(failKey); } catch { /* ignore */ }
       await appendLog({ type: 'login', actor: 'lead', action: 'Tech Lead password re-confirmed for a delete' }, req);
       return res.status(200).json({ ok: true, role: 'lead' });
     }
-  }
-  // verifyWrite mode: re-confirm the ADMIN write password before a
-  // sensitive action (event delete, mark invalid/valid). Only the true
-  // admin write password passes — the fees counter password and the
-  // read-only password do NOT. A wrong password falls through to the
-  // normal lockout counting below.
-  if (verifyWrite) {
+  } else if (verifyWrite) {
+    // verifyWrite mode: re-confirm the ADMIN write password before a
+    // sensitive action (event delete, mark invalid/valid). Only the true
+    // admin write password passes — the fees counter password and the
+    // read-only password do NOT. Fail closed, same as verifyLead.
     if (pwHash && timingSafeEqual(pwHash, writeHash)) {
       try { await redis.del(failKey); } catch { /* ignore */ }
       await appendLog({ type: 'login', actor: 'write', action: 'Admin password re-confirmed for a sensitive action' }, req);
       return res.status(200).json({ ok: true, role: 'write' });
     }
-  } else if (pwHash && timingSafeEqual(pwHash, writeHash)) {
-    try { await redis.del(failKey); } catch { /* ignore */ }
-    await appendLog({ type: 'login', actor: 'write', action: 'Full-access admin logged in' }, req);
-    return res.status(200).json({ ok: true, role: 'write', token: sign('write') });
-  }
-  // Tech Lead: the only role that can delete. Full powerful mode — can do
-  // everything write can, plus delete registrations and events. Only the
-  // Technical Lead (RayZer) has this password. Never accepted in
-  // verifyWrite mode (that mode is for the admin write password only).
-  if (!verifyWrite && !verifyLead && leadHash && pwHash && timingSafeEqual(pwHash, leadHash)) {
-    try { await redis.del(failKey); } catch { /* ignore */ }
-    await appendLog({ type: 'login', actor: 'lead', action: 'Tech Lead logged in' }, req);
-    return res.status(200).json({ ok: true, role: 'lead', token: sign('lead') });
-  }
-  // Fees counter password: same full access as the admin write password,
-  // so the counters can mark payments in /fees. The admin login still
-  // works for /fees too. Only share this password with trusted counters.
-  // Never accepted in verifyWrite mode (re-auth for sensitive actions).
-  if (!verifyWrite && !verifyLead && feesHash && pwHash && timingSafeEqual(pwHash, feesHash)) {
-    try { await redis.del(failKey); } catch { /* ignore */ }
-    await appendLog({ type: 'login', actor: 'write', action: 'Fees counter logged in' }, req);
-    return res.status(200).json({ ok: true, role: 'write', token: sign('write') });
-  }
-  if (!verifyWrite && !verifyLead && pwHash && timingSafeEqual(pwHash, readHash)) {
-    try { await redis.del(failKey); } catch { /* ignore */ }
-    await appendLog({ type: 'login', actor: 'read', action: 'Read-only admin logged in' }, req);
-    return res.status(200).json({ ok: true, role: 'read', token: sign('read') });
+  } else {
+    // Normal login (no verify flag): write, lead, fees, read.
+    if (pwHash && timingSafeEqual(pwHash, writeHash)) {
+      try { await redis.del(failKey); } catch { /* ignore */ }
+      await appendLog({ type: 'login', actor: 'write', action: 'Full-access admin logged in' }, req);
+      return res.status(200).json({ ok: true, role: 'write', token: sign('write') });
+    }
+    // Tech Lead: the only role that can delete. Full powerful mode — can do
+    // everything write can, plus delete registrations and events. Only the
+    // Technical Lead (RayZer) has this password.
+    if (leadHash && pwHash && timingSafeEqual(pwHash, leadHash)) {
+      try { await redis.del(failKey); } catch { /* ignore */ }
+      await appendLog({ type: 'login', actor: 'lead', action: 'Tech Lead logged in' }, req);
+      return res.status(200).json({ ok: true, role: 'lead', token: sign('lead') });
+    }
+    // Fees counter password: same full access as the admin write password,
+    // so the counters can mark payments in /fees. The admin login still
+    // works for /fees too. Only share this password with trusted counters.
+    // Never accepted in verifyWrite mode (re-auth for sensitive actions).
+    if (feesHash && pwHash && timingSafeEqual(pwHash, feesHash)) {
+      try { await redis.del(failKey); } catch { /* ignore */ }
+      await appendLog({ type: 'login', actor: 'write', action: 'Fees counter logged in' }, req);
+      return res.status(200).json({ ok: true, role: 'write', token: sign('write') });
+    }
+    if (pwHash && timingSafeEqual(pwHash, readHash)) {
+      try { await redis.del(failKey); } catch { /* ignore */ }
+      await appendLog({ type: 'login', actor: 'read', action: 'Read-only admin logged in' }, req);
+      return res.status(200).json({ ok: true, role: 'read', token: sign('read') });
+    }
   }
   // Wrong password: INCR FIRST (atomic), then check the returned count.
   // The increment is the enforcement, so concurrent bursts cannot all

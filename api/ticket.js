@@ -50,7 +50,9 @@ function toTicket(rec, fee) {
     school: rec.school,
     team: rec.team,
     teamName: rec.teamName || '',
-    members: Array.isArray(rec.members) ? rec.members : [],
+    // Member names only (V3-m03): member phone/email are not needed on
+    // the public-by-id ticket and must not leak through it.
+    members: Array.isArray(rec.members) ? rec.members.map(function(m){ return typeof m === 'string' ? m : (m && m.name ? String(m.name) : ''); }).filter(Boolean) : [],
     phone: rec.phone,
     fee,
     feeAmount: parseFee(fee),
@@ -77,6 +79,20 @@ async function feeBySlug() {
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+  // Validate the id BEFORE the rate-limit INCR (V3-m10): malformed/empty
+  // ids must not burn the shared venue-IP bucket (3-4 commands each).
+  const id = String(req.query.id || '').trim();
+  if (!id) {
+    return res.status(400).json({ error: 'Missing ticket id' });
+  }
+  // --- Single ticket by id (unchanged behaviour). ---
+  // Accepts both the old reg_xxx ids (existing tickets keep working) and
+  // the new SPK-XXXXXXXX ids (the verify code, which IS the registration
+  // id). A bare chest number (01001) is deliberately NOT accepted here —
+  // it is sequential and guessable, so it must never open a ticket.
+  if (!/^(reg_[A-Za-z0-9_-]{8,32}|SPK-[A-Z0-9]{8})$/.test(id)) {
+    return res.status(400).json({ error: 'Invalid ticket id' });
+  }
   // Rate limit counts only requests that reach this handler (GETs here;
   // preflight / other methods return 405 above and are not counted).
   try {
@@ -90,18 +106,6 @@ export default async function handler(req, res) {
       return res.status(429).json({ error: 'Too many requests. Try again later.' });
     }
   } catch (e) { console.error('ticket rate limit check failed', e); /* rate limit unavailable — serve the ticket */ }
-  const id = String(req.query.id || '').trim();
-  if (!id) {
-    return res.status(400).json({ error: 'Missing ticket id' });
-  }
-  // --- Single ticket by id (unchanged behaviour). ---
-  // Accepts both the old reg_xxx ids (existing tickets keep working) and
-  // the new SPK-XXXXXXXX ids (the verify code, which IS the registration
-  // id). A bare chest number (01001) is deliberately NOT accepted here —
-  // it is sequential and guessable, so it must never open a ticket.
-  if (!/^(reg_[A-Za-z0-9_-]{8,32}|SPK-[A-Z0-9]{8})$/.test(id)) {
-    return res.status(400).json({ error: 'Invalid ticket id' });
-  }
   try {
     const raw = await redis.hget('celesta:regs', id);
     const rec = parseVal(raw);

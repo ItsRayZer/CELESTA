@@ -15,7 +15,7 @@ const redis = new Redis({
 });
 
 const RELAY_URL = 'https://gptopen.vercel.app/api/relay';
-const RELAY_TIMEOUT_MS = 8000;
+const RELAY_TIMEOUT_MS = 6000;
 
 // Abuse protection (all in Redis, so it holds across every serverless
 // instance — the old in-memory per-IP limit did not):
@@ -98,21 +98,31 @@ async function dailyCapRefund() {
 }
 
 // Key contacts (from the official poster). Always in the prompt, even
-// when the coordinators store is unreachable.
+// when the coordinators store is unreachable. Names + role only —
+// personal phone numbers are never sent to the LLM relay (V3-M8);
+// students find phone numbers on the contact page.
 const KEY_CONTACTS = [
-  'Student Lead - Ananthu Anil - 7510142466',
-  'Associate Lead - Bista Mariya Jojo - 9746446739',
-  'Faculty - Shibu Kallarackal - 9446375272',
-  'Faculty - Archana Gopinath - 9495955010',
+  'Student Lead - Ananthu Anil',
+  'Associate Lead - Bista Mariya Jojo',
+  'Faculty - Shibu Kallarackal',
+  'Faculty - Archana Gopinath',
 ];
 
 // Admin-editable text (event fields, coordinator names) goes into the
-// system prompt, so newlines are stripped: a forged newline could
+// system prompt, so it is sanitised (V3-m08): a forged newline could
 // otherwise smuggle a fake RULES section or an instruction into it.
-// Fields are also length-capped upstream (cleanEvent), and the finished
-// prompt is truncated below.
+// Control characters and markdown header markers are stripped, and
+// common instruction prefixes are neutralised. Fields are also
+// length-capped upstream (cleanEvent), and the finished prompt is
+// truncated below.
 function safeField(v) {
-  return String(v || '').replace(/[\r\n]+/g, ' ').trim();
+  let s = String(v || '').replace(/[\x00-\x1F\x7F]+/g, ' ');
+  s = s.replace(/\s+/g, ' ').trim();
+  // Strip leading markdown markers that could fake a new section.
+  s = s.replace(/^[#>\-*]+\s*/, '');
+  // Neutralise direct instruction markers (case-insensitive).
+  s = s.replace(/\b(system|instruction|assistant)\s*:/gi, '');
+  return s.trim();
 }
 
 function eventLine(e) {
@@ -136,11 +146,10 @@ function contactsBlock(coords) {
   const sc = (coords || []).filter(c =>
     c && c.team === 'Student Coordinators' && c.event && c.name);
   for (const c of sc) {
-    // A phone is listed only when the stored record actually has one.
-    // Never invent a phone number.
+    // Names + event only. Phone numbers are never sent to the LLM relay
+    // (V3-M8); students find them on the contact page.
     let line = '  ' + safeField(c.name) + ' - ' + safeField(c.event) + ' coordinator'
       + (c.cls ? ' (' + safeField(c.cls) + ')' : '');
-    if (c.phone) line += ' - ' + safeField(c.phone);
     lines.push(line);
   }
   return lines.join('\n');

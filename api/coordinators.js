@@ -2,7 +2,7 @@
 // POST   /api/coordinators — add or update a coordinator (write role only). Body: { id?, name, team, event?, cls?, phone? }
 // DELETE /api/coordinators?id=... — remove a coordinator (write role only).
 import { Redis } from '@upstash/redis';
-import { verify, parseVal, normPhone, validPhone } from './admin-login.js';
+import { verify, canWrite, parseVal, normPhone, validPhone } from './admin-login.js';
 import { appendLog } from './activity-log.js';
 
 const redis = new Redis({
@@ -85,10 +85,18 @@ export default async function handler(req, res) {
         await redis.hset('celesta:coordinators', obj);
         list = list.concat(missing);
       }
+      // Flag-gated one-time migration: NAME_FIXES / COORD_FIXES used to
+      // re-apply whenever an admin deliberately renamed someone back to an
+      // old value. They now run at most once, guarded by the stored flag
+      // celesta:coord_migrated_v1, set after the first pass completes.
+      let coordMigrated = false;
+      try { coordMigrated = !!(await redis.get('celesta:coord_migrated_v1')); } catch { coordMigrated = false; }
+      if (!coordMigrated) {
       // Phones added 19 Nov 2026 (RayZer sent the numbers): fill them into
       // the stored records that still have no phone. Only empty phones are
-      // touched, so an admin-set phone is never overwritten. Once filled,
-      // this never writes again.
+      // touched, so an admin-set phone is never overwritten. Flag-gated
+      // and one-shot (V3-m05): a public GET must never re-fill a phone
+      // an admin deliberately cleared.
       const PHONE_FIXES = {
         'sc-1': '7306704199', 'sc-2': '9562133922', 'sc-3': '8590792481', 'sc-4': '9778249397', 'sc-5': '7902604501',
         'sc-8': '7012745327', 'sc-9': '8848929570',
@@ -100,13 +108,6 @@ export default async function handler(req, res) {
         await redis.hset('celesta:coordinators', obj);
         list = list.map(c => (PHONE_FIXES[c.id] && !c.phone) ? { ...c, phone: PHONE_FIXES[c.id] } : c);
       }
-      // Flag-gated one-time migration: NAME_FIXES / COORD_FIXES used to
-      // re-apply whenever an admin deliberately renamed someone back to an
-      // old value. They now run at most once, guarded by the stored flag
-      // celesta:coord_migrated_v1, set after the first pass completes.
-      let coordMigrated = false;
-      try { coordMigrated = !!(await redis.get('celesta:coord_migrated_v1')); } catch { coordMigrated = false; }
-      if (!coordMigrated) {
       // Treasure Hunt coordinator change (21 Nov 2026, official PDF is the
       // source of truth): Aadhil Kabeer is replaced by Ashwin PS (9778249397),
       // and Abhinavu Babu is spelled Abhinav Babu in the PDF. One-time: the
@@ -151,14 +152,19 @@ export default async function handler(req, res) {
         // migration. A no-op pass also sets it: nothing was stale.
         await redis.set('celesta:coord_migrated_v1', '1');
       }
-      return res.status(200).json({ coordinators: list });
+      // Public view is phone-free (V3-m05): student coordinator phones
+      // are not served to unauthenticated callers. An admin (token) gets
+      // the full list with phones for management. The contact page shows
+      // names; phone numbers are on the official poster.
+      const out = role ? list : list.map(c => ({ id: c.id, name: c.name, team: c.team, event: c.event || '', cls: c.cls || '' }));
+      return res.status(200).json({ coordinators: out });
     } catch (e) {
       return res.status(200).json({ coordinators: DEFAULTS });
     }
   }
 
   const token = (req.headers.authorization || '').replace('Bearer ', '');
-  if (verify(token) !== 'write') return res.status(403).json({ error: 'Write access required' });
+  if (!canWrite(verify(token))) return res.status(403).json({ error: 'Write access required' });
 
   if (req.method === 'POST') {
     const c = req.body || {};
