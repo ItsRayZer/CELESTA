@@ -1138,8 +1138,7 @@ function renderEventsAdmin(){
       <label class="mut" style="display:flex;gap:6px;align-items:center"><input type="checkbox" data-open="${e.slug}" ${e.regOpen?'checked':''} ${w?'':'disabled'}> Reg open</label>
       ${w?`<button class="mini" data-ev-up="${e.slug}" ${i===0?'disabled style="opacity:.4"':''}>Up</button>
       <button class="mini" data-ev-down="${e.slug}" ${i===EVENTS_DB.length-1?'disabled style="opacity:.4"':''}>Down</button>
-      <button class="mini" data-ev-edit="${e.slug}">Edit</button>
-      <button class="mini danger" data-ev-del="${e.slug}">Delete</button>`:''}
+      <button class="mini" data-ev-edit="${e.slug}">Edit</button>`:''}
     </div>`;
   }).join('')||'<div class="empty">No events yet.</div>';
   document.querySelectorAll('[data-vis]').forEach(cb=>cb.onchange=()=>saveEvent({slug:cb.dataset.vis,visible:cb.checked}));
@@ -1147,7 +1146,6 @@ function renderEventsAdmin(){
   document.querySelectorAll('[data-ev-up]').forEach(b=>b.onclick=()=>moveEvent(b.dataset.evUp,-1));
   document.querySelectorAll('[data-ev-down]').forEach(b=>b.onclick=()=>moveEvent(b.dataset.evDown,1));
   document.querySelectorAll('[data-ev-edit]').forEach(b=>b.onclick=()=>openEvEdit(b.dataset.evEdit));
-  document.querySelectorAll('[data-ev-del]').forEach(b=>b.onclick=()=>delEvent(b.dataset.evDel));
   document.querySelectorAll('#evAdminList [data-up]').forEach(inp=>inp.onchange=()=>uploadPoster(inp.dataset.up,inp.files[0]));
   document.querySelectorAll('#evAdminList [data-reset]').forEach(b=>b.onclick=()=>resetPoster(b.dataset.reset));
   if(!$('sec-events').classList.contains('hidden'))refreshPosterFlags();
