@@ -256,6 +256,7 @@ nav button.on { background: #fff; color: #000; }
           <span class="w-2 h-2 rounded-full bg-lime-400 animate-pulse"></span> ADMIN PANEL
         </span>
         <div class="flex items-center gap-1.5 shrink-0">
+          <button type="button" class="btn b-ghost !py-1 !px-2.5 text-xs border-white/20" id="btn-copy-link">Copy link</button>
           <button type="button" class="btn b-ghost !py-1 !px-2.5 text-xs border-white/20" id="btn-export">Export CSV</button>
         </div>
       </div>
@@ -625,7 +626,7 @@ nav button.on { background: #fff; color: #000; }
   function loadOverview(){
     return api('/api/fees?action=overview').then(function(r){
       if(r.status===401){token='';localStorage.removeItem(TOKEN_KEY);showLogin();return false;}
-      if(r.data&&r.data.ok){overview=r.data;renderHome();maybeDeepLinkCollect();return true;}
+      if(r.data&&r.data.ok){overview=r.data;renderHome();maybeEventFromPath();maybeDeepLinkCollect();return true;}
       return false;
     }).catch(function(){return false;});
   }
@@ -691,6 +692,9 @@ nav button.on { background: #fff; color: #000; }
   // ---------- event open / back ----------
   function openEvent(slug){
     curEvent=slug;
+    // Keep the address bar on the per-event link, so the URL is always
+    // the shareable link for this event (/fees/<slug>).
+    try{history.replaceState(null,'','/fees/'+encodeURIComponent(slug));}catch(e){}
     $('view-home').classList.add('hide');
     $('view-event').classList.remove('hide');
     $('collect-event').textContent='';
@@ -704,8 +708,25 @@ nav button.on { background: #fff; color: #000; }
     loadEventData();
     window.scrollTo({top:0});
   }
+  // Per-event shareable link: /fees/<slug> opens that event directly, so
+  // a coordinator gets only their event. Runs once after the overview
+  // loads (the slug is validated against the live event list); an
+  // unknown slug just stays on the home page.
+  var eventPathDone=false;
+  function maybeEventFromPath(){
+    if(eventPathDone)return;
+    var m=/^\/fees\/([a-z0-9-]+)\/?$/.exec(location.pathname||'');
+    if(!m)return;
+    if(!overview||!overview.events)return; // not loaded yet; the next refreshAll will retry
+    var slug=m[1];
+    var ev=overview.events.find(function(e){return e.slug===slug;});
+    if(!ev)return; // unknown slug: stay on the home page
+    eventPathDone=true;
+    openEvent(slug);
+  }
   function backHome(){
     curEvent=null;
+    try{history.replaceState(null,'','/fees');}catch(e){}
     $('view-event').classList.add('hide');
     $('view-home').classList.remove('hide');
     renderHome();
@@ -1606,6 +1627,21 @@ nav button.on { background: #fff; color: #000; }
     downloadBlob(new Blob([rows.map(function(x){return x.map(cell).join(',');}).join('\n')],{type:'text/csv'}),'fees_'+curEvent+'.csv');
     toast('CSV downloaded');
   };
+
+  // Copy the shareable per-event link (/fees/<slug>) for this event, so
+  // it can be sent to that event's coordinator.
+  $('btn-copy-link').onclick=function(){
+    if(!curEvent)return;
+    var link=location.origin+'/fees/'+encodeURIComponent(curEvent);
+    var done=function(){toast('Link copied');};
+    if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(link).then(done,function(){fallbackCopy(link);done();});}
+    else{fallbackCopy(link);done();}
+  };
+  function fallbackCopy(text){
+    var ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();
+    try{document.execCommand('copy');}catch(e){}
+    document.body.removeChild(ta);
+  }
 
   // ---------- FAB ----------
   function updateFab(name){

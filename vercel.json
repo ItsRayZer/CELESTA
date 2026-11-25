@@ -244,6 +244,10 @@
     {
       "source": "/fees",
       "destination": "/fees.html"
+    },
+    {
+      "source": "/fees/:event",
+      "destination": "/fees.html"
     }
   ],
   "trailingSlash": false,
