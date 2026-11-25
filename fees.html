@@ -910,7 +910,10 @@ nav button.on { background: #fff; color: #000; }
       var due=r.paid?0:(r.feeAmount||0);
       var otherEvt=r.eventSlug&&r.eventSlug!==curEvent;
       return '<button type="button" data-sel="'+esc(r.id)+'" class="w-full flex items-center justify-between gap-3 text-left px-4 py-3 text-sm cursor-pointer" style="border-bottom:1px solid var(--line)">'
-        +'<span class="font-semibold truncate"><span class="font-mono text-xs opacity-60 mr-2">'+esc(r.chest||'—')+'</span><span class="stu-name">'+esc(r.teamName||r.name)+'</span>'+(otherEvt?' <span class="text-xs font-mono" style="color:var(--cyan)">'+esc(r.event||'')+'</span>':'')+'</span>'
+        +'<span class="min-w-0 flex-1">'
+        +'<span class="flex items-center gap-2 min-w-0"><span class="font-mono text-xs opacity-60 shrink-0">'+esc(r.chest||'—')+'</span><span class="stu-name font-semibold truncate">'+esc(r.teamName||r.name)+'</span>'+(otherEvt?' <span class="text-xs font-mono shrink-0" style="color:var(--cyan)">'+esc(r.event||'')+'</span>':'')+'</span>'
+        +(r.phone?'<span class="block text-xs font-mono truncate mt-0.5" style="color:var(--mut)">'+esc(r.phone)+'</span>':'')
+        +'</span>'
         +'<span class="text-xs font-bold shrink-0" style="color:'+(due>0?'var(--yellow)':'var(--green)')+'">'+(due>0?inr(due):'cleared')+'</span></button>';
     }).join('')||'<div class="p-4 text-sm" style="color:var(--mut)">No matching students found.</div>';
   }
