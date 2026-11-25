@@ -337,6 +337,10 @@ export default async function handler(req, res) {
           } catch { /* fee display falls back to the record */ }
           return res.status(200).json({ ok: true, reg: pubReg(rec, feeMap[rec.eventSlug] || ''), already: true });
         }
+        // Keep the old payment details for the removal audit entry below.
+        const oldAmount = Number(rec.amount || 0);
+        const oldMethod = rec.paidMethod || '';
+        const oldAt = rec.paidAt || '';
         rec.paid = false;
         rec.amount = 0;
         rec.paidMethod = '';
@@ -356,6 +360,20 @@ export default async function handler(req, res) {
           for (const target of targets) await redis.lrem(HISTORY_KEY, 0, target);
         } catch (e) {
           console.error('fees history removal failed', e);
+        }
+        // Leave a visible removal record in history so the receipt shows
+        // as removed / not paid instead of vanishing without a trace.
+        // Amount is kept for audit; the History tab excludes removed
+        // entries from its totals. The ticket reverts to unpaid because
+        // the registration itself is now unpaid.
+        try {
+          await pushHistory({
+            id: rec.id, chest: rec.chest || '', event: rec.event, eventSlug: rec.eventSlug,
+            name: rec.name, amount: oldAmount, method: oldMethod || 'cash', at: oldAt || new Date().toISOString(),
+            removed: true, removedAt: new Date().toISOString(), by: 'admin',
+          });
+        } catch (e) {
+          console.error('fees removal audit failed', e);
         }
         const feeMap = {};
         try {

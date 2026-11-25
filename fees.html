@@ -467,6 +467,26 @@ nav button.on { background: #fff; color: #000; }
   </div>
 </div>
 
+<!-- REMOVE-RECEIPT PASSWORD MODAL: re-confirm the admin write password
+     before a paid receipt is removed. Only the admin write password passes
+     (the fees counter password does not). Removing a receipt marks the
+     student unpaid again, drops the amount from every total, and leaves a
+     REMOVED record in history. -->
+<div id="pw-modal" class="hide fixed inset-0 z-[90] overflow-y-auto" style="background:rgba(0,0,0,.92)">
+  <div class="min-h-full flex flex-col items-center justify-center gap-4 p-4">
+    <div class="w-full max-w-md rounded-3xl p-5" style="background:#0d0d0f;border:1px solid var(--line)">
+      <div class="font-extrabold text-lg">Remove receipt?</div>
+      <div class="text-xs mt-1" style="color:var(--mut)" id="pw-text">Enter the admin write password to confirm. The fees counter password does not work here.</div>
+      <input id="pw-input" type="password" class="inp w-full mt-4" placeholder="Admin write password" autocomplete="current-password">
+      <div id="pw-err" class="text-xs mt-2" style="color:#fda4af;display:none"></div>
+      <div class="flex gap-2 mt-4">
+        <button type="button" id="pw-confirm" class="btn flex-1 !py-3.5" style="color:#fff;background:#e11d48;border:1px solid #e11d48">Remove receipt</button>
+        <button type="button" id="pw-cancel" class="btn b-ghost flex-1 !py-3.5">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- QR SCANNER OVERLAY (Collect tab) -->
 <div id="scan-overlay" class="hide fixed inset-0 z-[80] overflow-y-auto" style="background:rgba(0,0,0,.96)">
   <div class="min-h-full flex flex-col items-center justify-center gap-4 p-4">
@@ -830,6 +850,61 @@ nav button.on { background: #fff; color: #000; }
   function findReg(id){return regs.find(function(r){return r.id===id;})||lookupExtra.find(function(r){return r.id===id;})||null;}
 
   // ---------- history ----------
+  // Re-confirm the ADMIN write password before removing a paid receipt.
+  // Returns true only if the admin write password is correct (the fees
+  // counter password does not pass). Wrong attempts count toward the
+  // login lockout, same as the admin page re-auth.
+  function askWritePw(){
+    return new Promise(function(resolve){
+      $('pw-text').textContent='Enter the admin write password to confirm. The fees counter password does not work here.';
+      $('pw-input').value='';
+      $('pw-err').style.display='none';
+      $('pw-err').textContent='';
+      $('pw-confirm').disabled=false;
+      $('pw-confirm').textContent='Remove receipt';
+      $('pw-modal').classList.remove('hide');
+      $('pw-input').focus();
+      function close(ok){$('pw-modal').classList.add('hide');$('pw-confirm').onclick=null;$('pw-cancel').onclick=null;$('pw-input').onkeydown=null;resolve(ok);}
+      $('pw-cancel').onclick=function(){close(false);};
+      $('pw-input').onkeydown=function(e){if(e.key==='Enter')$('pw-confirm').click();};
+      $('pw-confirm').onclick=function(){
+        var pw=$('pw-input').value;
+        if(!pw){$('pw-err').textContent='Enter the admin password.';$('pw-err').style.display='block';return;}
+        $('pw-confirm').disabled=true;
+        $('pw-confirm').textContent='Checking…';
+        var ctl=new AbortController();
+        var to=setTimeout(function(){ctl.abort();},15000);
+        fetch('/api/admin-login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw,verifyWrite:true}),signal:ctl.signal}).then(function(r){
+          return r.json().then(function(d){return {ok:r.ok&&d.ok&&d.role==='write',err:d.error};});
+        }).then(function(x){
+          clearTimeout(to);
+          if(x.ok){close(true);return;}
+          $('pw-err').textContent=x.err||'Wrong password';$('pw-err').style.display='block';
+          $('pw-input').value='';$('pw-input').focus();
+          $('pw-confirm').disabled=false;
+          $('pw-confirm').textContent='Remove receipt';
+        }).catch(function(e){
+          clearTimeout(to);
+          $('pw-err').textContent=(e&&e.name==='AbortError')?'Timed out — slow connection. Try again.':'Could not verify. Try again.';$('pw-err').style.display='block';
+          $('pw-confirm').disabled=false;
+          $('pw-confirm').textContent='Remove receipt';
+        });
+      };
+    });
+  }
+  var removeInFlight=false; // double-submit guard for receipt removal
+  function removeReceipt(id){
+    if(removeInFlight)return;
+    if(role!=='write'&&role!=='lead'){toast('Write access required',1);return;}
+    askWritePw().then(function(ok){
+      if(!ok)return;
+      removeInFlight=true;
+      api('/api/fees?action=mark-unpaid',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:id})}).then(function(res){
+        if(res.data&&res.data.ok){toast('Receipt removed — student is unpaid now');refreshAll();}
+        else{toast((res.data&&res.data.error)||'Could not remove receipt',1);}
+      }).catch(function(){toast('Connection failed',1);}).finally(function(){removeInFlight=false;});
+    });
+  }
   function renderHistory(){
     var q=$('ledger-search')?$('ledger-search').value.toLowerCase().trim():'';
     var entries=history.filter(function(h){
@@ -838,9 +913,10 @@ nav button.on { background: #fff; color: #000; }
       if(q&&!(h.name||'').toLowerCase().includes(q)&&String(h.chest||'').toLowerCase()!==q&&String(h.id||'').toLowerCase().includes(q))return false;
       return true;
     });
-    var total=entries.reduce(function(s,h){return s+Number(h.amount||0);},0);
-    var cash=entries.filter(function(h){return h.method==='cash';}).reduce(function(s,h){return s+Number(h.amount||0);},0);
-    var gpay=entries.filter(function(h){return h.method==='gpay';}).reduce(function(s,h){return s+Number(h.amount||0);},0);
+    var paidEntries=entries.filter(function(h){return !h.removed;});
+    var total=paidEntries.reduce(function(s,h){return s+Number(h.amount||0);},0);
+    var cash=paidEntries.filter(function(h){return h.method==='cash';}).reduce(function(s,h){return s+Number(h.amount||0);},0);
+    var gpay=paidEntries.filter(function(h){return h.method==='gpay';}).reduce(function(s,h){return s+Number(h.amount||0);},0);
     var paidN=regs.filter(function(r){return r.paid;}).length;
     var unN=regs.length-paidN;
     $('ledger-summary').innerHTML=
@@ -853,6 +929,19 @@ nav button.on { background: #fff; color: #000; }
     box.className='space-y-2.5 pt-1 w-full';
     box.innerHTML=entries.length?entries.map(function(h){
       var isCash=h.method==='cash';
+      var canW=(role==='write'||role==='lead');
+      // Removed receipts stay visible as an audit trail, shown as not
+      // paid: greyed out, amount struck through, no actions.
+      if(h.removed){
+        return '<div class="card p-3.5 space-y-2 border border-white/10 overflow-hidden w-full" style="opacity:.55">'
+          +'<div class="flex items-start justify-between gap-2"><div class="min-w-0 flex-1">'
+          +'<div class="flex items-center gap-1.5 flex-wrap"><span class="font-bold text-sm truncate max-w-full text-white stu-name">'+esc(h.name)+'</span>'
+          +(h.chest?'<span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/10 text-white/60 shrink-0">CHEST '+esc(h.chest)+'</span>':'')
+          +'</div><div class="tl-time mt-0.5">'+esc(fmtWhen(h.at))+'</div></div>'
+          +'<div class="text-right shrink-0"><div class="font-black font-mono text-base leading-tight line-through" style="color:var(--mut)">+'+inr(h.amount)+'</div>'
+          +'<span class="inline-block text-[9px] font-mono font-bold px-2 py-0.5 rounded-full border mt-0.5 text-rose-300 bg-rose-500/10 border-rose-500/20">REMOVED · NOT PAID</span></div></div>'
+          +'</div>';
+      }
       return '<div class="card p-3.5 space-y-2 border border-white/10 overflow-hidden w-full">'
         +'<div class="flex items-start justify-between gap-2"><div class="min-w-0 flex-1">'
         +'<div class="flex items-center gap-1.5 flex-wrap"><span class="font-bold text-sm truncate max-w-full text-white stu-name">'+esc(h.name)+'</span>'
@@ -862,6 +951,7 @@ nav button.on { background: #fff; color: #000; }
         +'<span class="inline-block text-[9px] font-mono font-bold px-2 py-0.5 rounded-full border mt-0.5 '+(isCash?'text-lime-400 bg-lime-500/10 border-lime-500/20':'text-cyan-400 bg-cyan-500/10 border-cyan-500/20')+'">'+(isCash?'CASH':'GPAY')+'</span></div></div>'
         +'<div class="flex flex-wrap gap-1.5 pt-1.5 border-t border-white/5">'
         +'<button type="button" class="btn b-ghost !py-1 !px-2.5 text-[11px] flex-1 min-w-[80px]" data-receipt="'+esc(h.id)+'">View Receipt</button>'
+        +(canW?'<button type="button" class="btn !py-1 !px-2.5 text-[11px] flex-1 min-w-[80px]" style="color:#fda4af;background:rgba(244,63,94,.12);border:1px solid rgba(244,63,94,.35)" data-remove="'+esc(h.id)+'">Remove</button>':'')
         +'</div></div>';
     }).join(''):'<div class="text-center py-12 text-sm" style="color:var(--mut)">No payments recorded yet.</div>';
     Array.prototype.forEach.call(box.querySelectorAll('[data-receipt]'),function(b){
@@ -872,6 +962,12 @@ nav button.on { background: #fff; color: #000; }
         var h=history.find(function(x){return x.id===id;});
         if(h)openReceipt({id:h.id,chest:h.chest,event:h.event,eventSlug:h.eventSlug,name:h.name,school:'',team:1,teamName:'',members:[],phone:'',fee:'',feeAmount:Number(h.amount||0),paid:true,amount:Number(h.amount||0),paidMethod:h.method,paidAt:h.at,at:h.at});
       };
+    });
+    // Remove receipt: asks for the admin write password, then reverses
+    // the payment (mark-unpaid). Balances, counts and the ticket all
+    // update on refresh; the receipt stays visible as REMOVED · NOT PAID.
+    Array.prototype.forEach.call(box.querySelectorAll('[data-remove]'),function(b){
+      b.onclick=function(){removeReceipt(b.getAttribute('data-remove'));};
     });
   }
 
@@ -1090,9 +1186,11 @@ nav button.on { background: #fff; color: #000; }
   // matching the receipt modal's backdrop-click pattern below.
   $('pay-confirm-modal').addEventListener('click',function(e){if(e.target===$('pay-confirm-modal'))closePayConfirm();});
   $('scan-overlay').addEventListener('click',function(e){if(e.target===$('scan-overlay'))closeScanner();});
+  $('pw-modal').addEventListener('click',function(e){if(e.target===$('pw-modal'))$('pw-cancel').click();});
   document.addEventListener('keydown',function(e){
     if(e.key!=='Escape')return;
     if(!$('pay-confirm-modal').classList.contains('hide'))closePayConfirm();
+    else if(!$('pw-modal').classList.contains('hide'))$('pw-cancel').click();
     else if(!$('scan-overlay').classList.contains('hide'))closeScanner();
   });
   var markUnpaidInFlight=false; // same double-submit guard as mark-paid (V3-m19)
