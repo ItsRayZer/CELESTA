@@ -7,7 +7,7 @@
 // the public /api/ticket?phone= endpoint was removed for that reason.
 import { Redis } from '@upstash/redis';
 import crypto from 'node:crypto';
-import { verify, canWrite, parseVal, normPhone, validPhone } from './admin-login.js';
+import { verify, canWrite, parseVal, normPhone } from './admin-login.js';
 import { loadEvents } from './events.js';
 
 const redis = new Redis({
@@ -189,16 +189,20 @@ export default async function handler(req, res) {
       // ADMIN-ONLY phone lookup. The phone is the identifier the student
       // gave at registration; this route requires the admin token, so only
       // the logged-in fees admin can use it. Never expose it without auth.
-      const phone = normPhone(String(req.query.phone || '').trim());
-      if (!validPhone(phone)) {
-        return res.status(400).json({ error: 'Enter a valid 10-digit mobile number.' });
+      // Accepts a partial number (4+ digits) so Collect can find a student
+      // as the admin types; a full 10-digit number still matches exactly.
+      // Substring match on the normalised phone, capped at 20 results.
+      const digits = normPhone(String(req.query.phone || '').trim());
+      if (digits.length < 4) {
+        return res.status(400).json({ error: 'Enter at least 4 digits of the mobile number.' });
       }
       try {
         const regs = await loadAllRegs();
         const list = regs
-          .filter(function (r) { return normPhone(r.phone) === phone; })
+          .filter(function (r) { return normPhone(r.phone).includes(digits); })
           .map(function (r) { return pubReg(r, feeMap[r.eventSlug] || ''); })
-          .sort(byChest);
+          .sort(byChest)
+          .slice(0, 20);
         return res.status(200).json({ ok: true, regs: list });
       } catch (e) {
         console.error('fees lookup failed', e);

@@ -339,7 +339,7 @@ nav button.on { background: #fff; color: #000; }
             </div>
             <div id="selected-student-card" class="hide"></div>
             <div class="flex gap-2 mb-2">
-              <input id="student-search-input" class="inp flex-1 min-w-0" placeholder="Search by name, chest no., phone or verify code..." autocomplete="off">
+              <input id="student-search-input" class="inp flex-1 min-w-0" placeholder="Search by phone, name or chest no..." autocomplete="off">
               <button type="button" id="btn-collect-search" class="btn b-main text-xs !py-2.5 !px-3.5 shrink-0">Search</button>
               <button type="button" id="btn-scan-qr" class="btn b-lime text-xs !py-2.5 !px-3.5 shrink-0">Scan QR</button>
             </div>
@@ -975,14 +975,21 @@ nav button.on { background: #fff; color: #000; }
       if(!list.length){lastPhoneLookup='';toast('No registration found for this number',1);return;}
       lookupExtra=list.filter(function(x){return !regs.some(function(r){return r.id===x.id;});});
       var here=list.filter(function(x){return x.eventSlug===curEvent;});
-      if(here.length===1){selectStudent(here[0].id);return;}
+      // Auto-select only on a full 10-digit number with exactly one match
+      // in this event; a partial number just shows the list to tap.
+      if(here.length===1&&ph.length===10){selectStudent(here[0].id);return;}
       renderCollectList();
       toast(list.length+' registration(s) found');
     }).catch(function(){lastPhoneLookup='';toast('Lookup failed',1);});
   }
   function maybePhoneLookup(now){
-    var q=($('student-search-input')?$('student-search-input').value:'').replace(/\D/g,'');
-    if(q.length!==10){lastPhoneLookup='';return;}
+    var raw=($('student-search-input')?$('student-search-input').value:'').replace(/\D/g,'');
+    var q=raw;
+    if(q.length===12&&q.indexOf('91')===0)q=q.slice(2);
+    else if(q.length===11&&q.charAt(0)==='0')q=q.slice(1);
+    // Only a phone-like partial (4+ digits starting 6-9) hits the lookup.
+    // A chest number (5 digits starting 0) must not trigger it.
+    if(q.length<4||!/^[6-9]/.test(q)){lastPhoneLookup='';return;}
     if(now){lookupByPhone(q);return;}
     clearTimeout(phoneLookupTimer);
     phoneLookupTimer=setTimeout(function(){lookupByPhone(q);},400);
