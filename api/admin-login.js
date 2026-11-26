@@ -50,8 +50,11 @@ export function canCollect(role) { return role === 'fees' || role === 'write' ||
 // calling JSON.parse on an object throws, which emptied every list.
 // --- Registration helpers shared by register.js, registrations.js, activity-log.js ---
 // Phone normalisation: strip +91 / leading 0, keep 10 digits.
+// R3-m26: a 00-prefixed number ("0091 98765…", 14 digits) must normalise
+// too — strip a leading "00" first, then the 91 / 0 rules below.
 export function normPhone(p) {
   let d = String(p || '').replace(/\D/g, '');
+  if (d.startsWith('00')) d = d.slice(2);
   if (d.startsWith('91') && d.length === 12) d = d.slice(2);
   if (d.startsWith('0') && d.length === 11) d = d.slice(1);
   return d;
@@ -68,6 +71,32 @@ export function regMarkerKeys(slug, phoneNorm, emailNorm) {
   };
 }
 export const MARKER_TTL = 7 * 24 * 3600; // 7 days: bounds damage from a stale marker
+
+// Chest-code allocator (R3-m31): the four live events have fixed PDF-order
+// codes (01 Prompting, 02 Quiz, 03 Treasure Hunt, 04 Reels). An
+// admin-created event used to get '00', so two custom events shared
+// 00xxx chest numbers. A custom slug now gets a persistent code from
+// 05 upwards, allocated once via an atomic INCR and stored in
+// celesta:chestcodes, so it never collides with 01–04 or with another
+// custom event. Falls back to a deterministic slug hash if Redis fails.
+const KNOWN_CHEST_CODES = { 'prompting': '01', 'quiz': '02', 'treasure-hunt': '03', 'reels-competition': '04' };
+export async function chestCodeFor(slug) {
+  if (KNOWN_CHEST_CODES[slug]) return KNOWN_CHEST_CODES[slug];
+  const fallback = () => {
+    let h = 0;
+    for (const ch of String(slug || '')) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    return String(5 + (h % 95)).padStart(2, '0');
+  };
+  try {
+    const existing = await redis.hget('celesta:chestcodes', slug);
+    if (existing && /^\d{2}$/.test(String(existing))) return String(existing);
+    const seq = await redis.incr('celesta:chestcodeseq');
+    const code = String(4 + Number(seq || 1)).padStart(2, '0');
+    if (Number(code) > 99) return fallback();
+    await redis.hset('celesta:chestcodes', { [slug]: code });
+    return code;
+  } catch { return fallback(); }
+}
 
 export function parseVal(v) {
   if (v == null) return null;

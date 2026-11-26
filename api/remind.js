@@ -82,49 +82,60 @@ export default async function handler(req, res) {
 
     let sent = 0;
     let failed = 0;
-    // Batched fan-out (V2-M3): strictly sequential sends (~0.5-2 s each)
-    // mail only ~5-20 students under a 10 s cap. Send in batches of ~10
-    // concurrent SMTP sessions with a ~3 s per-mail cap, so one run covers
-    // far more under either a 10 s or a 300 s cap. The per-mail SADD
-    // design is preserved: each recipient is marked sent IMMEDIATELY after
-    // its OWN mail completes, inside its own task — a killed run never
-    // re-sends to someone already mailed, and a slow mail cannot eat a
-    // whole run.
+    // R3-m35 (batch math, fixed): the old fan-out (400 max, ~3 s per
+    // 10-mail batch) needed ~120 s, far past the 10 s Vercel cap, so a
+    // run was always killed mid-batch. A run now stops on an 8 s wall
+    // clock budget and reports `remaining`, so the next trigger (manual
+    // re-run with the secret, or the next cron) continues where it left
+    // off instead of dying silently mid-list. SADD-after-send (not
+    // before): a student is marked mailed only AFTER their mail
+    // succeeds — the old mark-first design marked unmailed students as
+    // mailed when the run was killed between the SADD and the send.
+    // (A kill between a successful send and its SADD can re-send one
+    // reminder on the next run; a duplicate reminder is the safer
+    // failure than a silently missed one.)
+    // NOTE (R3-m35, auth — NOT fixed, see fix log): the Vercel cron
+    // still cannot authorise — the cron path carries no secret and the
+    // x-vercel-cron header is forgeable, so no secret may live in the
+    // public repo's vercel.json. The cron entry was removed; reminders
+    // are triggered manually by the owner with ?secret= (or an
+    // Authorization header) until the secret is supplied another way.
+    const RUN_STARTED = Date.now();
+    const RUN_BUDGET_MS = 8000;
     const BATCH_SIZE = 10;
     const sendOne = async (r) => {
       try {
-        // Record the send BEFORE mailing (V3-m06): if the SADD after a
-        // successful mail fails, the next run re-sends to the same student.
-        // Marking first means a killed run never re-sends. If the mark
-        // itself fails, skip the mail (do not send an unrecorded mail).
-        try {
-          await redis.sadd(key, r.id);
-          await redis.expire(key, 604800); // 7 days
-        } catch (e) {
-          console.error('remind sadd failed', r.id, e);
-          failed++;
-          return;
-        }
         const mail = buildReminderEmail({ reg: r, fee: feeBySlug[r.eventSlug] || '', kind });
         const ok = await sendMail({ to: String(r.email).trim(), ...mail, timeoutMs: 3000 });
         if (ok) {
           sent++;
+          try {
+            await redis.sadd(key, r.id);
+            await redis.expire(key, 604800); // 7 days
+          } catch (e) {
+            // Mail went out but the mark failed: count it sent (it was),
+            // and let the next run possibly re-send — never silently drop.
+            console.error('remind sadd failed after send', r.id, e);
+          }
         } else {
           failed++;
-          // Mail failed: remove the mark so the next run retries.
-          try { await redis.srem(key, r.id); } catch { /* mark stays; next run may re-send a failed mail */ }
         }
       } catch (e) {
         console.error('remind send failed', r.id, e);
         failed++;
-        try { await redis.srem(key, r.id); } catch { /* ignore */ }
       }
     };
+    let stoppedEarly = false;
     for (let i = 0; i < pending.length; i += BATCH_SIZE) {
+      if (Date.now() - RUN_STARTED > RUN_BUDGET_MS) { stoppedEarly = true; break; }
       await Promise.allSettled(pending.slice(i, i + BATCH_SIZE).map(sendOne));
     }
+    // What is left: pending minus what this run attempted (sent + failed),
+    // plus the slice beyond MAX_RECIPIENTS that was never attempted.
+    const attempted = sent + failed;
+    const left = Math.max(0, pendingAll.length - attempted);
 
-    return res.status(200).json({ ok: true, sent, failed, day, kind, total: regs.length, remaining });
+    return res.status(200).json({ ok: true, sent, failed, day, kind, total: regs.length, remaining: left, stoppedEarly });
   } catch (e) {
     console.error('remind failed', e);
     return res.status(500).json({ error: 'Reminder run failed' });

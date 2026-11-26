@@ -21,11 +21,13 @@ function clientIp(req) {
   return parts.length ? parts[parts.length - 1] : 'unknown';
 }
 
-// Per-IP cap on counted visits: 60 per 10 minutes. Generous on purpose — a
-// whole venue on shared Wi-Fi shares one public IP — but it stops a script
-// inflating the counter without bound. Over the cap, the visit just isn't
-// counted; the totals still return.
-const VISIT_RL_LIMIT = 60;
+// Per-IP cap on counted visits: 600 per 10 minutes (R3-m36: 60/10 min
+// undercounted on shared venue Wi-Fi — only the first ~60 sessions per
+// 10-min window were counted). A whole venue shares one public IP and
+// the beacon fires once per browser session, so 600 still stops a script
+// inflating the counter without bound. Over the cap, the visit just
+// isn't counted; the totals still return.
+const VISIT_RL_LIMIT = 600;
 const VISIT_RL_WINDOW = 600;
 
 export default async function handler(req, res) {

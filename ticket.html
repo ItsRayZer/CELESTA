@@ -308,10 +308,12 @@
   var current=null, pollTimer=null;
   // Ticket fetch with a ~10 s timeout so a hung request cannot stall the
   // page (or the poll) forever. Used by the first load and by the poll.
+  // R3-M8: ticket-page fetches count in the poll bucket (?via=poll),
+  // never the counter scan bucket.
   function ticketFetch(){
     var c=new AbortController();
     var to=setTimeout(function(){c.abort();},10000);
-    return fetch('/api/ticket?id='+encodeURIComponent(id),{signal:c.signal}).then(function(r){clearTimeout(to);return r;},function(e){clearTimeout(to);throw e;});
+    return fetch('/api/ticket?id='+encodeURIComponent(id)+'&via=poll',{signal:c.signal}).then(function(r){clearTimeout(to);return r;},function(e){clearTimeout(to);throw e;});
   }
   // Polling has stopped (10 min cap): offer a manual refresh instead.
   function showRefresh(){
@@ -430,9 +432,30 @@
         if(Date.now()-pollStart>=600000){clearInterval(pollTimer);pollTimer=null;showRefresh();return;}
         ticketFetch().then(function(r){
           if(r.status===429){pollBackoff=true;return null;}
-          return r.json();
-        }).then(function(d){
-          if(d&&d.ok&&d.ticket&&d.ticket.paid){render(d.ticket);}
+          return r.json().then(function(j){return {status:r.status,d:j};});
+        }).then(function(x){
+          if(!x)return;
+          var d=x.d;
+          // R3-m24: re-render on ANY material change, not just paid —
+          // a ticket voided after load used to keep showing a valid
+          // QR/Download/Share until reload. A voided ticket re-renders
+          // to the VOID state.
+          if(d&&d.ok&&d.ticket){
+            var nt=d.ticket;
+            var changed=!current||!!nt.paid!==!!current.paid||!!nt.invalid!==!!current.invalid
+              ||Number(nt.amount||0)!==Number(current.amount||0)||(nt.paidMethod||'')!==(current.paidMethod||'')
+              ||(nt.chest||'')!==(current.chest||'');
+            if(changed)render(nt);
+          } else if(x.status===404){
+            // The ticket is gone (deleted): stop polling and say so
+            // instead of showing a stale valid QR. Any other failure
+            // (500, network) just skips this tick and retries.
+            clearInterval(pollTimer);pollTimer=null;
+            state.style.display='';
+            state.innerHTML='<h1>Ticket not found</h1><p>This registration was removed. Contact the desk if you think this is a mistake.</p>';
+            slot.innerHTML='';
+            liveNote.hidden=true;
+          }
         }).catch(function(){});
       },60000);
     }

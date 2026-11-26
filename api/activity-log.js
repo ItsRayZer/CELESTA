@@ -16,6 +16,7 @@
 // Deliberately NOT fingerprinted: battery, network speed, WebGL extension list
 // (Brave randomises it per session) — they change constantly and would fake new devices.
 import { Redis } from '@upstash/redis';
+import crypto from 'node:crypto';
 import { verify, canWrite, parseVal, regMarkerKeys, normPhone, MARKER_TTL } from './admin-login.js';
 
 const redis = new Redis({
@@ -61,13 +62,18 @@ async function liveHistoryFor(id) {
 // Re-push the live history entry for a restored paid record, but only
 // when it is missing or stale (#27): a retried undo repairs the history
 // instead of pushing a duplicate entry.
+// R3-m19: staleness is judged on amount + method + name + chest +
+// paidAt — an undo that renames a paid student used to leave the old
+// name (and old paidAt) in History while ticket/receipt showed the new one.
 async function repairPaidHistory(rec) {
   const live = await liveHistoryFor(rec.id);
-  if (live && Number(live.amount || 0) === Number(rec.amount || 0) && (live.method || '') === (rec.paidMethod || '')) return;
+  if (live && Number(live.amount || 0) === Number(rec.amount || 0) && (live.method || '') === (rec.paidMethod || '')
+      && (live.name || '') === (rec.name || '') && (live.chest || '') === (rec.chest || '')
+      && (live.at || '') === (rec.paidAt || live.at || '')) return;
   await removeHistoryFor(rec.id);
   await pushHistory({
     id: rec.id, chest: rec.chest || '', event: rec.event, eventSlug: rec.eventSlug,
-    name: rec.name, amount: Number(rec.amount || 0), method: rec.paidMethod || '',
+    name: rec.name, phone: rec.phone || '', amount: Number(rec.amount || 0), method: rec.paidMethod || '',
     at: rec.paidAt || new Date().toISOString(), by: 'admin',
   });
 }
@@ -208,7 +214,35 @@ export async function recentEntries(n) {
 }
 
 // Apply the inverse of a logged change. Returns { ok, message }.
+// R3-M4: the reg paths run under the same per-record paylock
+// (celesta:paylock:<id>) that PATCH/DELETE/mark-paid serialize on, with a
+// re-read under it — undo's bare hset/zadd used to interleave with a
+// delete's pipeline (resurrecting a deleted record with a 200 "deleted")
+// or with a concurrent PATCH paid-flip (record paid, history derived
+// from a different state). A contender gets a retryable refusal and the
+// undo stays unmarked, so it can be retried.
 async function applyUndo(u) {
+  if (u.kind !== 'reg-update' && u.kind !== 'reg-add' && u.kind !== 'reg-deleted') {
+    return applyUndoInner(u);
+  }
+  const id = u.id || (u.record && u.record.id);
+  if (!id) return { ok: false, error: 'Nothing to restore' };
+  const lockKey = 'celesta:paylock:' + id;
+  const lockVal = crypto.randomUUID();
+  let locked = false;
+  try {
+    const got = await redis.set(lockKey, lockVal, { nx: true, ex: 10 });
+    locked = !!got;
+    if (!locked) return { ok: false, error: 'That registration is being changed right now — try the undo again in a moment' };
+    return await applyUndoInner(u);
+  } finally {
+    if (locked) {
+      try { await redis.eval("if redis.call('get',KEYS[1])==ARGV[1] then return redis.call('del',KEYS[1]) end", [lockKey], [lockVal]); } catch { /* lock expires on its own */ }
+    }
+  }
+}
+
+async function applyUndoInner(u) {
   try {
     if (u.kind === 'reg-update') {
       const rec = parseVal(await redis.hget('celesta:regs', u.id));
@@ -232,7 +266,7 @@ async function applyUndo(u) {
           for (const k of claimed) { try { await redis.del(k); } catch {} }
           return { ok: false, error: 'That phone/email is now registered to someone else — undo blocked' };
         }
-      } catch { /* markers are a backstop; continue */ }
+      } catch (e) { console.error('activity-log undo marker claim failed', e); return { ok: false, error: 'Could not verify phone/email uniqueness — try the undo again' }; }
       await redis.hset('celesta:regs', { [u.id]: JSON.stringify(restored) });
       try {
         if (curMk.phone && curMk.phone !== newMk.phone) await redis.del(curMk.phone);
@@ -267,6 +301,12 @@ async function applyUndo(u) {
         // so the undo can complete on retry.
         const cur = parseVal(exists);
         if (cur && cur.paid === rec.paid && Number(cur.amount || 0) === Number(rec.amount || 0)) {
+          // R3-M6: re-add to reglist UNCONDITIONALLY here (idempotent —
+          // re-adding an existing member just updates its score). A
+          // first attempt that did hset but failed zadd used to be
+          // reported "restored" while invisible in the admin list.
+          try { await redis.zadd('celesta:reglist', { score: Date.parse(cur.at || rec.at) || Date.now(), member: rec.id }); }
+          catch (e) { console.error('activity-log undo reglist repair failed', e); return { ok: false, error: 'Registration restored, but the list could not be updated — try the undo again' }; }
           if (rec.paid) {
             try { await repairPaidHistory(rec); }
             catch (e) { console.error('activity-log history mirror failed', e); return { ok: false, error: 'Registration restored, but the payment history could not be updated — try the undo again' }; }
@@ -291,7 +331,7 @@ async function applyUndo(u) {
           for (const k of claimed) { try { await redis.del(k); } catch {} }
           return { ok: false, error: 'That phone/email is now registered to someone else — undo blocked' };
         }
-      } catch { /* markers are a backstop; continue */ }
+      } catch (e) { console.error('activity-log undo marker claim failed', e); return { ok: false, error: 'Could not verify phone/email uniqueness — try the undo again' }; }
       await redis.hset('celesta:regs', { [rec.id]: JSON.stringify(rec) });
       await redis.zadd('celesta:reglist', { score: Date.parse(rec.at) || Date.now(), member: rec.id });
       // Undo of a paid delete restores the record: re-push its history
@@ -404,6 +444,12 @@ async function applyUndo(u) {
         // so the undo can complete on retry.
         const cur = parseVal(exists);
         if (cur && cur.paid === rec.paid && Number(cur.amount || 0) === Number(rec.amount || 0)) {
+          // R3-M6: re-add to reglist UNCONDITIONALLY here (idempotent —
+          // re-adding an existing member just updates its score). A
+          // first attempt that did hset but failed zadd used to be
+          // reported "restored" while invisible in the admin list.
+          try { await redis.zadd('celesta:reglist', { score: Date.parse(cur.at || rec.at) || Date.now(), member: rec.id }); }
+          catch (e) { console.error('activity-log undo reglist repair failed', e); return { ok: false, error: 'Registration restored, but the list could not be updated — try the undo again' }; }
           if (rec.paid) {
             try { await repairPaidHistory(rec); }
             catch (e) { console.error('activity-log history mirror failed', e); return { ok: false, error: 'Registration restored, but the payment history could not be updated — try the undo again' }; }
@@ -425,7 +471,7 @@ async function applyUndo(u) {
           for (const k of claimed) { try { await redis.del(k); } catch {} }
           return { ok: false, error: 'That phone/email is now registered to someone else — undo blocked' };
         }
-      } catch { /* markers are a backstop; continue */ }
+      } catch (e) { console.error('activity-log undo marker claim failed', e); return { ok: false, error: 'Could not verify phone/email uniqueness — try the undo again' }; }
       await redis.hset('celesta:regs', { [rec.id]: JSON.stringify(rec) });
       await redis.zadd('celesta:reglist', { score: Date.parse(rec.at) || Date.now(), member: rec.id });
       // Undo of a paid delete restores the record: re-push its history

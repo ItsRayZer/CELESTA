@@ -504,7 +504,10 @@ function build(){
     try{
       if(typeof AbortController!=="undefined"){
         ctl=new AbortController();
-        timer=setTimeout(function(){ try{ ctl.abort(); }catch(e){} }, 30000);
+        // R3-m34: 8 s, not 30 s — the Vercel function cap is 10 s, so a
+        // 30 s timeout could never fire before the function died (the
+        // local-answer fallback still covers a failure).
+        timer=setTimeout(function(){ try{ ctl.abort(); }catch(e){} }, 8000);
       }
       fetch("/api/spark-chat", {
         method:"POST",

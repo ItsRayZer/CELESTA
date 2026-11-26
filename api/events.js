@@ -237,6 +237,18 @@ export const DEFAULT_EVENTS = [
   }
 ];
 
+// The Treasure Hunt phone ban (official PDF rules, rulesV 5, rule 7).
+// It must stay live no matter what an admin customises (R3-m32): any
+// served Treasure Hunt ruleset that lacks it gets it appended.
+const PHONE_BAN_RULE = 'Mobile phones are strictly prohibited during the competition.';
+function ensurePhoneBan(e) {
+  if (e.slug !== 'treasure-hunt' || !Array.isArray(e.rules)) return false;
+  if (e.rules.some(function (r) { return String(r).toLowerCase().includes('mobile phones are strictly prohibited'); })) return false;
+  e.rules = e.rules.slice();
+  e.rules.splice(6, 0, PHONE_BAN_RULE);
+  return true;
+}
+
 export async function loadEvents(options) {
   // options: { allowWrite, strict }
   // - Default (public) path: read-only, non-strict. NEVER writes to Redis
@@ -291,10 +303,23 @@ export async function loadEvents(options) {
   DEFAULT_EVENTS.forEach(d => { defBySlug[d.slug] = d; });
   for (const e of list) {
     const d = defBySlug[e.slug];
+    // R3-m32: an admin's own custom rules are NEVER replaced. The
+    // migration only upgrades a ruleset that is still the stale default
+    // (rulesV below the official set AND not flagged custom AND not
+    // differing from the official rules — a differing ruleset is an
+    // admin customisation, including one saved before the rulesCustom
+    // flag existed). A custom ruleset keeps its own wording — only the
+    // Treasure Hunt phone ban is enforced on top of it (appended if
+    // missing). The Nov 20 one-time upgrade already ran live (all four
+    // live events serve rulesV == default), so no stale set is left to
+    // lose by treating differing rules as custom.
+    const looksCustom = e.rulesCustom || (d && Array.isArray(e.rules) && JSON.stringify(e.rules) !== JSON.stringify(d.rules || []));
+    if (looksCustom) { if (ensurePhoneBan(e)) dirty = true; continue; }
     if (d && (e.rulesV || 0) < (d.rulesV || 0)) {
       e.rules = (d.rules || []).slice();
       e.rulesV = d.rulesV; dirty = true;
     }
+    if (ensurePhoneBan(e)) dirty = true;
   }
   if (dirty) {
     const obj = {};
@@ -392,6 +417,20 @@ function cleanEvent(body, existing) {
   e.how = arr('how');
   e.rules = arr('rules');
   e.reqs = arr('reqs');
+  // R3-m32: when the admin explicitly supplies rules, record whether
+  // they are their own custom set (differ from the official default for
+  // this slug). A custom set is never masked by the GET override or the
+  // loadEvents migration. Rules equal to the default are not custom,
+  // and their rulesV is raised to the default so they are never
+  // "stale". When rules are not supplied, keep the stored flag.
+  if (Array.isArray(body.rules)) {
+    const d = DEFAULT_EVENTS.find(function (x) { return x.slug === (existing ? existing.slug : slugify(body.name || '')); });
+    const isDefault = d && JSON.stringify(e.rules) === JSON.stringify(d.rules || []);
+    e.rulesCustom = !isDefault;
+    if (isDefault && d) e.rulesV = d.rulesV;
+  } else if (existing) {
+    e.rulesCustom = !!existing.rulesCustom;
+  }
   e.order = Math.min(1000, Math.max(-100, num('order', 99)));
   e.visible = bool('visible', true);
   e.regOpen = bool('regOpen', true);
@@ -430,10 +469,19 @@ export default async function handler(req, res) {
       DEFAULT_EVENTS.forEach(d => { defBySlug[d.slug] = d; });
       for (const e of events) {
         const d = defBySlug[e.slug];
+        // R3-m32: an admin's own custom rules are never masked by this
+        // override — only a stale (non-custom, non-differing) ruleset
+        // takes the official RULES (same looksCustom rule as the
+        // migration above, so a pre-flag customisation is safe too).
+        // The Treasure Hunt phone ban is enforced on top of any served
+        // ruleset, custom or not.
+        const looksCustom = e.rulesCustom || (d && Array.isArray(e.rules) && JSON.stringify(e.rules) !== JSON.stringify(d.rules || []));
+        if (looksCustom) { ensurePhoneBan(e); continue; }
         if (d && (e.rulesV || 0) < (d.rulesV || 0)) {
           e.rules = (d.rules || []).slice();
           e.rulesV = d.rulesV;
         }
+        ensurePhoneBan(e);
       }
       // One lookup for all custom posters: pages use this flag to skip the
       // /api/poster call entirely when no custom poster exists. That call

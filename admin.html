@@ -423,8 +423,12 @@ tbody tr:hover{background:var(--hover)}
 const $=id=>document.getElementById(id);
 let TOKEN=localStorage.getItem('celesta_admin_tok')||'', ROLE=localStorage.getItem('celesta_admin_role')||'';
 let pendingAfterLogin=null; // #28: a save stashed across a mid-edit re-login, retried after login
+let dashTimer=null; // R3-m15: the 5-min auto-refresh interval id —
+// showDash() used to register a NEW one on every login and never clear
+// it, so polling (and "new registration" toasts) multiplied per login.
 let REGS=[], FILTER_EV='', EV_DETAIL='', SEEN=new Set(), COORDS=[], POSTER_CUSTOM={}, SEEN_READY=false, LOG_UNDONE=new Set();
 let REG_TOTAL=0, REG_PAID_N=0, REG_PAID_AMT=0, REG_OFFSET=0, REG_HAS_MORE=false, POSTER_V=0, EVENT_COUNTS={}, LAST_SIG='';
+let REG_TOTAL_VALID=0, REG_PENDING=0; // R3-m18: participant counts (void regs excluded), from the server
 const REG_PAGE=200;
 let EDIT_ID=null;
 
@@ -682,10 +686,13 @@ $('logoutBtn').onclick=()=>{localStorage.removeItem('celesta_admin_tok');localSt
 async function showDash(){
   $('login').classList.add('hidden');$('dash').classList.remove('hidden');$('dock').classList.remove('hidden');
   const w=isWrite(), lead=isLead();
-  $('rolePill').textContent=lead?'TECH LEAD · FULL POWER':w?'WRITE · FULL ACCESS':'READ · VIEW ONLY';
+  // R3-m17: a fees-role token is a counter login, not a read-only admin
+  // — label it honestly instead of "READ · VIEW ONLY", and point it at
+  // the Fees app (the dashboard itself explains this on load, see load()).
+  $('rolePill').textContent=lead?'TECH LEAD · FULL POWER':w?'WRITE · FULL ACCESS':(ROLE==='fees'?'FEES · USE /fees APP':'READ · VIEW ONLY');
   $('rolePill').classList.toggle('write',w);
   $('rolePill').classList.toggle('lead',lead);
-  $('roleSub').textContent=lead?'TECH LEAD':w?'FULL ACCESS':'READ ONLY';
+  $('roleSub').textContent=lead?'TECH LEAD':w?'FULL ACCESS':(ROLE==='fees'?'FEES COUNTER':'READ ONLY');
   $('addForm').classList.toggle('hidden',!w);
   $('logLink').classList.toggle('hidden',!w);
   $('feesLink').classList.toggle('hidden',!w); // Fees app: full admin (write) only, never read-only
@@ -707,7 +714,10 @@ async function showDash(){
   // thousands of the 500,000/month free-tier budget on its own (the old
   // 10,000/day cap was retired in March 2025). 5 min is plenty fresh
   // for registrations; manual Refresh is always there.
-  setInterval(()=>{if(!$('dash').classList.contains('hidden')&&!document.hidden&&navigator.onLine)load();},300000);
+  // R3-m15: clear any previous interval first — showDash() runs on
+  // every login, and re-login without reload used to stack intervals.
+  if(dashTimer)clearInterval(dashTimer);
+  dashTimer=setInterval(()=>{if(!$('dash').classList.contains('hidden')&&!document.hidden&&navigator.onLine)load();},300000);
 }
 
 // Bot check: the server writes x.risk = {level, reasons, at} on every
@@ -731,7 +741,39 @@ async function load(reset=true){
   }
   try{
     const r=await fetchTimeout('/api/registrations?limit='+want+'&offset='+REG_OFFSET,{headers:{Authorization:'Bearer '+TOKEN},cache:'no-store'});
-    if(r.status===401){localStorage.removeItem('celesta_admin_tok');localStorage.removeItem('celesta_admin_role');location.reload();return;}
+    // R3-m17: the fees role gets 403 from /api/registrations (it reads
+    // through /api/fees instead). Say so plainly instead of rendering
+    // an empty dashboard ("No registrations yet", totals 0) with no
+    // explanation — that was the new consequence of the 403 gate.
+    if(r.status===403){
+      $('rows').innerHTML='<tr><td colspan="6"><div class="empty">Fees counter login — this dashboard needs a full-access admin password. Use the <a href="/fees">Fees app</a> to collect payments.</div></td></tr>';
+      $('sTotal').textContent='—';$('sPaid').textContent='—';$('sAmt').textContent='—';$('sPend').textContent='—';
+      return;
+    }
+    // R3-m14: a background 5-min refresh that 401s while an edit modal
+    // is open must NOT location.reload() and lose the mid-edit draft —
+    // the m28 fix covered only the save call. With a modal open, use
+    // the keep-work re-login AND stash a re-show of that modal after
+    // login: reloginKeepWork hides the modal (to show the login), but
+    // the inputs keep their typed values, so re-showing it restores
+    // the draft instead of re-populating from the server (which would
+    // wipe it). A stashed save retry is never overwritten.
+    if(r.status===401){
+      const wasRegModal=$('modal')&&$('modal').classList.contains('show');
+      const wasEvModal=$('modal-ev')&&$('modal-ev').classList.contains('show');
+      if(wasRegModal||wasEvModal){
+        if(!pendingAfterLogin){
+          pendingAfterLogin=()=>{
+            if(wasRegModal)$('modal').classList.add('show');
+            if(wasEvModal)$('modal-ev').classList.add('show');
+            toast('Session restored — your edit is still open');
+          };
+        }
+        reloginKeepWork('Session expired — log in again to finish saving.');
+        return;
+      }
+      localStorage.removeItem('celesta_admin_tok');localStorage.removeItem('celesta_admin_role');location.reload();return;
+    }
     const d=await r.json();
     const fresh=(d.regs||[]).filter(x=>!SEEN.has(x.id));
     // Skip the full-table rebuild when the refresh fetched byte-identical
@@ -745,6 +787,10 @@ async function load(reset=true){
       REGS=d.regs||[];
     }else REGS=REGS.concat(d.regs||[]);
     REG_TOTAL=d.total||REGS.length;REG_PAID_N=d.paidCount||0;REG_PAID_AMT=d.paidAmount||0;
+    // R3-m18: the server now sends the participant counts (void regs
+    // excluded) — PENDING PAYMENT must not count voided regs as pending.
+    REG_TOTAL_VALID=(typeof d.totalValid==='number'?d.totalValid:REG_TOTAL);
+    REG_PENDING=(typeof d.pending==='number'?d.pending:Math.max(0,REG_TOTAL-REG_PAID_N));
     EVENT_COUNTS=d.byEvent||{};
     REG_OFFSET=REGS.length;REG_HAS_MORE=REGS.length<REG_TOTAL;
     if(!unchanged){
@@ -787,11 +833,14 @@ function render(){
     if(q&&!(x.name+' '+x.school+' '+x.phone+' '+(x.teamName||'')+' '+(x.chest||'')+' '+(x.email||'')+' '+memNames(x.members).join(' ')).toLowerCase().includes(q))return false;
     return true;
   });
-  // stats come from the server so they stay right on any page
-  $('sTotal').textContent=REG_TOTAL;
+  // stats come from the server so they stay right on any page.
+  // R3-m18: the total and the pending count are the participant counts
+  // (void regs excluded) — the old REG_TOTAL - REG_PAID_N counted every
+  // voided registration as still pending, disagreeing with fees.
+  $('sTotal').textContent=REG_TOTAL_VALID;
   $('sPaid').textContent=REG_PAID_N;
   $('sAmt').textContent=fmt(REG_PAID_AMT);
-  $('sPend').textContent=REG_TOTAL-REG_PAID_N;
+  $('sPend').textContent=REG_PENDING;
   $('loadMoreBtn').classList.toggle('hidden',!REG_HAS_MORE);
   // keep the reg counts on the Events tab fresh without rebuilding the list
   document.querySelectorAll('[data-count]').forEach(el=>{
@@ -877,6 +926,25 @@ function render(){
   document.querySelectorAll('[data-ticket]').forEach(b=>b.onclick=()=>window.open('/ticket?id='+encodeURIComponent(b.dataset.ticket),'_blank'));
 }
 
+// R3-m21: the PATCH historyPending warning used to be unactionable —
+// "check the History tab" with no repair anywhere. Re-push the ledger
+// entry from here (the fees repush-history action, which the write/lead
+// token may call): on success the ledger is repaired, on failure the
+// toast says exactly where to repair it manually (Fees > History).
+async function repushLedger(id){
+  try{
+    const r=await fetchTimeout('/api/fees?action=repush-history',{method:'POST',headers:authHeaders(true),body:JSON.stringify({id})});
+    const d=await r.json().catch(()=>({}));
+    if(r.ok&&d.ok){toast(d.already?'Ledger entry already exists':'Ledger entry restored');return true;}
+    toast('Ledger entry still missing — open Fees > History and tap "Re-push ledger entry"');
+    return false;
+  }catch(e){toast('Ledger entry still missing — open Fees > History and tap "Re-push ledger entry"');return false;}
+}
+function historyPendingToast(id,okMsg){
+  toast(okMsg+' — but the payment history may be out of sync, re-pushing the ledger entry…');
+  repushLedger(id);
+}
+
 async function togglePay(id,wasPaid){
   let amount=0, paidMethod='';
   if(!wasPaid){
@@ -893,9 +961,9 @@ async function togglePay(id,wasPaid){
   const x=REGS.find(r=>r.id===id);
   const oldPaid=x?x.paid:false, oldAmt=x?x.amount:0;
   if(x){x.paid=!wasPaid;x.amount=wasPaid?0:amount;render();}
-  if(!wasPaid){REG_PAID_N++;REG_PAID_AMT+=amount;}else{REG_PAID_N--;REG_PAID_AMT-=oldAmt;}
-  $('sPaid').textContent=REG_PAID_N;$('sAmt').textContent=fmt(REG_PAID_AMT);$('sPend').textContent=REG_TOTAL-REG_PAID_N;
-  const undo=()=>{if(x){x.paid=oldPaid;x.amount=oldAmt;}if(!wasPaid){REG_PAID_N--;REG_PAID_AMT-=amount;}else{REG_PAID_N++;REG_PAID_AMT+=oldAmt;}render();};
+  if(!wasPaid){REG_PAID_N++;REG_PAID_AMT+=amount;REG_PENDING=Math.max(0,REG_PENDING-1);}else{REG_PAID_N--;REG_PAID_AMT-=oldAmt;REG_PENDING++;}
+  $('sPaid').textContent=REG_PAID_N;$('sAmt').textContent=fmt(REG_PAID_AMT);$('sPend').textContent=REG_PENDING;
+  const undo=()=>{if(x){x.paid=oldPaid;x.amount=oldAmt;}if(!wasPaid){REG_PAID_N--;REG_PAID_AMT-=amount;REG_PENDING++;}else{REG_PAID_N++;REG_PAID_AMT+=oldAmt;REG_PENDING=Math.max(0,REG_PENDING-1);}render();};
   try{
     const r=await fetchTimeout('/api/registrations',{method:'PATCH',headers:authHeaders(true),body:JSON.stringify({id,paid:!wasPaid,amount,paidMethod:!wasPaid?paidMethod:undefined})});
     if(sessExpired(r))return;
@@ -908,7 +976,7 @@ async function togglePay(id,wasPaid){
       render();
       // The record saved but the payment history did not (#18): say so
       // instead of reporting a clean save.
-      toast(d.historyPending?(wasPaid?'Marked unpaid':'Marked paid')+' — but the payment history may be out of sync, check the History tab':(wasPaid?'Marked unpaid':'Marked paid'));
+      if(d.historyPending)historyPendingToast(id,wasPaid?'Marked unpaid':'Marked paid');else toast(wasPaid?'Marked unpaid':'Marked paid');
     }
     else{undo();toast('Failed');}
   }catch(e){undo();toast('Failed');}
@@ -1025,7 +1093,11 @@ async function delReg(id){
     REG_TOTAL=Math.max(0,REG_TOTAL-1);
     if(x.paid){REG_PAID_N=Math.max(0,REG_PAID_N-1);REG_PAID_AMT=Math.max(0,REG_PAID_AMT-(Number(x.amount||0)));}
     render();
-    toast('Registration deleted');
+    // R3-M5/m12: the delete removed the payment but its removed-audit
+    // row could not be written — the money is out of History/Funds,
+    // but the audit trail is missing. Repair it from Fees > History.
+    if(d.historyPending){toast('Registration deleted — but the ledger audit entry is missing; open Fees > History and tap "Re-push ledger entry"');}
+    else toast('Registration deleted');
   }catch(e){toast(e&&e.name==='AbortError'?'Delete timed out — check the list before retrying':'Failed');}
   finally{delBusy.delete(id);}
 }
@@ -1045,7 +1117,7 @@ async function toggleInvalid(id,wasInvalid){
   try{
     const r=await fetchTimeout('/api/registrations',{method:'PATCH',headers:authHeaders(true),body:JSON.stringify({id,invalid:makeInvalid})});
     if(sessExpired(r))return;
-    if(r.ok){const d=await r.json();if(d.reg){const i=REGS.findIndex(y=>y.id===id);if(i>=0)REGS[i]=d.reg;}render();toast(d.historyPending?(makeInvalid?'Marked invalid':'Marked valid')+' — but the payment history may be out of sync, check the History tab':(makeInvalid?'Marked invalid':'Marked valid'));}
+    if(r.ok){const d=await r.json();if(d.reg){const i=REGS.findIndex(y=>y.id===id);if(i>=0)REGS[i]=d.reg;}render();if(d.historyPending)historyPendingToast(id,makeInvalid?'Marked invalid':'Marked valid');else toast(makeInvalid?'Marked invalid':'Marked valid');}
     else toast('Failed');
   }catch(e){toast('Failed');}
 }
@@ -1074,7 +1146,7 @@ async function doSaveRegEdit(body){
     }
     if(r.ok){
       const d=await r.json().catch(()=>({}));
-      toast(d.historyPending?'Saved — but the payment history may be out of sync, check the History tab':'Saved');
+      if(d.historyPending)historyPendingToast(body.id,'Saved');else toast('Saved');
       $('modal').classList.remove('show');EDIT_ID=null;load();
     }
     else{toast('Failed');$('modal').classList.add('show');}
@@ -1287,7 +1359,9 @@ $('addBtn').onclick=async()=>{
 function evStats(e){
   const b=EVENT_COUNTS[e.slug];
   if(b)return b;
-  const er=REGS.filter(x=>x.eventSlug===e.slug||x.event===e.name),ep=er.filter(x=>x.paid);
+  // R3-m18: the fallback also excludes void (invalid) registrations —
+  // they are not participants and their money is not in hand.
+  const er=REGS.filter(x=>!x.invalid&&(x.eventSlug===e.slug||x.event===e.name)),ep=er.filter(x=>x.paid);
   return {n:er.length,paid:ep.length,amount:ep.reduce((s,x)=>s+(x.amount||0),0)};
 }
 function evRegCount(slug,name){return evStats({slug,name}).n;}
@@ -1345,18 +1419,21 @@ async function saveEvent(patch,retryOnAuth){
     // the retry and re-login without a reload. Toggles and moveEvent pass
     // no retry flag, so they keep sessExpired's reload.
     if(r.status===401&&retryOnAuth){
-      pendingAfterLogin=async()=>{if(await saveEvent(patch,true)){EDIT_EV=null;toast('Event saved — live now');}};
+      // R3-m13: if the retried save then fails, the modal must come
+      // back with the typed values (they were never cleared) — the old
+      // retry just toasted 'Failed' and the draft vanished from view.
+      pendingAfterLogin=async()=>{if(await saveEvent(patch,true)){EDIT_EV=null;toast('Event saved — live now');}else{$('modal-ev').classList.add('show');}};
       reloginKeepWork('Session expired — log in again and your event edit will save.');
       return false;
     }
     if(sessExpired(r))return;
     const d=await r.json().catch(()=>({}));
-    if(!r.ok){toast(d.error||'Failed');return false;}
+    if(!r.ok){toast(d.error||'Failed');if(retryOnAuth)$('modal-ev').classList.add('show');return false;}
     await ensureEvents(true);
     renderEventsAdmin();
     render();
     return true;
-  }catch(e){toast('Failed');return false;}
+  }catch(e){toast('Failed');if(retryOnAuth)$('modal-ev').classList.add('show');return false;}
 }
 
 async function moveEvent(slug,dir){
@@ -1510,9 +1587,14 @@ $('backupBtn').onclick=async()=>{
     let logEntries=[];
     try{
       const lr=await fetchTimeout('/api/activity-log',{headers:{Authorization:'Bearer '+TOKEN},cache:'no-store'});
+      // R3-m16: check the response before trusting it — a 403/500/
+      // timeout used to yield an empty log inside a backup downloaded
+      // with a success toast. Abort instead of shipping a backup that
+      // silently lost the whole activity log.
+      if(!lr.ok){toast('Backup failed — could not load the activity log',1);return;}
       const ld=await lr.json();
       logEntries=ld.entries||[];
-    }catch(e){/* read role has no log access — backup skips it */}
+    }catch(e){toast('Backup failed — could not load the activity log',1);return;}
     const data={exportedAt:new Date().toISOString(),site:'SPARK 2K26',registrations:all,events:EVENTS_DB,coordinators:COORDS,activityLog:logEntries};
     const a=document.createElement('a');
     a.href=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));

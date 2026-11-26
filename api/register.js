@@ -16,7 +16,7 @@
 import { Redis } from '@upstash/redis';
 import { randomBytes } from 'crypto';
 import { loadEvents } from './events.js';
-import { normPhone, validPhone, regMarkerKeys, MARKER_TTL } from './admin-login.js';
+import { normPhone, validPhone, regMarkerKeys, MARKER_TTL, chestCodeFor } from './admin-login.js';
 import { sendMail, buildConfirmationEmail, mailConfigured } from '../lib/email.js';
 export { normPhone, validPhone, regMarkerKeys, MARKER_TTL } from './admin-login.js';
 
@@ -94,8 +94,11 @@ async function findNameFlag(ev, nameNorm, schoolNorm) {
 // "thunder-team" and "THUNDERTEAM" are the same name (#29). ONLY the team
 // name is compared — student names are never checked. Invalid (void)
 // registrations do not block a name.
+// R3-m29: keep Unicode letters/digits (so "Teamé" ≠ "Team"), and a name
+// that normalises to "" (punctuation-only, e.g. "!!") is NOT a valid
+// team name at all — it used to bypass uniqueness entirely.
 function normTeamName(s) {
-  return String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  return String(s || '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
 }
 async function isTeamNameTaken(evSlug, evName, name) {
   const want = normTeamName(name);
@@ -159,6 +162,12 @@ export function riskLevelFor(reasons) {
   return n >= 3 ? 'suspicious' : n ? 'review' : 'ok';
 }
 
+// R3-m30: the unauthenticated team-name check costs a full-regs hgetall
+// per call, so it is rate-limited per IP (300/10 min — generous on the
+// shared venue IP; a debounced form check is a handful of calls).
+const TEAMCHECK_RL_LIMIT = 300;
+const TEAMCHECK_RL_WINDOW = 600;
+
 export default async function handler(req, res) {
   if (req.method === 'GET') {
     // Team name availability check for the live form:
@@ -166,6 +175,15 @@ export default async function handler(req, res) {
     const evSlug = String(req.query.event || '').trim();
     const qName = String(req.query.teamName || '').trim();
     if (!evSlug || !qName) return res.status(400).json({ error: 'Missing event or team name' });
+    try {
+      const rlKey = 'celesta:rl:teamcheck:' + clientIp(req);
+      const n = await redis.incr(rlKey);
+      if (n === 1) {
+        try { await redis.expire(rlKey, TEAMCHECK_RL_WINDOW); }
+        catch { try { await redis.del(rlKey); } catch {} }
+      }
+      if (n > TEAMCHECK_RL_LIMIT) return res.status(429).json({ error: 'Too many checks. Try again in a few minutes.' });
+    } catch (e) { console.error('team name check rate limit failed', e); /* fail open: the check itself still runs */ }
     try {
       const events = await loadEvents();
       const ev = events.find(e => e.slug === evSlug) || null;
@@ -255,6 +273,11 @@ export default async function handler(req, res) {
   // Team name is REQUIRED for team events (owner's call).
   if (teamSize > 1 && !teamName) {
     return res.status(400).json({ error: 'Enter your team name' });
+  }
+  // R3-m29: a punctuation-only team name ("!!") normalises to "" and
+  // would bypass uniqueness entirely — refuse it plainly.
+  if (teamSize > 1 && teamName && !normTeamName(teamName)) {
+    return res.status(400).json({ error: 'Enter a team name using letters or numbers' });
   }
   // Team name must be unique within this event (owner's call): only the
   // TEAM name is checked, never student names. Enforced here too, so a
@@ -445,6 +468,15 @@ export default async function handler(req, res) {
         try { dup = await findDuplicate(ev, phoneNorm, emailNorm); }
         catch (e) { console.error('duplicate verify failed', e); if (teamMkKey) try { await redis.del(teamMkKey); } catch {} return res.status(503).json({ error: 'Please try again' }); }
         if (dup) { if (teamMkKey) try { await redis.del(teamMkKey); } catch {} return res.status(409).json({ error: DUPLICATE_ERROR }); }
+        // R3-M1: the phone marker may belong to a submit still in flight
+        // (its record is not written yet, so the scan cannot see it).
+        // Wait briefly and re-scan before reclaiming, exactly like the
+        // team marker — reclaiming with no wait at all let the loser
+        // delete a live claim and both submits write.
+        await new Promise(r => setTimeout(r, 120));
+        try { dup = await findDuplicate(ev, phoneNorm, emailNorm); }
+        catch (e) { console.error('duplicate verify failed', e); if (teamMkKey) try { await redis.del(teamMkKey); } catch {} return res.status(503).json({ error: 'Please try again' }); }
+        if (dup) { if (teamMkKey) try { await redis.del(teamMkKey); } catch {} return res.status(409).json({ error: DUPLICATE_ERROR }); }
         try { await redis.del(mk.phone); } catch {}
         ok = await redis.set(mk.phone, id, { nx: true, ex: MARKER_TTL });
         if (!ok) { if (teamMkKey) try { await redis.del(teamMkKey); } catch {} return res.status(409).json({ error: DUPLICATE_ERROR }); }
@@ -454,6 +486,20 @@ export default async function handler(req, res) {
       let ok = await redis.set(mk.email, id, { nx: true, ex: MARKER_TTL });
       if (!ok) {
         let dup;
+        try { dup = await findDuplicate(ev, phoneNorm, emailNorm); }
+        catch (e) {
+          console.error('duplicate verify failed', e);
+          if (teamMkKey) try { await redis.del(teamMkKey); } catch {}
+          if (mk.phone) try { await redis.del(mk.phone); } catch {}
+          return res.status(503).json({ error: 'Please try again' });
+        }
+        if (dup) {
+          if (teamMkKey) try { await redis.del(teamMkKey); } catch {}
+          if (mk.phone) try { await redis.del(mk.phone); } catch {}
+          return res.status(409).json({ error: DUPLICATE_ERROR });
+        }
+        // R3-M1: same in-flight wait + re-scan as the phone marker above.
+        await new Promise(r => setTimeout(r, 120));
         try { dup = await findDuplicate(ev, phoneNorm, emailNorm); }
         catch (e) {
           console.error('duplicate verify failed', e);
@@ -496,12 +542,66 @@ export default async function handler(req, res) {
   // is fine; numbers are never reused). If INCR itself fails, the
   // registration still goes through and the fees app assigns a chest on
   // mark-paid instead.
-  const CHEST_CODES = { 'prompting': '01', 'quiz': '02', 'treasure-hunt': '03', 'reels-competition': '04' };
+  // R3-m31: an admin-created event no longer gets code '00' (shared by
+  // every custom event) — chestCodeFor allocates it a persistent 05+
+  // code, so custom events never share chest numbers.
   try {
     const seq = await redis.incr('celesta:chestseq:' + ev.slug);
-    record.chest = (CHEST_CODES[ev.slug] || '00') + String(seq).padStart(3, '0');
+    const code = await chestCodeFor(ev.slug);
+    record.chest = code + String(seq).padStart(3, '0');
   } catch (e) {
     console.error('chest number failed', e);
+  }
+
+  // R3-M1 + R3-m25: re-validate IMMEDIATELY before the write. The
+  // 120 ms reclaim wait is routinely exceeded at real Upstash RTT (the
+  // claim-to-write span is ~10 sequential Redis calls), so a loser could
+  // have reclaimed one of our markers after we claimed it — and the
+  // event could have been closed/hidden while this submit was in flight.
+  // If a marker is no longer ours, re-scan: a real duplicate refuses,
+  // otherwise re-claim once; if that fails, refuse with 503 so the
+  // student retries instead of writing a duplicate. Markers are only
+  // rolled back when they are still ours (never delete another submit's
+  // live claim).
+  const rollbackOwnMarkers = async () => {
+    for (const k of [teamMkKey, mk.phone, mk.email]) {
+      if (!k) continue;
+      try { if ((await redis.get(k)) === id) await redis.del(k); } catch {}
+    }
+  };
+  try {
+    const evNow = await loadEvents({ strict: true });
+    const evLive = evNow.find(e => e.slug === ev.slug || e.name === ev.name) || null;
+    if (!evLive) { await rollbackOwnMarkers(); return res.status(400).json({ error: 'Unknown event' }); }
+    if (!evLive.visible) { await rollbackOwnMarkers(); return res.status(403).json({ error: 'This event is no longer listed' }); }
+    if (!evLive.regOpen) { await rollbackOwnMarkers(); return res.status(403).json({ error: 'Registrations are closed for this event' }); }
+  } catch (e) {
+    // loadEvents(strict) throws only when storage itself failed.
+    console.error('register pre-write event re-check failed', e);
+    await rollbackOwnMarkers();
+    return res.status(503).json({ error: 'Registration is temporarily unavailable. Please try again in a moment.' });
+  }
+  const markerChecks = [
+    { key: teamMkKey, taken: async () => isTeamNameTaken(ev.slug, ev.name, teamName), takenError: () => res.status(400).json({ error: 'This team name is already taken, try another' }) },
+    { key: mk.phone, taken: async () => findDuplicate(ev, phoneNorm, emailNorm), takenError: () => res.status(409).json({ error: DUPLICATE_ERROR }) },
+    { key: mk.email, taken: async () => findDuplicate(ev, phoneNorm, emailNorm), takenError: () => res.status(409).json({ error: DUPLICATE_ERROR }) },
+  ];
+  for (const mc of markerChecks) {
+    if (!mc.key) continue;
+    let owner = null;
+    try { owner = await redis.get(mc.key); } catch (e) {
+      console.error('register pre-write marker check failed', e);
+      await rollbackOwnMarkers();
+      return res.status(503).json({ error: 'Please try again' });
+    }
+    if (owner === id) continue;
+    // Marker lost: is there a real record behind it now?
+    let taken = false;
+    try { taken = !!(await mc.taken()); }
+    catch (e) { console.error('register pre-write duplicate re-scan failed', e); await rollbackOwnMarkers(); return res.status(503).json({ error: 'Please try again' }); }
+    if (taken) { await rollbackOwnMarkers(); return mc.takenError(); }
+    const reclaimed = await redis.set(mc.key, id, { nx: true, ex: MARKER_TTL });
+    if (!reclaimed) { await rollbackOwnMarkers(); return res.status(503).json({ error: 'Please try again' }); }
   }
 
   try {

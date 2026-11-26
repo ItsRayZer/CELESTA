@@ -195,7 +195,9 @@
       +'</div>';
   }
   function acc(title,items,cls){
-    if(!items||!items.length)return '';
+    // R3-m28: rules/how/reqs stored as a string (not an array) used to
+    // throw in render() and leave the page stuck on "Loading event…".
+    if(!Array.isArray(items)||!items.length)return '';
     return '<details class="rd-acc"><summary>'+esc(title)+'</summary><ul class="rd-list '+cls+'">'
       +items.map(function(t){return '<li>'+esc(t)+'</li>';}).join('')+'</ul></details>';
   }
@@ -369,6 +371,9 @@
       function val(id){var el=document.getElementById('in-'+id);return el?el.value.trim():'';}
       var name=val('name'), school=val('school'), phone=val('phone').replace(/\D/g,''), email=val('email'),
           team=parseInt(val('team'),10), teamname=val('teamname');
+      // R3-m26: a 00-prefixed number ("0091 98765…") normalises to the
+      // 10-digit mobile too, matching the server (normPhone).
+      if(phone.slice(0,2)==='00')phone=phone.slice(2);
       if(phone.length===12&&phone.slice(0,2)==='91')phone=phone.slice(2);
       else if(phone.length===11&&phone.charAt(0)==='0')phone=phone.slice(1);
       // Members, one by one: Name only (no phone or email for members).
@@ -384,7 +389,15 @@
       mark('phone',/^[6-9]\d{9}$/.test(phone));
       mark('email',/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email));
       mark('team',team>=e.teamMin&&team<=e.teamMax);
+      var agree=document.getElementById('in-agree');
+      if(agree)mark('agree',agree.checked);
+      // R3-m23: the live team-name check can take up to 8 s — show
+      // feedback while it runs instead of a dead-looking form. The
+      // button is disabled from here so a double-tap cannot fire two
+      // submits while the check is in flight.
+      var btn=form.querySelector('.rg-submit');
       if(team>1){
+        if(btn){btn.disabled=true;btn.textContent='Checking team name…';}
         await checkTeamName();
         if(teamNameTaken)teamNameErr('This team name is already taken, try another');
         else teamNameErr('Enter your team name.');
@@ -393,16 +406,15 @@
           mark('mem'+i+'-name',(m||'').length>=2);
         });
       }
-      var agree=document.getElementById('in-agree');
-      if(agree)mark('agree',agree.checked);
-      if(!ok){submitting=false;if(first&&first.scrollIntoView)first.scrollIntoView({behavior:'smooth',block:'center'});return;}
-      var btn=form.querySelector('.rg-submit');
+      if(!ok){submitting=false;if(btn){btn.disabled=false;btn.textContent='Register for '+e.name;}if(first&&first.scrollIntoView)first.scrollIntoView({behavior:'smooth',block:'center'});return;}
       btn.disabled=true;btn.textContent='Registering…';
       var payload={event:e.slug,name:name,school:school,phone:phone,email:email,team:team,teamName:teamname,members:list,website:val('website'),startedAt:startedAt};
-      // 15s timeout: a hung POST must fail visibly instead of leaving the
-      // button on "Registering…" forever (venue Wi-Fi stalls happen).
+      // R3-m33: 9 s timeout — the Vercel function cap is 10 s, so the
+      // old 15 s timeout could never fire for server slowness and the
+      // student stared at "Registering…" up to 5 s after the function
+      // died. 9 s fails visibly inside the cap (error copy unchanged).
       var ctl=('AbortController' in window)?new AbortController():null;
-      var pto=ctl?setTimeout(function(){try{ctl.abort();}catch(e){}},15000):null;
+      var pto=ctl?setTimeout(function(){try{ctl.abort();}catch(e){}},9000):null;
       try{
         var r=await fetch('/api/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),signal:ctl?ctl.signal:undefined});
         var d=await r.json().catch(function(){return {};});
@@ -468,11 +480,22 @@
       fetch(url).then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); }).then(function(d){ if(!done){ done=true; clearTimeout(to); resolve(d); } }).catch(function(){ if(!done){ done=true; clearTimeout(to); resolve(null); } });
     });
   }
-  Promise.all([
-    fetchJson('/api/events'),
-    fetchJson('/api/coordinators')
-  ]).then(function(res){
-    var d=res[0], c=res[1];
+  // R3-m22: the events fetch is load-bearing, the coordinators fetch is
+  // decorative — do NOT Promise.all them. Render the form as soon as the
+  // events arrive (up to 8 s sooner on slow venue Wi-Fi), then fill in
+  // the coordinator names when they land by patching the row in place.
+  function updateCoordNames(names){
+    var rows=document.querySelectorAll('.ww-row');
+    for(var i=0;i<rows.length;i++){
+      var k=rows[i].querySelector('.ww-k');
+      if(k&&k.textContent.trim()==='Coordinators'){
+        var v=rows[i].querySelector('span:not(.ww-k)');
+        if(v)v.textContent=names||'—';
+        return;
+      }
+    }
+  }
+  fetchJson('/api/events').then(function(d){
     // The events list is load-bearing: without it the page cannot tell a
     // missing event from a dead connection, so null means "try again".
     if(!d||!Array.isArray(d.events)){showMsg('Could not load this event','Check your connection and try again.',false);return;}
@@ -484,16 +507,19 @@
     // form (#34): refuse it plainly instead of "undefined member".
     var mn=Number(e.teamMin), mx=Number(e.teamMax);
     if(!Number.isInteger(mn)||!Number.isInteger(mx)||mn<1||mx<1||mn>20||mx>20||mn>mx){showMsg('Event not available','This event is not set up correctly. Ask the desk for help.',true);return;}
+    render(e,list.filter(function(x){return x.visible;}).length,'');
     // Coordinators are decorative: a failed coordinators load just means
     // no coordinator names show (they fall back to '').
-    var names=((c&&c.coordinators)||[]).filter(function(x){return x.team==='Student Coordinators'&&x.event===e.name;}).map(function(x){return x.name;});
-    render(e,list.filter(function(x){return x.visible;}).length,names.join(', '));
+    fetchJson('/api/coordinators').then(function(c){
+      var names=((c&&c.coordinators)||[]).filter(function(x){return x.team==='Student Coordinators'&&x.event===e.name;}).map(function(x){return x.name;});
+      updateCoordNames(names.join(', '));
+    });
   }).catch(function(){
     showMsg('Could not load this event','Check your connection and try again.',false);
   });
 })();
 </script>
 <script src="/livebg.js?v=4" defer></script>
-<script src="/assets/spark-bot.js?v=26"></script>
+<script src="/assets/spark-bot.js?v=27"></script>
 </body>
 </html>

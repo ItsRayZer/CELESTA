@@ -7,7 +7,7 @@
 // the public /api/ticket?phone= endpoint was removed for that reason.
 import { Redis } from '@upstash/redis';
 import crypto from 'node:crypto';
-import { verify, canWrite, canCollect, parseVal, normPhone } from './admin-login.js';
+import { verify, canWrite, canCollect, parseVal, normPhone, chestCodeFor } from './admin-login.js';
 import { loadEvents } from './events.js';
 
 const redis = new Redis({
@@ -16,8 +16,9 @@ const redis = new Redis({
 });
 
 // PDF order: 01 Prompting, 02 Quiz, 03 Treasure Hunt, 04 Reels.
-// Idea Presentation is hidden and gets no code.
-const EVENT_CODES = { 'prompting': '01', 'quiz': '02', 'treasure-hunt': '03', 'reels-competition': '04' };
+// Idea Presentation is hidden and gets no code. Event codes themselves
+// come from chestCodeFor (api/admin-login.js) so custom events never
+// share the old '00' fallback.
 const EVENT_ORDER = ['prompting', 'quiz', 'treasure-hunt', 'reels-competition'];
 const HISTORY_KEY = 'celesta:fees:history';
 const HISTORY_CAP = 500;
@@ -49,8 +50,34 @@ function parseFee(feeStr) {
   return m ? Number(m[1]) : 0;
 }
 
-function chestFor(slug, seq) {
-  return (EVENT_CODES[slug] || '00') + String(seq).padStart(3, '0');
+async function chestFor(slug, seq) {
+  return (await chestCodeFor(slug)) + String(seq).padStart(3, '0');
+}
+
+// Does a live (non-removed) history entry exist for this registration?
+// Used to surface historyPending on already:true re-taps (R3-M7): a
+// paid record with no live entry is a ledger gap the counter must know
+// about, even though the payment itself already landed.
+async function hasLiveHistory(id) {
+  try {
+    const raw = await redis.lrange(HISTORY_KEY, 0, HISTORY_CAP - 1);
+    return (raw || []).some(function (v) {
+      const p = parseVal(v);
+      return p && p.id === id && !p.removed;
+    });
+  } catch { return true; } // on a read failure, do not claim a gap
+}
+
+// Remove only the LIVE payment history for one registration, mirroring
+// api/registrations.js removeHistoryFor (kept local to avoid a circular
+// import). A removal's audit entry (removed:true) is never a target.
+async function removeHistoryFor(id) {
+  const raw = await redis.lrange(HISTORY_KEY, 0, HISTORY_CAP - 1);
+  const targets = [...new Set((raw || []).filter(function (v) {
+    const p = parseVal(v);
+    return p && p.id === id && !p.removed;
+  }))];
+  for (const target of targets) await redis.lrem(HISTORY_KEY, 0, target);
 }
 
 // Atomic per-event sequence: the only source of chest numbers, so two
@@ -269,10 +296,41 @@ export default async function handler(req, res) {
     // and must not stay invisible in History/Funds forever. This rebuilds
     // the entry from the saved record — idempotent: a live entry already
     // present for the id returns already:true instead of double-counting.
+    // R3-m1: the whole check-then-push runs under the same per-record
+    // paylock mark-paid/mark-unpaid use, so a reversal landing between
+    // the paid-check and the push cannot rebuild a live entry for a
+    // now-unpaid record. R3-M5: a record deleted after a failed history
+    // removal still has its live entry — repush for a missing record
+    // completes that delete's history cleanup by turning the orphaned
+    // live entry into a removed:true audit row.
     if (action === 'repush-history') {
+      const lockKey = 'celesta:paylock:' + id;
+      const lockVal = crypto.randomUUID();
+      let locked = false;
       try {
+        const got = await redis.set(lockKey, lockVal, { nx: true, ex: 10 });
+        locked = !!got;
+        if (!locked) {
+          const cur = parseVal(await redis.hget('celesta:regs', id));
+          if (cur && cur.paid && await hasLiveHistory(id)) return res.status(200).json({ ok: true, already: true });
+          return res.status(409).json({ error: 'already being processed, try again' });
+        }
+        // Re-read under the lock: the record may have been reversed or
+        // deleted between the lock attempt and now.
         const rec = parseVal(await redis.hget('celesta:regs', id));
-        if (!rec) return res.status(404).json({ error: 'Not found' });
+        if (!rec) {
+          const rawDel = await redis.lrange(HISTORY_KEY, 0, HISTORY_CAP - 1);
+          const liveDel = (rawDel || []).map(function (v) { return parseVal(v); }).find(function (p) { return p && p.id === id && !p.removed; });
+          if (!liveDel) return res.status(404).json({ error: 'Not found' });
+          await removeHistoryFor(id);
+          await pushHistory({
+            id: liveDel.id, chest: liveDel.chest || '', event: liveDel.event, eventSlug: liveDel.eventSlug,
+            name: liveDel.name, phone: liveDel.phone || '', amount: Number(liveDel.amount || 0),
+            method: liveDel.method || '', at: liveDel.at || new Date().toISOString(),
+            removed: true, removedAt: new Date().toISOString(), by: 'admin',
+          });
+          return res.status(200).json({ ok: true, rebuiltRemoved: true });
+        }
         if (!rec.paid) return res.status(400).json({ error: 'Registration is not paid' });
         const raw = await redis.lrange(HISTORY_KEY, 0, HISTORY_CAP - 1);
         const hasLive = (raw || []).some(function (v) {
@@ -289,6 +347,10 @@ export default async function handler(req, res) {
       } catch (e) {
         console.error('fees repush-history failed', e);
         return res.status(500).json({ error: 'Storage unavailable' });
+      } finally {
+        if (locked) {
+          try { await redis.eval("if redis.call('get',KEYS[1])==ARGV[1] then return redis.call('del',KEYS[1]) end", [lockKey], [lockVal]); } catch { /* lock expires on its own */ }
+        }
       }
     }
 
@@ -315,7 +377,11 @@ export default async function handler(req, res) {
             try {
               (await loadEvents()).forEach(function (e) { if (e && e.slug) feeMap[e.slug] = e.fee || ''; });
             } catch { /* fee display falls back to the record */ }
-            return res.status(200).json({ ok: true, reg: pubReg(cur, feeMap[cur.eventSlug] || ''), already: true });
+            // R3-M7: a re-tap that finds the payment already landed must
+            // still surface a missing ledger entry, or the counter never
+            // learns the money is invisible in History/Funds.
+            const hp = !(await hasLiveHistory(id));
+            return res.status(200).json({ ok: true, reg: pubReg(cur, feeMap[cur.eventSlug] || ''), already: true, ...(hp ? { historyPending: true } : {}) });
           }
           return res.status(409).json({ error: 'already being processed, try again' });
         }
@@ -353,7 +419,10 @@ export default async function handler(req, res) {
           try {
             (await loadEvents()).forEach(function (e) { if (e && e.slug) feeMap[e.slug] = e.fee || ''; });
           } catch { /* fee display falls back to the record */ }
-          return res.status(200).json({ ok: true, reg: pubReg(rec, feeMap[rec.eventSlug] || ''), already: true });
+          // R3-M7: surface a missing ledger entry on the already:true
+          // path too (see the contention branch above).
+          const hp = !(await hasLiveHistory(id));
+          return res.status(200).json({ ok: true, reg: pubReg(rec, feeMap[rec.eventSlug] || ''), already: true, ...(hp ? { historyPending: true } : {}) });
         }
         // Chest first if the record has none (registrations made before
         // chest numbers existed). Same atomic INCR as registration time.

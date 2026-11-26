@@ -7,7 +7,7 @@ const redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL,
   token: process.env.UPSTASH_REDIS_REST_TOKEN,
 });
-import { verify, canWrite, parseVal, normPhone, validPhone, regMarkerKeys, MARKER_TTL } from './admin-login.js';
+import { verify, canWrite, parseVal, normPhone, validPhone, regMarkerKeys, MARKER_TTL, chestCodeFor } from './admin-login.js';
 import { appendLog } from './activity-log.js';
 import { loadEvents } from './events.js';
 
@@ -109,18 +109,25 @@ export default async function handler(req, res) {
       // just fetched instead of a second full-table read. Otherwise fall back
       // to the full scan so paged views stay exact. Saves 1 Redis command
       // on every admin list load.
-      let paidCount = 0, paidAmount = 0;
+      // R3-m18: void (invalid) registrations are not participants — they
+      // count in neither the total nor the pending count, and byEvent
+      // excludes them too, so the admin PENDING PAYMENT agrees with the
+      // fees Left-to-Collect. `total` stays the raw list size (pagination
+      // needs it); totalValid/pending are the participant counts.
+      let paidCount = 0, paidAmount = 0, validTotal = 0, pendingCount = 0;
       const byEvent = {};
       const tally = (list) => {
         for (const r of list) {
-          if (!r) continue;
+          if (!r || r.invalid) continue;
+          validTotal++;
+          if (!r.paid) pendingCount++;
           const k = r.eventSlug || r.event;
           const b = byEvent[k] || (byEvent[k] = { n: 0, paid: 0, amount: 0 });
           b.n++;
           // A void registration is not a participant and its money is not
           // in hand: never count it as paid, or the admin totals disagree
           // with the fees overview (which excludes void regs) (#12).
-          if (r.paid && !r.invalid) { paidCount++; paidAmount += Number(r.amount || 0); b.paid++; b.amount += Number(r.amount || 0); }
+          if (r.paid) { paidCount++; paidAmount += Number(r.amount || 0); b.paid++; b.amount += Number(r.amount || 0); }
         }
       };
       if (regs.length === total) {
@@ -131,7 +138,7 @@ export default async function handler(req, res) {
           if (all) tally(Object.values(all).map(v => parseVal(v)));
         } catch { /* totals stay 0 on a read failure */ }
       }
-      return res.status(200).json({ regs, role, total, paidCount, paidAmount, byEvent });
+      return res.status(200).json({ regs, role, total, paidCount, paidAmount, byEvent, totalValid: validTotal, pending: pendingCount });
     } catch (e) {
       console.error('registrations GET failed', e);
       return res.status(500).json({ error: 'Storage unavailable' });
@@ -253,22 +260,23 @@ export default async function handler(req, res) {
       // non-paid edit landing mid-payment can clobber the payment, and
       // an un-void racing a payment can resurrect a deleted record — so
       // the lock guards any write to this record. Best-effort, 10s TTL.
-      // Contention: a paid flip that already happened keeps its other
-      // edits with skipHistory; anything else is refused with 409.
-      try {
-        locked = !!(await redis.set(lockKey, lockVal, { nx: true, ex: 10 }));
-      } catch { locked = false; }
+      // R3-M9: the old contention path proceeded to hset LOCK-FREE when
+      // the flip "already happened" (skipHistory) — a racing mark-unpaid
+      // could then resurrect paid=true after the un-pay's write, and a
+      // racing mark-paid could lose the admin's concurrent edits. Now
+      // the contention path RETRIES for the lock (up to ~600 ms) and
+      // re-reads under it; if it never gets the lock it 409s instead of
+      // writing blind. No PATCH hset ever runs without the lock held.
+      for (let lockAttempt = 0; lockAttempt < 4 && !locked; lockAttempt++) {
+        try {
+          locked = !!(await redis.set(lockKey, lockVal, { nx: true, ex: 10 }));
+        } catch { locked = false; }
+        if (!locked && lockAttempt < 3) await new Promise(r => setTimeout(r, 150));
+      }
       if (!locked) {
-        // Contender holds the lock: re-read. If the flip already
-        // happened, keep our other edits but do not push history again.
-        const cur = parseVal(await redis.hget('celesta:regs', id));
-        if (!cur) return res.status(404).json({ error: 'Not found' });
-        if (typeof paid === 'boolean' && !!cur.paid === paid) skipHistory = true;
-        else return res.status(409).json({ error: 'already being processed, try again' });
-        // Use the fresh record so our edits do not overwrite a
-        // concurrent payment's method/amount/paidAt (V3-M5).
-        rec = cur;
-      } else {
+        return res.status(409).json({ error: 'already being processed, try again' });
+      }
+      {
         // Re-read under the lock: the record may have been flipped
         // between our first read and the lock.
         const fresh = parseVal(await redis.hget('celesta:regs', id));
@@ -510,11 +518,38 @@ export default async function handler(req, res) {
       const logged = await appendLog({
         type: 'delete',
         actor: 'lead', action: 'Registration deleted',
-        detail: rec.event + ' — ' + rec.name + ' (Team ' + (rec.team || '?') + ')',
+        detail: rec.event + ' — ' + rec.name + ' (Team ' + (rec.team || '?') + ')' + (rec.paid ? ' · ₹' + Number(rec.amount || 0) + ' paid (' + (rec.paidMethod || '—') + ')' : ''),
         target: { kind: 'registration', id, name: rec.name },
         undo: { kind: 'reg-deleted', id, record: rec },
       }, req);
       if (!logged) return res.status(503).json({ error: 'Could not record the undo entry — nothing was deleted' });
+      // R3-m20: if a later step fails, the Activity Log must not be left
+      // holding a "deleted" entry (plus a live undo copy) for a record
+      // that still exists. Compensate: drop the undo payload key and
+      // append a "delete failed" entry, so the log tells the truth.
+      const compensateFailedDelete = async (why) => {
+        try { await redis.del('celesta:undo:' + logged.id); } catch {}
+        try {
+          await appendLog({
+            type: 'change', actor: 'lead', action: 'Registration delete failed — NOT deleted',
+            detail: rec.event + ' — ' + rec.name + ': ' + why + '. The registration still exists; try deleting again.',
+            target: { kind: 'registration', id, name: rec.name },
+          }, req);
+        } catch {}
+      };
+      // R3-M5: remove the payment history BEFORE deleting the record, so
+      // a history-removal failure aborts the delete with the record
+      // intact (500 + historyPending) instead of swallowing the failure
+      // and returning 200 with Funds overstated forever. The live
+      // history entry is only gone once this succeeds.
+      if (rec.paid) {
+        try { await removeHistoryFor(id); }
+        catch (e) {
+          console.error('registrations history removal failed', e);
+          await compensateFailedDelete('the payment history could not be removed');
+          return res.status(500).json({ ok: false, error: 'Payment history could not be removed — nothing was deleted, try again', historyPending: true });
+        }
+      }
       // Delete the hash and the sorted set together: a pipeline so a
       // crash between the two cannot leave a half-deleted record, with
       // a sequential fallback if the client has no pipeline.
@@ -527,19 +562,34 @@ export default async function handler(req, res) {
         }
       } catch (e) {
         console.error('registrations DELETE write failed', e);
-        return res.status(500).json({ error: 'Storage unavailable' });
+        await compensateFailedDelete('the delete write failed');
+        return res.status(500).json({ error: 'Storage unavailable — nothing was deleted, try again' });
       }
       try {
         const mk = regMarkerKeys(rec.eventSlug || rec.event, normPhone(rec.phone), rec.email);
         if (mk.phone) await redis.del(mk.phone);
         if (mk.email) await redis.del(mk.email);
       } catch { /* markers expire on their own; the record is already gone */ }
-      // A deleted paid registration must not leave its money in history.
+      // R3-m12: a deleted paid registration leaves a removed:true audit
+      // row (amount + method kept) instead of its History total just
+      // dropping with no trace. If the audit push itself fails, the
+      // delete still stands (the record is gone) but the response flags
+      // historyPending so the admin can re-push it from Fees > History.
+      let historyPending = false;
       if (rec.paid) {
-        try { await removeHistoryFor(id); }
-        catch (e) { console.error('registrations history removal failed', e); }
+        try {
+          await pushHistory({
+            id: rec.id, chest: rec.chest || '', event: rec.event, eventSlug: rec.eventSlug,
+            name: rec.name, phone: rec.phone || '', amount: Number(rec.amount || 0),
+            method: rec.paidMethod || '', at: rec.paidAt || new Date().toISOString(),
+            removed: true, removedAt: new Date().toISOString(), by: 'admin',
+          });
+        } catch (e) {
+          console.error('registrations delete audit failed', e);
+          historyPending = true;
+        }
       }
-      return res.status(200).json({ ok: true });
+      return res.status(200).json({ ok: true, ...(historyPending ? { historyPending: true } : {}) });
     } catch (e) {
       console.error('registrations DELETE failed', e);
       return res.status(500).json({ error: 'Storage unavailable' });
@@ -597,10 +647,11 @@ export default async function handler(req, res) {
         const r = parseVal(v);
         if (!r || r.chest) continue;
         // A void registration is not a participant: no chest (#25). A
-        // registration with no known event slug has no chest code to
-        // use, so handing it a '00' chest would poison the sequence.
+        // registration with no event slug has no code to use, so it is
+        // skipped; a custom slug gets a persistent 05+ code from
+        // chestCodeFor (R3-m31), never '00'.
         if (r.invalid) { skipped.push({ id: r.id, name: r.name, event: r.event, reason: 'invalid registration' }); continue; }
-        if (!r.eventSlug || !CHEST_CODES[r.eventSlug]) { skipped.push({ id: r.id, name: r.name, event: r.event, reason: 'unknown event' }); continue; }
+        if (!r.eventSlug) { skipped.push({ id: r.id, name: r.name, event: r.event, reason: 'unknown event' }); continue; }
         missing.push(r);
       }
       // Earliest registrant first, per event.
@@ -608,7 +659,7 @@ export default async function handler(req, res) {
       const assigned = [];
       for (const r of missing) {
         const slug = r.eventSlug || '';
-        const code = CHEST_CODES[slug] || '00';
+        const code = await chestCodeFor(slug);
         if (dryRun) {
           assigned.push({ id: r.id, name: r.name, event: r.event, eventSlug: slug, at: r.at, wouldBe: code + '???' });
           continue;

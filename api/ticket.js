@@ -26,12 +26,16 @@ function clientIp(req) {
   return parts.length ? parts[parts.length - 1] : 'unknown';
 }
 
-// Per-IP rate limit: 600 requests per 10 minutes (raised from 60: the
-// ticket poll shares this bucket venue-wide with counter QR scans, and 60
-// 429s the counters in the rush — see V2-M1. Brute-force math still holds
-// at 600/10 min, ~27,000 years per IP against the 31^8 id space). Each
-// fetch costs 2 Redis commands; the private max-age=60 cache header below
-// is what keeps the poll affordable — do NOT remove it.
+// Per-IP rate limits, SPLIT into two buckets (R3-M8): student ticket
+// tabs polling every 60 s used to share one 600/10 min bucket with
+// counter QR scans, so 60 open unpaid ticket tabs starved the desk.
+// Polls (ticket page loads + its 60 s poll, ?via=poll) and counter
+// scans/lookups (?via=scan, sent by the fees app) now count separately,
+// 600/10 min each, so polling can never 429 a counter scan. Brute-force
+// math still holds at 600/10 min per bucket (~27,000 years per IP
+// against the 31^8 id space). Unknown/missing via defaults to poll:
+// the ticket page is the public surface, and the fees app always sends
+// via=scan explicitly.
 const TICKET_RL_LIMIT = 600;
 const TICKET_RL_WINDOW = 600;
 
@@ -99,8 +103,10 @@ export default async function handler(req, res) {
   }
   // Rate limit counts only requests that reach this handler (GETs here;
   // preflight / other methods return 405 above and are not counted).
+  // R3-M8: poll and scan/lookup use separate buckets (see above).
+  const via = String(req.query.via || 'poll') === 'scan' ? 'scan' : 'poll';
   try {
-    const rlKey = 'celesta:rl:ticket:' + clientIp(req);
+    const rlKey = 'celesta:rl:ticket:' + via + ':' + clientIp(req);
     const n = await redis.incr(rlKey);
     if (n === 1) {
       try { await redis.expire(rlKey, TICKET_RL_WINDOW); }

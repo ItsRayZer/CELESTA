@@ -112,7 +112,7 @@
 (function(){
   function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
   function fmt(n){return '₹'+Number(n||0).toLocaleString('en-IN');}
-  function teamLabel(e){return e.teamMin===e.teamMax?e.teamMin+' member'+(e.teamMin>1?'s':''):e.teamMin+'–'+e.teamMax+' members';}
+  function teamLabel(e){var mn=Number(e.teamMin), mx=Number(e.teamMax);if(!Number.isInteger(mn)||!Number.isInteger(mx)||mn<1||mx<1||mn>20||mx>20||mn>mx)return 'Team event';return mn===mx?mn+' member'+(mn>1?'s':''):mn+'–'+mx+' members';}
   var WORDS={1:'ONE',2:'TWO',3:'THREE',4:'FOUR',5:'FIVE',6:'SIX',7:'SEVEN',8:'EIGHT',9:'NINE',10:'TEN'};
   var wordsLow={1:'One',2:'Two',3:'Three',4:'Four',5:'Five',6:'Six',7:'Seven',8:'Eight',9:'Nine',10:'Ten'};
   var ARROW='<svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M3 11 11 3M5 3h6v6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
@@ -194,6 +194,6 @@
 })();
 </script>
 <script src="/livebg.js?v=4" defer></script>
-<script src="/assets/spark-bot.js?v=26"></script>
+<script src="/assets/spark-bot.js?v=27"></script>
 </body>
 </html>
