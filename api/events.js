@@ -406,6 +406,23 @@ export default async function handler(req, res) {
     res.setHeader('Vary', 'Authorization');
     try {
       const events = await loadEvents();
+      // Read-time rulesV override (#14): a stored event whose rulesV
+      // differs from the code default serves the default rules in the
+      // response, so the public site shows the correct PDF rules
+      // immediately. This does NOT write to Redis (the public path never
+      // writes); the stored copy is migrated by the admin write paths the
+      // next time an admin saves an event.
+      const defBySlug = {};
+      DEFAULT_EVENTS.forEach(d => { defBySlug[d.slug] = d; });
+      for (const e of events) {
+        const d = defBySlug[e.slug];
+        if (d && e.rulesV !== d.rulesV) {
+          e.teamMin = d.teamMin; e.teamMax = d.teamMax; e.fee = d.fee;
+          e.duration = d.duration; e.about = d.about;
+          e.how = (d.how || []).slice(); e.rules = (d.rules || []).slice(); e.reqs = (d.reqs || []).slice();
+          e.rulesV = d.rulesV;
+        }
+      }
       // One lookup for all custom posters: pages use this flag to skip the
       // /api/poster call entirely when no custom poster exists. That call
       // 404s and burns a Redis command per event per student, so skipping
