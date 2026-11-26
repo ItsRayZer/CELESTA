@@ -288,7 +288,7 @@ export default async function handler(req, res) {
         // above, this runs at most once per record.
         await pushHistory({
           id: rec.id, chest: rec.chest || '', event: rec.event, eventSlug: rec.eventSlug,
-          name: rec.name, amount, method, at: rec.paidAt, by: 'admin',
+          name: rec.name, phone: rec.phone || '', amount, method, at: rec.paidAt, by: 'admin',
         });
         return res.status(200).json({ ok: true, reg: pubReg(rec, feeMap[rec.eventSlug] || '') });
       } catch (e) {
@@ -369,7 +369,7 @@ export default async function handler(req, res) {
         try {
           await pushHistory({
             id: rec.id, chest: rec.chest || '', event: rec.event, eventSlug: rec.eventSlug,
-            name: rec.name, amount: oldAmount, method: oldMethod || 'cash', at: oldAt || new Date().toISOString(),
+            name: rec.name, phone: rec.phone || '', amount: oldAmount, method: oldMethod || 'cash', at: oldAt || new Date().toISOString(),
             removed: true, removedAt: new Date().toISOString(), by: 'admin',
           });
         } catch (e) {

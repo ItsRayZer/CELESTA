@@ -304,7 +304,7 @@ nav button.on { background: #fff; color: #000; }
             <button type="button" class="vb" data-v="list" title="List" aria-label="List"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><rect x="3" y="4.5" width="3" height="3" rx="1"/><rect x="8.5" y="4.5" width="12.5" height="3" rx="1.2"/><rect x="3" y="10.5" width="3" height="3" rx="1"/><rect x="8.5" y="10.5" width="12.5" height="3" rx="1.2"/><rect x="3" y="16.5" width="3" height="3" rx="1"/><rect x="8.5" y="16.5" width="12.5" height="3" rx="1.2"/></svg></button>
           </div>
         </div>
-        <input id="roster-search" class="inp" placeholder="Search student name or chest no...">
+        <input id="roster-search" class="inp" placeholder="Search by phone, name or chest no...">
         <div id="roster-grid"></div>
       </section>
 
@@ -317,7 +317,7 @@ nav button.on { background: #fff; color: #000; }
             <option value="GPAY">GPay payments</option>
           </select>
         </div>
-        <input id="ledger-search" class="inp" placeholder="Search payments by name or chest no...">
+        <input id="ledger-search" class="inp" placeholder="Search payments by phone, name or chest no...">
         <div id="ledger-list"></div>
       </section>
 
@@ -791,9 +791,25 @@ nav button.on { background: #fff; color: #000; }
 
   // ---------- students ----------
   function regStatus(r){return r.paid?'PAID':'UNPAID';}
+  // Phone is the fast identifier at the counter: normalise it the same
+  // way the server does, so a typed 91 or 0 prefix, or a partial
+  // number, still finds the student.
+  function normPhoneClient(p){
+    var d=String(p||'').replace(/\D/g,'');
+    if(d.indexOf('91')===0&&d.length===12)d=d.slice(2);
+    if(d.indexOf('0')===0&&d.length===11)d=d.slice(1);
+    return d;
+  }
   function matchReg(r,q){
     if(!q)return true;
     q=q.toLowerCase();
+    // Phone-like query: match the normalised phone, so a 91/0 prefix or
+    // a partial number still finds the student fast.
+    var digits=q.replace(/\D/g,'');
+    if(digits&&/^\d+$/.test(q.replace(/\s/g,''))){
+      var nq=normPhoneClient(digits);
+      if(nq&&normPhoneClient(r.phone).indexOf(nq)!==-1)return true;
+    }
     return (r.name||'').toLowerCase().includes(q)
       || (r.chest||'').toLowerCase().includes(q)
       || String(r.phone||'').includes(q)
@@ -827,6 +843,7 @@ nav button.on { background: #fff; color: #000; }
         html+='<div class="card px-3 py-2.5 flex items-center gap-3">'
           +'<span class="font-mono text-[11px] w-20 shrink-0" style="color:var(--mut)">'+esc(r.chest||'—')+'</span>'
           +'<div class="min-w-0 flex-1"><div class="font-bold text-sm truncate stu-name">'+esc(r.teamName||r.name)+'</div>'
+          +(r.phone?'<div class="text-[11px] font-mono truncate" style="color:var(--mut)">'+esc(r.phone)+'</div>':'')
           +'<div class="text-[11px] font-mono" style="color:'+(r.paid?'var(--green)':'var(--yellow)')+'">'+amountTxt+' · '+leftTxt+'</div></div>'
           +'<span class="chip shrink-0" style="color:'+COLOR[st]+'">'+chipLabel+'</span>'
           +'<div class="flex gap-1.5 shrink-0">'
@@ -841,6 +858,7 @@ nav button.on { background: #fff; color: #000; }
         +'<div class="font-bold '+(big?'text-lg':'')+' truncate stu-name">'+esc(r.teamName||r.name)+'</div>'
         +'<div class="text-xs" style="color:var(--mut)">'+esc(chestTxt)+' · '+esc(teamTxt)+'</div>'
         +'<div class="text-xs truncate" style="color:var(--mut)">'+esc(r.school||'')+'</div>'
+        +(r.phone?'<div class="text-xs font-mono truncate" style="color:var(--mut)">'+esc(r.phone)+'</div>':'')
         +'</div><span class="chip shrink-0" style="color:'+COLOR[st]+'">'+chipLabel+'</span></div>'
         +'<div><div class="flex justify-between '+(big?'text-sm':'text-xs')+' font-semibold mb-1.5">'
         +'<span>'+amountTxt+' paid</span>'
@@ -931,7 +949,19 @@ nav button.on { background: #fff; color: #000; }
     var entries=history.filter(function(h){
       if(ledgerFilter==='CASH'&&h.method!=='cash')return false;
       if(ledgerFilter==='GPAY'&&h.method!=='gpay')return false;
-      if(q&&!(h.name||'').toLowerCase().includes(q)&&String(h.chest||'').toLowerCase()!==q&&String(h.id||'').toLowerCase().includes(q))return false;
+      if(q){
+        // Phone is the fast identifier: match the leader's number too.
+        // Entries made after this change carry h.phone; older ones
+        // resolve it from the loaded student list.
+        var digits=q.replace(/\D/g,'');
+        var phoneHit=false;
+        if(digits){
+          var ph=normPhoneClient(h.phone||(findReg(h.id)||{}).phone||'');
+          var nq=normPhoneClient(digits);
+          phoneHit=!!(ph&&nq&&ph.indexOf(nq)!==-1);
+        }
+        if(!(h.name||'').toLowerCase().includes(q)&&String(h.chest||'').toLowerCase()!==q&&String(h.id||'').toLowerCase().includes(q)&&!phoneHit)return false;
+      }
       return true;
     });
     var paidEntries=entries.filter(function(h){return !h.removed;});
