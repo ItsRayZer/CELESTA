@@ -116,6 +116,17 @@ export default async function handler(req, res) {
   if (feesHash && timingSafeEqual(feesHash, writeHash)) {
     console.error('admin-login config: FEES_PW equals ADMIN_WRITE_PW — the fees counter would have full admin access. Use distinct passwords.');
   }
+  // Config footgun guard, continued (#22): the two equalities above were
+  // warned about, but FEES_PW == ADMIN_READ_PW and ADMIN_WRITE_PW ==
+  // ADMIN_READ_PW were never warned about. A fees counter with the read
+  // password can read the admin dashboard, and a read password equal to
+  // the write password is full admin access by another name.
+  if (feesHash && timingSafeEqual(feesHash, readHash)) {
+    console.error('admin-login config: FEES_PW equals ADMIN_READ_PW — the fees counter would have read-only admin access. Use distinct passwords.');
+  }
+  if (timingSafeEqual(writeHash, readHash)) {
+    console.error('admin-login config: ADMIN_WRITE_PW equals ADMIN_READ_PW — the read-only password would have full admin access. Use distinct passwords.');
+  }
   // Blank/missing passwords must not burn the shared lockout budget (#54):
   // reject them with 400 before any counting.
   if (typeof password !== 'string' || !password.trim()) {

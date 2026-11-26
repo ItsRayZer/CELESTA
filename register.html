@@ -67,7 +67,7 @@
   }
   function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
   function fmt(n){return '₹'+Number(n||0).toLocaleString('en-IN');}
-  function teamLabel(e){return e.teamMin===e.teamMax?e.teamMin+' member'+(e.teamMin>1?'s':''):e.teamMin+'–'+e.teamMax+' members';}
+  function teamLabel(e){var mn=Number(e.teamMin), mx=Number(e.teamMax);if(!Number.isInteger(mn)||!Number.isInteger(mx)||mn<1||mx<1||mn>20||mx>20||mn>mx)return 'Team event';return mn===mx?mn+' member'+(mn>1?'s':''):mn+'–'+mx+' members';}
   function svgEsc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
   function posterDataURL(src){
     return fetch(src).then(function(r){return r.blob();}).then(function(b){
@@ -261,7 +261,7 @@
         +'<div class="rg-group">'
         +'<div class="field" id="f-name"><label for="in-name">Name</label><input id="in-name" type="text" autocomplete="name" placeholder="Team leader" maxlength="100"><div class="err">Enter your full name.</div></div>'
         +'<div class="field" id="f-school"><label for="in-school">School</label><input id="in-school" type="text" autocomplete="organization" placeholder="Your school" maxlength="150"><div class="err">Enter your school name.</div></div>'
-        +'<div class="field" id="f-phone"><label for="in-phone">Phone</label><input id="in-phone" type="tel" inputmode="numeric" autocomplete="tel" maxlength="13" placeholder="10-digit mobile"><div class="err">Enter a valid 10-digit mobile number.</div></div>'
+        +'<div class="field" id="f-phone"><label for="in-phone">Phone</label><input id="in-phone" type="tel" inputmode="numeric" autocomplete="tel" maxlength="15" placeholder="10-digit mobile"><div class="err">Enter a valid 10-digit mobile number.</div></div>'
         +'<div class="field" id="f-email"><label for="in-email">Email</label><input id="in-email" type="email" autocomplete="email" placeholder="you@example.com" maxlength="254"><div class="err">Enter a valid email address.</div></div>'
         +'<div class="field hp" aria-hidden="true"><label for="in-website">Website</label><input id="in-website" type="text" autocomplete="off" tabindex="-1"></div>'
         +'</div><div class="rg-group">'
@@ -457,25 +457,36 @@
     });
   }
   if(!slug){showMsg('No event selected','Pick an event from the Events page to register.',true);return;}
-  // 8s timeout per fetch: a hung request falls back to the empty list
-  // instead of leaving the page on "Loading event..." forever.
-  function fetchJson(url, fallback){
+  // 8s timeout per fetch: a hung request resolves null instead of
+  // leaving the page on "Loading event..." forever. null is distinct
+  // from an empty list (#33): a failed load must say "Could not load",
+  // never "Event not available".
+  function fetchJson(url){
     return new Promise(function(resolve){
       var done=false;
-      var to=setTimeout(function(){ if(!done){ done=true; resolve(fallback); } }, 8000);
-      fetch(url).then(function(r){ return r.json(); }).then(function(d){ if(!done){ done=true; clearTimeout(to); resolve(d); } }).catch(function(){ if(!done){ done=true; clearTimeout(to); resolve(fallback); } });
+      var to=setTimeout(function(){ if(!done){ done=true; resolve(null); } }, 8000);
+      fetch(url).then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); }).then(function(d){ if(!done){ done=true; clearTimeout(to); resolve(d); } }).catch(function(){ if(!done){ done=true; clearTimeout(to); resolve(null); } });
     });
   }
   Promise.all([
-    fetchJson('/api/events', {events:[]}),
-    fetchJson('/api/coordinators', {coordinators:[]})
+    fetchJson('/api/events'),
+    fetchJson('/api/coordinators')
   ]).then(function(res){
     var d=res[0], c=res[1];
-    var list=(d.events||[]);
+    // The events list is load-bearing: without it the page cannot tell a
+    // missing event from a dead connection, so null means "try again".
+    if(!d||!Array.isArray(d.events)){showMsg('Could not load this event','Check your connection and try again.',false);return;}
+    var list=d.events;
     var e=list.find(function(x){return x.slug===slug;});
     if(!e){showMsg('Event not available','This event does not exist or is no longer listed. See the events that are open.',true);return;}
     if(!e.visible){showMsg('Event not available','This event is no longer listed. See the events that are open.',true);return;}
-    var names=(c.coordinators||[]).filter(function(x){return x.team==='Student Coordinators'&&x.event===e.name;}).map(function(x){return x.name;});
+    // A malformed stored event (bad team limits) must not render a broken
+    // form (#34): refuse it plainly instead of "undefined member".
+    var mn=Number(e.teamMin), mx=Number(e.teamMax);
+    if(!Number.isInteger(mn)||!Number.isInteger(mx)||mn<1||mx<1||mn>20||mx>20||mn>mx){showMsg('Event not available','This event is not set up correctly. Ask the desk for help.',true);return;}
+    // Coordinators are decorative: a failed coordinators load just means
+    // no coordinator names show (they fall back to '').
+    var names=((c&&c.coordinators)||[]).filter(function(x){return x.team==='Student Coordinators'&&x.event===e.name;}).map(function(x){return x.name;});
     render(e,list.filter(function(x){return x.visible;}).length,names.join(', '));
   }).catch(function(){
     showMsg('Could not load this event','Check your connection and try again.',false);

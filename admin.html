@@ -422,6 +422,7 @@ tbody tr:hover{background:var(--hover)}
 <script>
 const $=id=>document.getElementById(id);
 let TOKEN=localStorage.getItem('celesta_admin_tok')||'', ROLE=localStorage.getItem('celesta_admin_role')||'';
+let pendingAfterLogin=null; // #28: a save stashed across a mid-edit re-login, retried after login
 let REGS=[], FILTER_EV='', EV_DETAIL='', SEEN=new Set(), COORDS=[], POSTER_CUSTOM={}, SEEN_READY=false, LOG_UNDONE=new Set();
 let REG_TOTAL=0, REG_PAID_N=0, REG_PAID_AMT=0, REG_OFFSET=0, REG_HAS_MORE=false, POSTER_V=0, EVENT_COUNTS={}, LAST_SIG='';
 const REG_PAGE=200;
@@ -484,6 +485,21 @@ function sessExpired(r){
     return true;
   }
   return false;
+}
+// Re-login WITHOUT the reload, for the two typed-content edit modals
+// only (#28): the token is cleared and the login screen shown, but the
+// modal inputs keep their values (they are never cleared) and a stashed
+// save is retried automatically after login. Every other caller keeps
+// using sessExpired's reload.
+function reloginKeepWork(msg){
+  TOKEN='';ROLE='';
+  localStorage.removeItem('celesta_admin_tok');
+  localStorage.removeItem('celesta_admin_role');
+  $('dash').classList.add('hidden');$('dock').classList.add('hidden');
+  $('modal').classList.remove('show');$('modal-ev').classList.remove('show');
+  $('login').classList.remove('hidden');
+  $('loginErr').textContent=msg||'Session expired — log in again to finish saving.';
+  $('pw').value='';$('pw').focus();
 }
 
 // ---------- device fingerprint (for the Activity Log) ----------
@@ -645,9 +661,12 @@ async function doLogin(){
   $('loginBtn').textContent='Checking...';
   await collectFingerprint();
   try{
-    const r=await fetch('/api/admin-login',{method:'POST',headers:{'Content-Type':'application/json',...fpHeaders()},body:JSON.stringify({password:pw})});
+    const r=await fetchTimeout('/api/admin-login',{method:'POST',headers:{'Content-Type':'application/json',...fpHeaders()},body:JSON.stringify({password:pw})});
     const d=await r.json();
-    if(d.ok){TOKEN=d.token;ROLE=d.role;localStorage.setItem('celesta_admin_tok',TOKEN);localStorage.setItem('celesta_admin_role',ROLE);showDash();}
+    if(d.ok){TOKEN=d.token;ROLE=d.role;localStorage.setItem('celesta_admin_tok',TOKEN);localStorage.setItem('celesta_admin_role',ROLE);showDash();
+      // Retry a save stashed across a mid-edit session expiry (#28).
+      if(pendingAfterLogin){const retry=pendingAfterLogin;pendingAfterLogin=null;retry();}
+    }
     else $('loginErr').textContent=d.error||'Wrong password';
   }catch(e){$('loginErr').textContent='Connection failed';}
   $('loginBtn').textContent='Unlock Dashboard';
@@ -743,7 +762,7 @@ async function load(reset=true){
   // the shared cache serve it when visible — no 'no-store' bypass.
   if(!$('sec-overview').classList.contains('hidden')){
     try{
-      const vr=await fetch('/api/visits');
+      const vr=await fetchTimeout('/api/visits');
       const vd=await vr.json();
       $('sVisits').textContent=Number(vd.total||0).toLocaleString('en-IN');
       $('sVisitsToday').textContent=Number(vd.today||0).toLocaleString('en-IN');
@@ -835,7 +854,7 @@ function render(){
     <td>${esc(x.phone)}<br><span class="mut">${esc(x.email||'—')}</span></td>
     <td>${x.team}${Array.isArray(x.members)&&x.members.length?'<br><span class="mut">'+x.members.map(function(m){return esc(memLine(m));}).join(', ')+'</span>':''}</td>
     <td>${x.paid?'<span class="amt">'+fmt(x.amount)+'</span><br><span class="mut">PAID</span>':'<span class="mut">UNPAID</span>'}</td>
-    <td style="white-space:nowrap">${w?`<button class="paybtn ${x.paid?'paid':''}" data-id="${x.id}" data-paid="${x.paid?1:0}">${x.paid?'Paid':'Collect'}</button>
+    <td style="white-space:nowrap">${w?`${x.invalid?'':`<button class="paybtn ${x.paid?'paid':''}" data-id="${x.id}" data-paid="${x.paid?1:0}">${x.paid?'Paid':'Collect'}</button>`}
     <button class="mini" data-edit="${x.id}">Edit</button>
     <button class="mini ${x.invalid?'':'danger'}" data-inv="${x.id}" data-invalid="${x.invalid?1:0}">${x.invalid?'Mark valid':'Mark invalid'}</button>
     ${isLead()?`<button class="mini danger" data-del="${x.id}">Delete</button>`:''}`:''}<button class="mini" data-ticket="${x.id}">Ticket</button></td>
@@ -886,7 +905,10 @@ async function togglePay(id,wasPaid){
       // next refresh, making the toggle look like it reverted.
       const d=await r.json().catch(()=>({}));
       if(d.reg){const i=REGS.findIndex(x=>x.id===id);if(i>=0)REGS[i]=d.reg;}
-      render();toast(wasPaid?'Marked unpaid':'Marked paid');
+      render();
+      // The record saved but the payment history did not (#18): say so
+      // instead of reporting a clean save.
+      toast(d.historyPending?(wasPaid?'Marked unpaid':'Marked paid')+' — but the payment history may be out of sync, check the History tab':(wasPaid?'Marked unpaid':'Marked paid'));
     }
     else{undo();toast('Failed');}
   }catch(e){undo();toast('Failed');}
@@ -1013,14 +1035,17 @@ async function toggleInvalid(id,wasInvalid){
   if(!x)return;
   const makeInvalid=!wasInvalid;
   if(makeInvalid){
-    if(!(await askAdminPw('Mark registration of '+x.name+' ('+x.event+') as INVALID? It will still show in the list as invalid.')))return;
+    // Voiding a paid registration reverses its payment (#12): say so in
+    // the confirm, or the admin will not expect the money to disappear.
+    const payNote=x.paid?' The '+fmt(x.amount)+' payment will be reversed and the receipt removed from History.':'';
+    if(!(await askAdminPw('Mark registration of '+x.name+' ('+x.event+') as INVALID? It will still show in the list as invalid.'+payNote)))return;
   }else{
     if(!(await askAdminPw('Mark registration of '+x.name+' ('+x.event+') as valid again?')))return;
   }
   try{
     const r=await fetchTimeout('/api/registrations',{method:'PATCH',headers:authHeaders(true),body:JSON.stringify({id,invalid:makeInvalid})});
     if(sessExpired(r))return;
-    if(r.ok){const d=await r.json();if(d.reg){const i=REGS.findIndex(y=>y.id===id);if(i>=0)REGS[i]=d.reg;}render();toast(makeInvalid?'Marked invalid':'Marked valid');}
+    if(r.ok){const d=await r.json();if(d.reg){const i=REGS.findIndex(y=>y.id===id);if(i>=0)REGS[i]=d.reg;}render();toast(d.historyPending?(makeInvalid?'Marked invalid':'Marked valid')+' — but the payment history may be out of sync, check the History tab':(makeInvalid?'Marked invalid':'Marked valid'));}
     else toast('Failed');
   }catch(e){toast('Failed');}
 }
@@ -1036,17 +1061,32 @@ function openEdit(id){
 }
 $('modalCancel').onclick=()=>{$('modal').classList.remove('show');EDIT_ID=null;};
 $('modal').addEventListener('click',e=>{if(e.target===$('modal')){$('modal').classList.remove('show');EDIT_ID=null;}});
+// Save a registration edit, keeping the typed work on a mid-edit session
+// expiry (#28): instead of sessExpired's reload (which loses the edit),
+// stash the retry, show the login, and re-save automatically after login.
+async function doSaveRegEdit(body){
+  try{
+    const r=await fetchTimeout('/api/registrations',{method:'PATCH',headers:authHeaders(true),body:JSON.stringify(body)});
+    if(r.status===401){
+      pendingAfterLogin=()=>doSaveRegEdit(body);
+      reloginKeepWork('Session expired — log in again and your edit will save.');
+      return;
+    }
+    if(r.ok){
+      const d=await r.json().catch(()=>({}));
+      toast(d.historyPending?'Saved — but the payment history may be out of sync, check the History tab':'Saved');
+      $('modal').classList.remove('show');EDIT_ID=null;load();
+    }
+    else{toast('Failed');$('modal').classList.add('show');}
+  }catch(e){toast('Failed');$('modal').classList.add('show');}
+}
 $('modalSave').onclick=async()=>{
   if(!EDIT_ID)return;
   const body={id:EDIT_ID,name:$('eName').value,school:$('eSchool').value,phone:$('ePhone').value,
     email:$('eEmail').value,team:parseInt($('eTeam').value,10)||1,teamName:$('eTeamName').value,
     members:$('eMembers').value.split(',').map(s=>s.trim()).filter(Boolean)};
-  try{
-    const r=await fetchTimeout('/api/registrations',{method:'PATCH',headers:authHeaders(true),body:JSON.stringify(body)});
-    if(sessExpired(r))return;
-    if(r.ok){toast('Saved');$('modal').classList.remove('show');EDIT_ID=null;load();}
-    else toast('Failed');
-  }catch(e){toast('Failed');}
+  $('modal').classList.remove('show');
+  await doSaveRegEdit(body);
 };
 
 let qT=null;$('q').addEventListener('input',()=>{clearTimeout(qT);qT=setTimeout(render,150);});
@@ -1073,7 +1113,7 @@ $('chestBtn').onclick=async()=>{
   const btn=$('chestBtn');if(!btn)return;
   btn.disabled=true;btn.textContent='Fixing…';
   try{
-    const r=await fetch('/api/registrations',{method:'POST',headers:authHeaders(true),body:JSON.stringify({action:'backfill-chest',dryRun:false})});
+    const r=await fetchTimeout('/api/registrations',{method:'POST',headers:authHeaders(true),body:JSON.stringify({action:'backfill-chest',dryRun:false})});
     if(sessExpired(r))return;
     const d=await r.json();
     if(r.ok){toast(d.count?('Chest numbers given to '+d.count+' registration(s)'):'No missing chest numbers');await load(true);}
@@ -1115,7 +1155,7 @@ async function uploadPoster(slug,file){
     toast('Compressing…');
     const blob=await compressImage(file);
     const dataUrl=await new Promise((res,rej)=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.onerror=rej;fr.readAsDataURL(blob);});
-    const r=await fetch('/api/poster',{method:'POST',headers:authHeaders(true),body:JSON.stringify({event:slug,image:dataUrl})});
+    const r=await fetchTimeout('/api/poster',{method:'POST',headers:authHeaders(true),body:JSON.stringify({event:slug,image:dataUrl})});
     if(r.ok){toast('Poster updated — live now');POSTER_CUSTOM[slug]=true;POSTER_V=Date.now();renderEventsAdmin();}
     else{const d=await r.json().catch(()=>({}));toast(d.error||'Upload failed');}
   }catch(e){toast('Upload failed');}
@@ -1124,7 +1164,7 @@ async function uploadPoster(slug,file){
 async function resetPoster(slug){
   if(!confirm('Remove the custom poster for this event and go back to the original?'))return;
   try{
-    const r=await fetch('/api/poster?event='+slug,{method:'DELETE',headers:authHeaders(false)});
+    const r=await fetchTimeout('/api/poster?event='+slug,{method:'DELETE',headers:authHeaders(false)});
     if(r.ok){toast('Poster reset');POSTER_CUSTOM[slug]=false;POSTER_V=Date.now();renderEventsAdmin();}
     else toast('Failed');
   }catch(e){toast('Failed');}
@@ -1135,7 +1175,7 @@ async function loadLog(){
   const list=$('logList');
   list.innerHTML='<div class="empty">Loading…</div>';
   try{
-    const r=await fetch('/api/activity-log',{headers:{Authorization:'Bearer '+TOKEN},cache:'no-store'});
+    const r=await fetchTimeout('/api/activity-log',{headers:{Authorization:'Bearer '+TOKEN},cache:'no-store'});
     if(r.status===403){list.innerHTML='<div class="empty">Only full-access admins can view the log.</div>';return;}
     const d=await r.json();
     const entries=d.entries||[];
@@ -1147,9 +1187,13 @@ async function loadLog(){
       const meta=[title,place,e.ip].filter(Boolean).join(' · ');
       const fpLine=e.fp?('FP '+String(e.fp).slice(0,8)+(e.fpjs?' · FPJS '+String(e.fpjs).slice(0,8):'')+(e.gpu?' · '+e.gpu:'')+(e.info?' · '+e.info:'')):'';
       const undone=LOG_UNDONE.has(e.id);
-      const canUndo=e.undo&&!undone&&e.type==='change';
+      // Undo is offered for change AND delete entries (#13): a delete
+      // logs type 'delete', so the old type==='change' check meant a
+      // registration delete could never be undone from the UI.
+      const canUndo=e.undo&&!undone&&(e.type==='change'||e.type==='delete');
       const actorCls=e.actor==='failed'?'failed':e.actor==='read'?'read':'';
-      const actorTxt=e.actor==='write'?'FULL ACCESS':e.actor==='read'?'READ ONLY':'FAILED LOGIN';
+      // Lead and fees actors used to render as FAILED LOGIN (#13).
+      const actorTxt=e.actor==='write'?'FULL ACCESS':e.actor==='read'?'READ ONLY':e.actor==='lead'?'TECH LEAD':e.actor==='fees'?'FEES':e.actor==='failed'?'FAILED LOGIN':String(e.actor||'').toUpperCase();
       return `<div class="glass logrow">
         <div class="lh"><b>${esc(e.action)}</b><span class="lt">${t}</span></div>
         ${e.detail?`<div class="ld">${esc(e.detail)}</div>`:''}
@@ -1176,7 +1220,7 @@ function armUndo(btn){
 async function undoLog(id,btn){
   btn.disabled=true;btn.textContent='Undoing…';
   try{
-    const r=await fetch('/api/activity-log',{method:'POST',headers:authHeaders(true),body:JSON.stringify({id})});
+    const r=await fetchTimeout('/api/activity-log',{method:'POST',headers:authHeaders(true),body:JSON.stringify({id})});
     const d=await r.json().catch(()=>({}));
     if(r.ok){toast(d.message||'Undone');loadLog();}
     else{toast(d.error||'Could not undo');btn.disabled=false;btn.textContent='Undo';delete btn.dataset.armed;btn.classList.remove('danger');}
@@ -1186,7 +1230,7 @@ async function undoLog(id,btn){
 // ---------- coordinators ----------
 async function loadCoords(){
   try{
-    const r=await fetch('/api/coordinators',{headers:{Authorization:'Bearer '+TOKEN},cache:'no-store'});
+    const r=await fetchTimeout('/api/coordinators',{headers:{Authorization:'Bearer '+TOKEN},cache:'no-store'});
     const d=await r.json();
     COORDS=d.coordinators||[];
   }catch(e){COORDS=[];}
@@ -1211,7 +1255,7 @@ function renderCoords(){
     const phone=document.querySelector(`[data-phone="${id}"]`).value.trim();
     const c=COORDS.find(x=>x.id===id);if(!c)return;
     try{
-      const r=await fetch('/api/coordinators',{method:'POST',headers:authHeaders(true),body:JSON.stringify({...c,phone})});
+      const r=await fetchTimeout('/api/coordinators',{method:'POST',headers:authHeaders(true),body:JSON.stringify({...c,phone})});
       if(r.ok){toast('Number saved — live on the Contact page');loadCoords();}
       else toast('Failed');
     }catch(e){toast('Failed');}
@@ -1220,7 +1264,7 @@ function renderCoords(){
     const c=COORDS.find(x=>x.id===b.dataset.delCoord);if(!c)return;
     if(!confirm('Remove '+c.name+' from the team list?'))return;
     try{
-      const r=await fetch('/api/coordinators?id='+c.id,{method:'DELETE',headers:authHeaders(false)});
+      const r=await fetchTimeout('/api/coordinators?id='+c.id,{method:'DELETE',headers:authHeaders(false)});
       if(r.ok){toast('Removed');loadCoords();}
       else toast('Failed');
     }catch(e){toast('Failed');}
@@ -1232,7 +1276,7 @@ $('addBtn').onclick=async()=>{
   if(!name){toast('Enter a name');return;}
   const body={name,team:$('nTeam').value,event:$('nEvent').value,cls:$('nCls').value.trim(),phone:$('nPhone').value.trim()};
   try{
-    const r=await fetch('/api/coordinators',{method:'POST',headers:authHeaders(true),body:JSON.stringify(body)});
+    const r=await fetchTimeout('/api/coordinators',{method:'POST',headers:authHeaders(true),body:JSON.stringify(body)});
     if(r.ok){toast('Coordinator added');$('nName').value='';$('nCls').value='';$('nPhone').value='';loadCoords();}
     else toast('Failed');
   }catch(e){toast('Failed');}
@@ -1294,9 +1338,17 @@ function renderEventsAdmin(){
   if(!$('sec-events').classList.contains('hidden'))refreshPosterFlags();
 }
 
-async function saveEvent(patch){
+async function saveEvent(patch,retryOnAuth){
   try{
     const r=await fetchTimeout('/api/events',{method:'PATCH',headers:authHeaders(true),body:JSON.stringify(patch)});
+    // A 401 from the event EDIT modal keeps the typed work (#28): stash
+    // the retry and re-login without a reload. Toggles and moveEvent pass
+    // no retry flag, so they keep sessExpired's reload.
+    if(r.status===401&&retryOnAuth){
+      pendingAfterLogin=async()=>{if(await saveEvent(patch,true)){EDIT_EV=null;toast('Event saved — live now');}};
+      reloginKeepWork('Session expired — log in again and your event edit will save.');
+      return false;
+    }
     if(sessExpired(r))return;
     const d=await r.json().catch(()=>({}));
     if(!r.ok){toast(d.error||'Failed');return false;}
@@ -1348,7 +1400,7 @@ $('modalEvSave').onclick=async()=>{
     how:lines('evEHow'),rules:lines('evERules'),reqs:lines('evEReqs'),
     order:parseInt($('evEOrd').value,10)||99,visible:$('evEVis').checked,regOpen:$('evEOpen').checked};
   if(!body.name){toast('Enter a name');return;}
-  if(await saveEvent(body)){$('modal-ev').classList.remove('show');EDIT_EV=null;toast('Event saved — live now');}
+  if(await saveEvent(body,true)){$('modal-ev').classList.remove('show');EDIT_EV=null;toast('Event saved — live now');}
 };
 
 $('evAddBtn').onclick=async()=>{
@@ -1400,19 +1452,27 @@ $('csvBtn').onclick=async()=>{
   toast('Preparing CSV…');
   try{
     const all=[];
-    let offset=0,total=1;
+    // Paged with dedupe (#15): offset advances by the page size (200),
+    // not by all.length (a short page would skip rows); total is frozen
+    // from the first page (a growing total would loop forever); ids are
+    // deduped in case a page repeats. A short load warns instead of
+    // downloading a partial file as if it were complete.
+    const PAGE=200, seenIds=new Set();
+    let offset=0,total=1,totalFrozen=false;
     while(all.length<total){
-      const r=await fetch('/api/registrations?limit=200&offset='+offset,{headers:{Authorization:'Bearer '+TOKEN},cache:'no-store'});
+      const r=await fetchTimeout('/api/registrations?limit='+PAGE+'&offset='+offset,{headers:{Authorization:'Bearer '+TOKEN},cache:'no-store'});
       // Abort on a failed page (#30): a 401 used to silently download an
       // empty file with a success toast.
       if(sessExpired(r)){toast('Session expired — log in again',1);return;}
       if(!r.ok){toast('CSV failed — could not load registrations',1);return;}
       const d=await r.json();
-      total=d.total||0;
-      (d.regs||[]).forEach(x=>all.push(x));
-      offset=all.length;
-      if(!(d.regs||[]).length)break;
+      if(!totalFrozen){total=d.total||0;totalFrozen=true;}
+      const page=d.regs||[];
+      page.forEach(x=>{if(x&&x.id&&!seenIds.has(x.id)){seenIds.add(x.id);all.push(x);}});
+      offset+=PAGE;
+      if(!page.length)break;
     }
+    if(all.length<total){toast('CSV incomplete — loaded '+all.length+' of '+total+'; try again',1);return;}
     const rows=[['ID','Event','Name','School','Phone','Email','Team Size','Team Name','Members','Paid','Amount','Registered At']];
     all.forEach(x=>rows.push([x.id,x.event,x.name,x.school,x.phone,x.email||'',x.team,x.teamName||'',memNames(x.members).join('; '),x.paid?'YES':'NO',x.amount||0,x.at]));
     const cell=c=>{let s=String(c);if(/^\s*[=+\-@]/.test(s))s="'"+s;return '"'+s.replace(/"/g,'""')+'"';};
@@ -1430,22 +1490,26 @@ $('backupBtn').onclick=async()=>{
   toast('Preparing backup…');
   try{
     const all=[];
-    let offset=0,total=1;
+    // Same paged-with-dedupe rules as the CSV export (#15).
+    const PAGE=200, seenIds=new Set();
+    let offset=0,total=1,totalFrozen=false;
     while(all.length<total){
-      const r=await fetch('/api/registrations?limit=200&offset='+offset,{headers:{Authorization:'Bearer '+TOKEN},cache:'no-store'});
+      const r=await fetchTimeout('/api/registrations?limit='+PAGE+'&offset='+offset,{headers:{Authorization:'Bearer '+TOKEN},cache:'no-store'});
       // Abort on a failed page (#30): a 401 used to silently download an
       // empty file with a success toast.
       if(sessExpired(r)){toast('Session expired — log in again',1);return;}
       if(!r.ok){toast('Backup failed — could not load registrations',1);return;}
       const d=await r.json();
-      total=d.total||0;
-      (d.regs||[]).forEach(x=>all.push(x));
-      offset=all.length;
-      if(!(d.regs||[]).length)break;
+      if(!totalFrozen){total=d.total||0;totalFrozen=true;}
+      const page=d.regs||[];
+      page.forEach(x=>{if(x&&x.id&&!seenIds.has(x.id)){seenIds.add(x.id);all.push(x);}});
+      offset+=PAGE;
+      if(!page.length)break;
     }
+    if(all.length<total){toast('Backup incomplete — loaded '+all.length+' of '+total+'; try again',1);return;}
     let logEntries=[];
     try{
-      const lr=await fetch('/api/activity-log',{headers:{Authorization:'Bearer '+TOKEN},cache:'no-store'});
+      const lr=await fetchTimeout('/api/activity-log',{headers:{Authorization:'Bearer '+TOKEN},cache:'no-store'});
       const ld=await lr.json();
       logEntries=ld.entries||[];
     }catch(e){/* read role has no log access — backup skips it */}

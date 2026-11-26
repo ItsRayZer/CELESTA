@@ -36,14 +36,72 @@ async function pushHistory(entry) {
   try { await redis.ltrim(HISTORY_KEY, 0, HISTORY_CAP - 1); } catch { /* cap is a nicety */ }
 }
 
-// Remove EVERY history entry for one registration (count 0 = all).
+// Remove EVERY live history entry for one registration (count 0 = all).
+// A REMOVED audit row is never removed (#6): undoing a payment must
+// restore the live entry without destroying the removal audit.
 async function removeHistoryFor(id) {
   const raw = await redis.lrange(HISTORY_KEY, 0, HISTORY_CAP - 1);
   const targets = [...new Set((raw || []).filter(function (v) {
     const p = parseVal(v);
-    return p && p.id === id;
+    return p && p.id === id && !p.removed;
   }))];
   for (const target of targets) await redis.lrem(HISTORY_KEY, 0, target);
+}
+
+// The live (non-removed) history entry for one registration, if any.
+async function liveHistoryFor(id) {
+  const raw = await redis.lrange(HISTORY_KEY, 0, HISTORY_CAP - 1);
+  for (const v of raw || []) {
+    const p = parseVal(v);
+    if (p && p.id === id && !p.removed) return p;
+  }
+  return null;
+}
+
+// Re-push the live history entry for a restored paid record, but only
+// when it is missing or stale (#27): a retried undo repairs the history
+// instead of pushing a duplicate entry.
+async function repairPaidHistory(rec) {
+  const live = await liveHistoryFor(rec.id);
+  if (live && Number(live.amount || 0) === Number(rec.amount || 0) && (live.method || '') === (rec.paidMethod || '')) return;
+  await removeHistoryFor(rec.id);
+  await pushHistory({
+    id: rec.id, chest: rec.chest || '', event: rec.event, eventSlug: rec.eventSlug,
+    name: rec.name, amount: Number(rec.amount || 0), method: rec.paidMethod || '',
+    at: rec.paidAt || new Date().toISOString(), by: 'admin',
+  });
+}
+
+// Claim a uniqueness marker, reclaiming it when the owner no longer holds
+// that phone/email (#20) — same rules as api/registrations.js. Returns
+// 'claimed' | 'own' | 'taken'. Throws on a Redis error, so the caller can
+// fail closed instead of guessing.
+async function claimUndoMarker(key, id, isPhone, val) {
+  async function attempt() {
+    const r = await redis.set(key, id, { nx: true, ex: MARKER_TTL });
+    if (r) return 'claimed';
+    const owner = await redis.get(key);
+    if (owner === id) return 'own';
+    return owner || null;
+  }
+  let res = await attempt();
+  if (res === 'claimed' || res === 'own') return res;
+  if (res) {
+    let real = false;
+    try {
+      const orec = parseVal(await redis.hget('celesta:regs', res));
+      if (orec && !orec.invalid) {
+        real = isPhone
+          ? normPhone(orec.phone) === val
+          : String(orec.email || '').trim().toLowerCase() === val;
+      }
+    } catch { real = true; } // cannot verify: fail closed, do not delete
+    if (real) return 'taken';
+    try { await redis.del(key); } catch {}
+  }
+  res = await attempt();
+  if (res === 'claimed' || res === 'own') return res;
+  return 'taken';
 }
 
 // Device type + browser, parsed from the user-agent. Best effort only.
@@ -160,20 +218,19 @@ async function applyUndo(u) {
       const newMk = regMarkerKeys(restored.eventSlug || restored.event, normPhone(restored.phone), restored.email);
       // Claim the restored markers BEFORE saving: if another record took that
       // phone/email, refuse the undo. A marker already pointing at this
-      // record is our own, not a conflict.
+      // record is our own, not a conflict. claimUndoMarker (#20) reclaims
+      // a marker whose owner is voided/deleted or no longer holds the value.
       try {
         const claimed = [];
         for (const key of [newMk.phone, newMk.email]) {
           if (!key) continue;
-          const ok = await redis.set(key, u.id, { nx: true, ex: MARKER_TTL });
-          if (ok) claimed.push(key);
-          else {
-            const owner = await redis.get(key);
-            if (owner !== u.id) {
-              for (const k of claimed) { try { await redis.del(k); } catch {} }
-              return { ok: false, error: 'That phone/email is now registered to someone else — undo blocked' };
-            }
-          }
+          const isPhone = key === newMk.phone;
+          const val = isPhone ? normPhone(restored.phone) : String(restored.email || '').trim().toLowerCase();
+          const claim = await claimUndoMarker(key, u.id, isPhone, val);
+          if (claim === 'claimed') { claimed.push(key); continue; }
+          if (claim === 'own') continue;
+          for (const k of claimed) { try { await redis.del(k); } catch {} }
+          return { ok: false, error: 'That phone/email is now registered to someone else — undo blocked' };
         }
       } catch { /* markers are a backstop; continue */ }
       await redis.hset('celesta:regs', { [u.id]: JSON.stringify(restored) });
@@ -182,39 +239,21 @@ async function applyUndo(u) {
         if (curMk.email && curMk.email !== newMk.email) await redis.del(curMk.email);
       } catch { /* markers are a backstop */ }
       // Mirror the payment history the same way registrations.js PATCH
-      // does: a restored paid flip moves the history with it. A history
-      // failure must not fail the undo — the record is already saved.
+      // does: a restored paid flip moves the history with it. The mirror
+      // is derived from the RESTORED state, not the transition, so a
+      // retried undo repairs a missing/stale entry instead of skipping
+      // it (#27). A mirror failure returns ok:false WITHOUT marking the
+      // entry undone, so the admin can retry the undo and it completes.
       try {
         const wasPaid = !!rec.paid, isPaid = !!restored.paid;
-        if (!wasPaid && isPaid) {
-          await pushHistory({
-            id: restored.id, chest: restored.chest || '', event: restored.event, eventSlug: restored.eventSlug,
-            name: restored.name, amount: Number(restored.amount || 0), method: restored.paidMethod || '',
-            at: restored.paidAt || new Date().toISOString(), by: 'admin',
-          });
+        if (isPaid) {
+          await repairPaidHistory(restored);
         } else if (wasPaid && !isPaid) {
           await removeHistoryFor(u.id);
-        } else if (wasPaid && isPaid && restored.amount !== rec.amount) {
-          // Amount restored on a still-paid record: rewrite its history
-          // entry with the restored amount, keeping the original method/at.
-          let prev = null;
-          try {
-            const rawHist = await redis.lrange(HISTORY_KEY, 0, HISTORY_CAP - 1);
-            for (const v of rawHist || []) {
-              const p = parseVal(v);
-              if (p && p.id === u.id) { prev = p; break; }
-            }
-          } catch { /* fall back to the record's own payment fields */ }
-          await removeHistoryFor(u.id);
-          await pushHistory({
-            id: restored.id, chest: restored.chest || '', event: restored.event, eventSlug: restored.eventSlug,
-            name: restored.name, amount: Number(restored.amount || 0),
-            method: (prev && prev.method) || restored.paidMethod || '',
-            at: (prev && prev.at) || restored.paidAt || new Date().toISOString(), by: 'admin',
-          });
         }
       } catch (e) {
         console.error('activity-log history mirror failed', e);
+        return { ok: false, error: 'Registration restored, but the payment history could not be updated — try the undo again' };
       }
       return { ok: true, message: 'Registration restored to its previous values' };
     }
@@ -222,38 +261,48 @@ async function applyUndo(u) {
       const rec = u.record;
       if (!rec || !rec.id) return { ok: false, error: 'Nothing to restore' };
       const exists = await redis.hget('celesta:regs', rec.id);
-      if (exists) return { ok: false, error: 'Registration already exists' };
+      if (exists) {
+        // Already restored by an earlier undo attempt whose history
+        // mirror failed (#27): repair the history instead of refusing,
+        // so the undo can complete on retry.
+        const cur = parseVal(exists);
+        if (cur && cur.paid === rec.paid && Number(cur.amount || 0) === Number(rec.amount || 0)) {
+          if (rec.paid) {
+            try { await repairPaidHistory(rec); }
+            catch (e) { console.error('activity-log history mirror failed', e); return { ok: false, error: 'Registration restored, but the payment history could not be updated — try the undo again' }; }
+          }
+          return { ok: true, message: 'Registration restored' };
+        }
+        return { ok: false, error: 'Registration already exists' };
+      }
       // Claim the markers BEFORE restoring: if another record took that
-      // phone/email, refuse the undo.
+      // phone/email, refuse the undo. claimUndoMarker (#20) reclaims a
+      // marker whose owner is voided/deleted or no longer holds the value.
       const mk = regMarkerKeys(rec.eventSlug || rec.event, normPhone(rec.phone), rec.email);
       try {
         const claimed = [];
         for (const key of [mk.phone, mk.email]) {
           if (!key) continue;
-          const ok = await redis.set(key, rec.id, { nx: true, ex: MARKER_TTL });
-          if (ok) claimed.push(key);
-          else {
-            const owner = await redis.get(key);
-            if (owner !== rec.id) {
-              for (const k of claimed) { try { await redis.del(k); } catch {} }
-              return { ok: false, error: 'That phone/email is now registered to someone else — undo blocked' };
-            }
-          }
+          const isPhone = key === mk.phone;
+          const val = isPhone ? normPhone(rec.phone) : String(rec.email || '').trim().toLowerCase();
+          const claim = await claimUndoMarker(key, rec.id, isPhone, val);
+          if (claim === 'claimed') { claimed.push(key); continue; }
+          if (claim === 'own') continue;
+          for (const k of claimed) { try { await redis.del(k); } catch {} }
+          return { ok: false, error: 'That phone/email is now registered to someone else — undo blocked' };
         }
       } catch { /* markers are a backstop; continue */ }
       await redis.hset('celesta:regs', { [rec.id]: JSON.stringify(rec) });
       await redis.zadd('celesta:reglist', { score: Date.parse(rec.at) || Date.now(), member: rec.id });
       // Undo of a paid delete restores the record: re-push its history
       // entry the same way registrations.js PATCH does on a paid flip.
+      // Idempotent (#27): a retried undo repairs instead of duplicating,
+      // and a mirror failure leaves the undo replayable.
       if (rec.paid) {
-        try {
-          await pushHistory({
-            id: rec.id, chest: rec.chest || '', event: rec.event, eventSlug: rec.eventSlug,
-            name: rec.name, amount: Number(rec.amount || 0), method: rec.paidMethod || '',
-            at: rec.paidAt || new Date().toISOString(), by: 'admin',
-          });
-        } catch (e) {
+        try { await repairPaidHistory(rec); }
+        catch (e) {
           console.error('activity-log history mirror failed', e);
+          return { ok: false, error: 'Registration restored, but the payment history could not be updated — try the undo again' };
         }
       }
       return { ok: true, message: 'Registration restored' };
@@ -349,36 +398,45 @@ async function applyUndo(u) {
       const rec = u.record;
       if (!rec || !rec.id) return { ok: false, error: 'Nothing to restore' };
       const exists = await redis.hget('celesta:regs', rec.id);
-      if (exists) return { ok: false, error: 'Registration already exists' };
+      if (exists) {
+        // Already restored by an earlier undo attempt whose history
+        // mirror failed (#27): repair the history instead of refusing,
+        // so the undo can complete on retry.
+        const cur = parseVal(exists);
+        if (cur && cur.paid === rec.paid && Number(cur.amount || 0) === Number(rec.amount || 0)) {
+          if (rec.paid) {
+            try { await repairPaidHistory(rec); }
+            catch (e) { console.error('activity-log history mirror failed', e); return { ok: false, error: 'Registration restored, but the payment history could not be updated — try the undo again' }; }
+          }
+          return { ok: true, message: 'Registration restored' };
+        }
+        return { ok: false, error: 'Registration already exists' };
+      }
       const mk = regMarkerKeys(rec.eventSlug || rec.event, normPhone(rec.phone), rec.email);
       try {
         const claimed = [];
         for (const key of [mk.phone, mk.email]) {
           if (!key) continue;
-          const ok = await redis.set(key, rec.id, { nx: true, ex: MARKER_TTL });
-          if (ok) claimed.push(key);
-          else {
-            const owner = await redis.get(key);
-            if (owner !== rec.id) {
-              for (const k of claimed) { try { await redis.del(k); } catch {} }
-              return { ok: false, error: 'That phone/email is now registered to someone else — undo blocked' };
-            }
-          }
+          const isPhone = key === mk.phone;
+          const val = isPhone ? normPhone(rec.phone) : String(rec.email || '').trim().toLowerCase();
+          const claim = await claimUndoMarker(key, rec.id, isPhone, val);
+          if (claim === 'claimed') { claimed.push(key); continue; }
+          if (claim === 'own') continue;
+          for (const k of claimed) { try { await redis.del(k); } catch {} }
+          return { ok: false, error: 'That phone/email is now registered to someone else — undo blocked' };
         }
       } catch { /* markers are a backstop; continue */ }
       await redis.hset('celesta:regs', { [rec.id]: JSON.stringify(rec) });
       await redis.zadd('celesta:reglist', { score: Date.parse(rec.at) || Date.now(), member: rec.id });
       // Undo of a paid delete restores the record: re-push its history
       // entry the same way registrations.js PATCH does on a paid flip.
+      // Idempotent (#27): a retried undo repairs instead of duplicating,
+      // and a mirror failure leaves the undo replayable.
       if (rec.paid) {
-        try {
-          await pushHistory({
-            id: rec.id, chest: rec.chest || '', event: rec.event, eventSlug: rec.eventSlug,
-            name: rec.name, amount: Number(rec.amount || 0), method: rec.paidMethod || '',
-            at: rec.paidAt || new Date().toISOString(), by: 'admin',
-          });
-        } catch (e) {
+        try { await repairPaidHistory(rec); }
+        catch (e) {
           console.error('activity-log history mirror failed', e);
+          return { ok: false, error: 'Registration restored, but the payment history could not be updated — try the undo again' };
         }
       }
       return { ok: true, message: 'Registration restored' };

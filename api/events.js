@@ -282,18 +282,17 @@ export async function loadEvents(options) {
   // stored copy already holds the right values, and the admin UI is now
   // the source of truth for order, prizes, and visibility.
   // Real rules (20 Nov 2026): the official rules replace the sample
-  // rules. One-time: a stored event whose rulesV differs from the default
-  // takes the official
-  // team size, fee, duration and how/rules/reqs from DEFAULT_EVENTS.
-  // Admin edits after this stick, because rulesV is then already at the default.
+  // rules. One-time: a stored event whose rules are OLDER than the
+  // official set takes the official RULES (and rulesV) only (#9). Fee,
+  // team size, duration, about, how and reqs are admin-owned and are
+  // never clobbered by this migration. A stored rulesV HIGHER than the
+  // default is newer, not stale — it is left alone, never downgraded.
   const defBySlug = {};
   DEFAULT_EVENTS.forEach(d => { defBySlug[d.slug] = d; });
   for (const e of list) {
     const d = defBySlug[e.slug];
-    if (d && e.rulesV !== d.rulesV) {
-      e.teamMin = d.teamMin; e.teamMax = d.teamMax; e.fee = d.fee;
-      e.duration = d.duration; e.about = d.about;
-      e.how = (d.how || []).slice(); e.rules = (d.rules || []).slice(); e.reqs = (d.reqs || []).slice();
+    if (d && (e.rulesV || 0) < (d.rulesV || 0)) {
+      e.rules = (d.rules || []).slice();
       e.rulesV = d.rulesV; dirty = true;
     }
   }
@@ -371,11 +370,21 @@ function cleanEvent(body, existing) {
   // first number in the string, so "2 members ₹100" would parse as 2 — a
   // malformed fee must never be stored (#42): reject it with 400 and
   // name the required format instead of silently keeping the old one.
-  const feeVal = str('fee', '', 100);
-  if (typeof body.fee === 'string' && body.fee.trim() !== '' && !/^₹\d+ per (team|participant)$/.test(feeVal)) {
-    throw new Error('Fee must be like "₹100 per team" or "₹50 per participant"');
+  // The same applies to a non-string fee or an explicit empty string
+  // (#31): an absent fee keeps the old value, but a fee that IS sent
+  // must be valid text (or empty to clear it) — never silently ignored.
+  let feeVal;
+  if (body.fee === undefined) {
+    feeVal = existing ? (existing.fee || '') : '';
+  } else if (typeof body.fee !== 'string') {
+    throw new Error('Fee must be text like "₹100 per team" or "₹50 per participant"');
+  } else {
+    feeVal = str('fee', '', 100);
+    if (feeVal !== '' && !/^₹\d+ per (team|participant)$/.test(feeVal)) {
+      throw new Error('Fee must be like "₹100 per team" or "₹50 per participant"');
+    }
   }
-  e.fee = /^₹\d+ per (team|participant)$/.test(feeVal) ? feeVal : (existing ? (existing.fee || '') : '');
+  e.fee = feeVal;
   e.rulesV = num('rulesV', 0);
   e.duration = str('duration', '', 100);
   e.when = str('when', 'Fri, 27 Nov 2026 \u00b7 10 AM', 100);
@@ -406,20 +415,23 @@ export default async function handler(req, res) {
     res.setHeader('Vary', 'Authorization');
     try {
       const events = await loadEvents();
-      // Read-time rulesV override (#14): a stored event whose rulesV
-      // differs from the code default serves the default rules in the
-      // response, so the public site shows the correct PDF rules
-      // immediately. This does NOT write to Redis (the public path never
-      // writes); the stored copy is migrated by the admin write paths the
-      // next time an admin saves an event.
+      // Read-time rulesV override (#14, narrowed #9): a stored event
+      // whose rules are OLDER than the official set serves the official
+      // RULES in the response, so the public site shows the correct PDF
+      // rules immediately (Treasure Hunt rule 7, the phone ban, rulesV 5).
+      // RULES ONLY — fee, team size, duration and about are never
+      // touched here, so an admin-set fee or team size is never masked
+      // from the admin GET and the fee source never splits. A stored
+      // rulesV higher than the default is newer, not stale, and is left
+      // alone. This does NOT write to Redis (the public path never
+      // writes); the stored copy is migrated by the admin write paths
+      // the next time an admin saves an event.
       const defBySlug = {};
       DEFAULT_EVENTS.forEach(d => { defBySlug[d.slug] = d; });
       for (const e of events) {
         const d = defBySlug[e.slug];
-        if (d && e.rulesV !== d.rulesV) {
-          e.teamMin = d.teamMin; e.teamMax = d.teamMax; e.fee = d.fee;
-          e.duration = d.duration; e.about = d.about;
-          e.how = (d.how || []).slice(); e.rules = (d.rules || []).slice(); e.reqs = (d.reqs || []).slice();
+        if (d && (e.rulesV || 0) < (d.rulesV || 0)) {
+          e.rules = (d.rules || []).slice();
           e.rulesV = d.rulesV;
         }
       }

@@ -220,8 +220,10 @@
     // the image never garbles names. Same new receipt design as the page.
     var memberList=[t.name].concat(memNames(t.members));
     var paid=!!t.paid;
-    var amount=paid?(t.amount||t.feeAmount||0):(t.feeAmount||0);
-    var method=paid?(t.paidMethod==='cash'?'Cash':'GPay'):'Not paid';
+    // A stored custom amount is the amount paid / due (#2).
+    var amount=(Number(t.amount||0)>0)?Number(t.amount):(t.feeAmount||0);
+    // A paid record with no method shows —, never GPay (#8).
+    var method=paid?(t.paidMethod==='cash'?'Cash':(t.paidMethod==='gpay'?'GPay':'—')):'Not paid';
     var W=1080, H=1480, px=72, y=0, svg='';
     svg+='<svg xmlns="http://www.w3.org/2000/svg" width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'">';
     svg+='<rect width="'+W+'" height="'+H+'" fill="#1a0b2e"/>';
@@ -327,11 +329,36 @@
   }
   function render(t){
     current=t;
+    // Void state (#40): a cancelled registration shows NO chest, NO QR,
+    // NO verify code, NO barcode and NO Download/Share — a void ticket
+    // must not be presentable at the desk. The payment poll is stopped
+    // and the live note hidden: nothing will ever make it payable again.
+    if(t.invalid){
+      if(pollTimer){clearInterval(pollTimer);pollTimer=null;}
+      liveNote.hidden=true;
+      state.style.display='none';
+      slot.innerHTML='<div class="rc-card" id="reg-ticket">'
+        +'<div class="rc-body"><div class="rc-wm"><b>SPARK</b></div><div class="rc-inner">'
+        +'<div class="rc-head"><div><div class="rc-kicker">SPARK 2K26 · OFFICIAL TICKET</div>'
+        +'<div class="rc-name">'+esc(t.event)+'</div>'
+        +'<div class="rc-sub">Fri, 27 Nov 2026 · 10 AM · Mar Augusthinose College, Ramapuram</div></div>'
+        +'<span class="rc-pill void">VOID</span></div>'
+        +'<div class="rc-amt-label">Registration cancelled</div>'
+        +'<div class="rc-who"><div><div class="rc-who-label">'+(t.teamName?'Team':'Leader')+'</div>'
+        +'<div class="rc-who-name">'+esc(t.teamName||t.name)+'</div>'
+        +'<div class="rc-who-date">Fri, 27 Nov 2026 · 10 AM</div></div></div>'
+        +'<div class="rc-details"><div class="rc-row"><span>School</span><b>'+esc(t.school)+'</b></div></div>'
+        +'<p style="margin-top:16px;color:#86868b;line-height:1.6">This registration was cancelled. Contact the desk if you think this is a mistake.</p>'
+        +'</div></div></div>';
+      document.title=t.event+' — Cancelled | SPARK 2K26';
+      return;
+    }
     var paid=!!t.paid;
-    var voided=!!t.invalid;
     var memberList=[t.name].concat(memNames(t.members));
-    var amount=paid?(t.amount||t.feeAmount||0):(t.feeAmount||0);
-    var method=paid?(t.paidMethod==='cash'?'Cash':'GPay'):'—';
+    // A stored custom amount is the amount paid / due (#2).
+    var amount=(Number(t.amount||0)>0)?Number(t.amount):(t.feeAmount||0);
+    // A paid record with no method shows —, never GPay (#8).
+    var method=paid?(t.paidMethod==='cash'?'Cash':(t.paidMethod==='gpay'?'GPay':'—')):'—';
     var cashAmt=paid&&t.paidMethod==='cash'?amount:0;
     var gpayAmt=paid&&t.paidMethod==='gpay'?amount:0;
     var when=paid&&t.paidAt?fmtWhen(t.paidAt):'Fri, 27 Nov 2026 · 10 AM';
@@ -355,8 +382,8 @@
       +'<div class="rc-head"><div><div class="rc-kicker">SPARK 2K26 · '+(paid?'Official Receipt':'Official Ticket')+'</div>'
       +'<div class="rc-name">'+esc(t.event)+'</div>'
       +'<div class="rc-sub">Fri, 27 Nov 2026 · 10 AM · Mar Augusthinose College, Ramapuram</div></div>'
-      +'<span class="rc-pill '+(voided?'void':(paid?'paid':'unpaid'))+'">'+(voided?'VOID':(paid?'PAID IN FULL':'PAY AT VENUE'))+'</span></div>'
-      +'<div class="rc-amt-label">'+(voided?'Registration cancelled':(paid?'You paid':'Fee due'))+'</div>'
+      +'<span class="rc-pill '+(paid?'paid':'unpaid')+'">'+(paid?'PAID IN FULL':'PAY AT VENUE')+'</span></div>'
+      +'<div class="rc-amt-label">'+(paid?'You paid':'Fee due')+'</div>'
       +'<div class="rc-amt">'+esc(inr(amount))+'</div>'
       +'<div class="rc-who"><div><div class="rc-who-label">'+(t.teamName?'Team':'Leader')+'</div>'
       +'<div class="rc-who-name">'+esc(t.teamName||t.name)+'</div>'

@@ -22,6 +22,27 @@ const EVENT_ORDER = ['prompting', 'quiz', 'treasure-hunt', 'reels-competition'];
 const HISTORY_KEY = 'celesta:fees:history';
 const HISTORY_CAP = 500;
 
+// Partial-aware phone normalisation for LOOKUPS only (#3). The shared
+// normPhone() is exact-match (a 10-digit number starting with 91 is a
+// real number, not a prefix) and must stay that way for duplicates and
+// markers. But a counter typing a partial with its prefix — "91 98765"
+// or "098765" — means the number 98765…, so strip a leading 0, then a
+// leading 91, when the remainder is a plausible phone prefix (4+ digits
+// starting 6-9). A short remainder is left alone so "9198" still matches
+// numbers starting 9198.
+function normPhoneQuery(q) {
+  let d = String(q || '').replace(/\D/g, '');
+  if (d.charAt(0) === '0' && d.length > 1) {
+    const r0 = d.slice(1);
+    if (/^[6-9]/.test(r0) && r0.length >= 4) d = r0;
+  }
+  if (d.indexOf('91') === 0) {
+    const r1 = d.slice(2);
+    if (/^[6-9]/.test(r1) && r1.length >= 4) d = r1;
+  }
+  return d;
+}
+
 // Fee strings are like "₹100 per team" / "₹50 per participant" — pull the number.
 function parseFee(feeStr) {
   const m = String(feeStr || '').replace(/,/g, '').match(/(\d+(?:\.\d+)?)/);
@@ -139,7 +160,10 @@ export default async function handler(req, res) {
           // Only fall back to the live fee when amount is missing/null/
           // undefined. An explicit amount of 0 is 0, not the full fee.
           const collected = paidList.reduce(function (s, r) { return s + (r.amount === undefined || r.amount === null ? parseFee(feeMap[ev.slug]) : Number(r.amount || 0)); }, 0);
-          const remaining = list.filter(function (r) { return !r.paid; }).reduce(function (s) { return s + parseFee(feeMap[ev.slug]); }, 0);
+          // What is actually owed (#2): a stored custom amount (set by an
+          // admin, e.g. a discount) is what will be charged, so the
+          // remaining total quotes it — not the live fee.
+          const remaining = list.filter(function (r) { return !r.paid; }).reduce(function (s, r) { return s + (Number(r.amount || 0) > 0 ? Number(r.amount) : parseFee(feeMap[ev.slug])); }, 0);
           const evHist = history.filter(function (h) { return !h.removed && h.eventSlug === ev.slug; });
           return {
             slug: ev.slug, name: ev.name, fee: feeMap[ev.slug], feeAmount: parseFee(feeMap[ev.slug]),
@@ -203,7 +227,9 @@ export default async function handler(req, res) {
       // Accepts a partial number (4+ digits) so Collect can find a student
       // as the admin types; a full 10-digit number still matches exactly.
       // Substring match on the normalised phone, capped at 20 results.
-      const digits = normPhone(String(req.query.phone || '').trim());
+      // The query is normalised partial-aware (#3): a "91"/"0" prefix on
+      // a partial is stripped, so "91 98765" finds 98765….
+      const digits = normPhoneQuery(String(req.query.phone || '').trim());
       if (digits.length < 4) {
         return res.status(400).json({ error: 'Enter at least 4 digits of the mobile number.' });
       }
@@ -235,7 +261,36 @@ export default async function handler(req, res) {
     // Remove receipt re-auth (verifyWrite) is enforced server-side too.
     if (action === 'mark-paid' && !canCollect(role)) return res.status(403).json({ error: 'Write access required' });
     if (action === 'mark-unpaid' && !canWrite(role)) return res.status(403).json({ error: 'Write access required' });
-    if (action !== 'mark-paid' && action !== 'mark-unpaid') return res.status(400).json({ error: 'Unknown action' });
+    if (action === 'repush-history' && !canCollect(role)) return res.status(403).json({ error: 'Write access required' });
+    if (action !== 'mark-paid' && action !== 'mark-unpaid' && action !== 'repush-history') return res.status(400).json({ error: 'Unknown action' });
+
+    // Re-push a missing ledger entry (#1): mark-paid can save the payment
+    // while its history write fails (historyPending). The payment is real
+    // and must not stay invisible in History/Funds forever. This rebuilds
+    // the entry from the saved record — idempotent: a live entry already
+    // present for the id returns already:true instead of double-counting.
+    if (action === 'repush-history') {
+      try {
+        const rec = parseVal(await redis.hget('celesta:regs', id));
+        if (!rec) return res.status(404).json({ error: 'Not found' });
+        if (!rec.paid) return res.status(400).json({ error: 'Registration is not paid' });
+        const raw = await redis.lrange(HISTORY_KEY, 0, HISTORY_CAP - 1);
+        const hasLive = (raw || []).some(function (v) {
+          const p = parseVal(v);
+          return p && p.id === id && !p.removed;
+        });
+        if (hasLive) return res.status(200).json({ ok: true, already: true });
+        await pushHistory({
+          id: rec.id, chest: rec.chest || '', event: rec.event, eventSlug: rec.eventSlug,
+          name: rec.name, phone: rec.phone || '', amount: Number(rec.amount || 0),
+          method: rec.paidMethod || '', at: rec.paidAt || new Date().toISOString(), by: 'admin',
+        });
+        return res.status(200).json({ ok: true });
+      } catch (e) {
+        console.error('fees repush-history failed', e);
+        return res.status(500).json({ error: 'Storage unavailable' });
+      }
+    }
 
     if (action === 'mark-paid') {
       const method = String(body.method || '').trim();

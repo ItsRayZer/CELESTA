@@ -89,12 +89,16 @@ async function findNameFlag(ev, nameNorm, schoolNorm) {
 }
 
 // Team name uniqueness: a team name is taken if any (valid) registration
-// for the SAME event already has it. Comparison is case-insensitive and
-// trimmed, so "Thunder" and "thunder " are the same name. ONLY the team
+// for the SAME event already has it. Comparison is on a canonical form:
+// case, spacing and punctuation are ignored, so "Thunder Team",
+// "thunder-team" and "THUNDERTEAM" are the same name (#29). ONLY the team
 // name is compared — student names are never checked. Invalid (void)
 // registrations do not block a name.
+function normTeamName(s) {
+  return String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+}
 async function isTeamNameTaken(evSlug, evName, name) {
-  const want = String(name || '').trim().toLowerCase();
+  const want = normTeamName(name);
   if (!want) return false;
   const all = await redis.hgetall('celesta:regs');
   if (!all) return false;
@@ -103,9 +107,17 @@ async function isTeamNameTaken(evSlug, evName, name) {
     try { r = typeof v === 'object' ? v : JSON.parse(v); } catch { r = null; }
     if (!r || r.invalid) continue;
     if (r.eventSlug !== evSlug && r.event !== evName) continue;
-    if (typeof r.teamName === 'string' && r.teamName.trim().toLowerCase() === want) return true;
+    if (typeof r.teamName === 'string' && normTeamName(r.teamName) === want) return true;
   }
   return false;
+}
+
+// Team-name marker key: the atomic claim that closes the race between
+// two simultaneous submits with the same team name (#8). Same TTL and
+// orphan-reclaim rules as the phone/email markers.
+function teamNameMarkerKey(evSlug, name) {
+  const n = normTeamName(name);
+  return n ? 'celesta:reg:teamname:' + evSlug + ':' + n : null;
 }
 
 // Client IP: trust only what the platform sets. Vercel overwrites x-real-ip
@@ -157,7 +169,13 @@ export default async function handler(req, res) {
     try {
       const events = await loadEvents();
       const ev = events.find(e => e.slug === evSlug) || null;
-      const taken = await isTeamNameTaken(evSlug, ev ? ev.name : evSlug, qName);
+      // The availability check is only meaningful for an event that is
+      // actually open (#37): a hidden or closed event's team names are
+      // not up for grabs, and the form cannot submit to it anyway.
+      if (!ev) return res.status(400).json({ error: 'Unknown event' });
+      if (!ev.visible) return res.status(403).json({ error: 'This event is no longer listed' });
+      if (!ev.regOpen) return res.status(403).json({ error: 'Registrations are closed for this event' });
+      const taken = await isTeamNameTaken(evSlug, ev.name, qName);
       return res.status(200).json({ taken });
     } catch (e) {
       console.error('team name check failed', e);
@@ -376,6 +394,11 @@ export default async function handler(req, res) {
   const record = {
     id, event: ev.name, eventSlug: ev.slug, name, school, phone: phoneNorm, email: emailNorm, team: teamSize,
     teamName: teamName || '', members: Array.isArray(members) ? members : [],
+    // invalid is explicit, not absent (#27): a void undone from the
+    // Activity Log restores invalid:false from the undo payload, and an
+    // undefined value would be dropped by JSON and leave the student
+    // permanently INVALID after the undo.
+    invalid: false,
     paid: false, amount: 0, at: new Date().toISOString(),
     risk: { level: riskLevelFor(reasons), reasons, at: new Date().toISOString() },
   };
@@ -389,17 +412,42 @@ export default async function handler(req, res) {
   // instead of blocking the real student forever. A 409 is returned only
   // when a real stored record exists.
   const mk = regMarkerKeys(ev.slug, phoneNorm, emailNorm);
+  // Team-name marker (#8): the scan above cannot stop two simultaneous
+  // submits with the same team name — both scans pass before either
+  // writes. This SET NX claim is the atomic gate: the loser re-checks
+  // the scan, reclaims an orphan, or is refused with the taken message.
+  const teamMkKey = (teamSize > 1 && teamName) ? teamNameMarkerKey(ev.slug, teamName) : null;
   try {
+    if (teamMkKey) {
+      let ok = await redis.set(teamMkKey, id, { nx: true, ex: MARKER_TTL });
+      if (!ok) {
+        let taken;
+        try { taken = await isTeamNameTaken(ev.slug, ev.name, teamName); }
+        catch (e) { console.error('team name verify failed', e); return res.status(503).json({ error: 'Please try again' }); }
+        if (taken) return res.status(400).json({ error: 'This team name is already taken, try another' });
+        // The marker may belong to a submit still in flight (its record
+        // is not written yet, so the scan above cannot see it). Wait
+        // briefly and re-scan before reclaiming it as an orphan (#8):
+        // deleting a live claim would let two teams take the same name.
+        await new Promise(r => setTimeout(r, 120));
+        try { taken = await isTeamNameTaken(ev.slug, ev.name, teamName); }
+        catch (e) { console.error('team name verify failed', e); return res.status(503).json({ error: 'Please try again' }); }
+        if (taken) return res.status(400).json({ error: 'This team name is already taken, try another' });
+        try { await redis.del(teamMkKey); } catch {}
+        ok = await redis.set(teamMkKey, id, { nx: true, ex: MARKER_TTL });
+        if (!ok) return res.status(400).json({ error: 'This team name is already taken, try another' });
+      }
+    }
     if (mk.phone) {
       let ok = await redis.set(mk.phone, id, { nx: true, ex: MARKER_TTL });
       if (!ok) {
         let dup;
         try { dup = await findDuplicate(ev, phoneNorm, emailNorm); }
-        catch (e) { console.error('duplicate verify failed', e); return res.status(503).json({ error: 'Please try again' }); }
-        if (dup) return res.status(409).json({ error: DUPLICATE_ERROR });
+        catch (e) { console.error('duplicate verify failed', e); if (teamMkKey) try { await redis.del(teamMkKey); } catch {} return res.status(503).json({ error: 'Please try again' }); }
+        if (dup) { if (teamMkKey) try { await redis.del(teamMkKey); } catch {} return res.status(409).json({ error: DUPLICATE_ERROR }); }
         try { await redis.del(mk.phone); } catch {}
         ok = await redis.set(mk.phone, id, { nx: true, ex: MARKER_TTL });
-        if (!ok) return res.status(409).json({ error: DUPLICATE_ERROR });
+        if (!ok) { if (teamMkKey) try { await redis.del(teamMkKey); } catch {} return res.status(409).json({ error: DUPLICATE_ERROR }); }
       }
     }
     if (mk.email) {
@@ -409,16 +457,19 @@ export default async function handler(req, res) {
         try { dup = await findDuplicate(ev, phoneNorm, emailNorm); }
         catch (e) {
           console.error('duplicate verify failed', e);
+          if (teamMkKey) try { await redis.del(teamMkKey); } catch {}
           if (mk.phone) try { await redis.del(mk.phone); } catch {}
           return res.status(503).json({ error: 'Please try again' });
         }
         if (dup) {
+          if (teamMkKey) try { await redis.del(teamMkKey); } catch {}
           if (mk.phone) try { await redis.del(mk.phone); } catch {}
           return res.status(409).json({ error: DUPLICATE_ERROR });
         }
         try { await redis.del(mk.email); } catch {}
         ok = await redis.set(mk.email, id, { nx: true, ex: MARKER_TTL });
         if (!ok) {
+          if (teamMkKey) try { await redis.del(teamMkKey); } catch {}
           if (mk.phone) try { await redis.del(mk.phone); } catch {}
           return res.status(409).json({ error: DUPLICATE_ERROR });
         }
@@ -429,6 +480,7 @@ export default async function handler(req, res) {
     // means the uniqueness backstop is gone. Fail closed (503) and roll
     // back any marker already claimed, so the retry is not blocked.
     console.error('marker store failed', e);
+    if (teamMkKey) try { await redis.del(teamMkKey); } catch {}
     if (mk.phone) try { await redis.del(mk.phone); } catch {}
     if (mk.email) try { await redis.del(mk.email); } catch {}
     return res.status(503).json({ error: 'Please try again' });
@@ -470,6 +522,7 @@ export default async function handler(req, res) {
   } catch (e) {
     console.error('register write failed', e);
     // Roll the markers back so a failed write doesn't block the student.
+    if (teamMkKey) try { await redis.del(teamMkKey); } catch {}
     if (mk.phone) try { await redis.del(mk.phone); } catch {}
     if (mk.email) try { await redis.del(mk.email); } catch {}
     // Remove a half-written record (hset ok, zadd failed) so the retry
