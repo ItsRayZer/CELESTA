@@ -75,20 +75,21 @@ export const DEFAULT_EVENTS = [
     ],
     "rules": [
       "Each team must consist of exactly 4 members.",
-      "The registration fee is \u20b9200 per team.",
-      "Participants must be present at the venue at the reporting time.",
-      "Only registered teams will be allowed to participate.",
-      "Teams must collect all clues and complete the tasks given at each checkpoint.",
-      "Clues will be hidden around the campus - teams must find them by solving the previous clue.",
-      "A team can use only one mobile phone, which must be used only for navigation and clue-related purposes.",
-      "Any extra phone or device found with the team will result in disqualification.",
-      "Teams are not permitted to seek help from volunteers, students, staff or any external person.",
-      "If a team takes help from someone else, the team will be disqualified.",
-      "No team should tamper with or move the clues, props or any setup made for the event.",
-      "Any form of cheating, misconduct or unfair practice will result in disqualification.",
-      "Teams must follow the instructions given by the coordinators at every stage.",
-      "The coordinators' decision will be final.",
-      "Teams must report to the venue on time; late teams will not be allowed to participate."
+      "Registration fee: \u20b9200 per team.",
+      "The competition will consist of multiple rounds, each with a separate task.",
+      "Each round will have a specific time limit, which must be strictly followed.",
+      "Teams must solve all clues and complete the assigned tasks within the given time.",
+      "All clues must be collected to complete the Treasure Hunt.",
+      "Mobile phones are strictly prohibited during the competition.",
+      "Participants must follow all instructions given by the coordinators.",
+      "Sharing clues or answers with other teams is strictly prohibited.",
+      "Participants must remain within the designated game area.",
+      "Any form of cheating will result in disqualification.",
+      "Damaging college property or disturbing others is strictly prohibited.",
+      "Participants must maintain discipline throughout the competition.",
+      "Teams unable to find the treasure within the allotted time must follow the additional instructions provided by the organisers.",
+      "The team that collects all clues and finds the treasure first, while following all rules, will be declared the winner.",
+      "Note: The organisers' decision will be final and binding."
     ],
     "reqs": [
       "Valid school ID card for every participant.",
@@ -99,7 +100,7 @@ export const DEFAULT_EVENTS = [
     "order": 4,
     "visible": true,
     "regOpen": true,
-    "rulesV": 4
+    "rulesV": 5
   },
   {
     "slug": "prompting",
@@ -368,9 +369,12 @@ function cleanEvent(body, existing) {
   e.teamMax = Math.min(20, Math.max(e.teamMin, Math.round(num('teamMax', e.teamMin))));
   // Fee format: "₹<amount> per team|participant". parseFee() takes the
   // first number in the string, so "2 members ₹100" would parse as 2 — a
-  // malformed fee must never be stored. If it does not match, keep the
-  // existing fee (on create there is none, so the fee stays empty).
+  // malformed fee must never be stored (#42): reject it with 400 and
+  // name the required format instead of silently keeping the old one.
   const feeVal = str('fee', '', 100);
+  if (typeof body.fee === 'string' && body.fee.trim() !== '' && !/^₹\d+ per (team|participant)$/.test(feeVal)) {
+    throw new Error('Fee must be like "₹100 per team" or "₹50 per participant"');
+  }
   e.fee = /^₹\d+ per (team|participant)$/.test(feeVal) ? feeVal : (existing ? (existing.fee || '') : '');
   e.rulesV = num('rulesV', 0);
   e.duration = str('duration', '', 100);
@@ -410,10 +414,24 @@ export default async function handler(req, res) {
       // would be fetched on every public events call for no reason.
       let posterSlugs = new Set();
       try { posterSlugs = new Set(await redis.hkeys('celesta:posters') || []); } catch {}
+      // Per-event registration counts (#37): one scan, so the events
+      // page can show how many teams are in for each event. Invalid
+      // registrations are excluded (they are not participants).
+      const regCounts = {};
+      try {
+        const regVals = await redis.hvals('celesta:regs');
+        for (const v of (regVals || [])) {
+          const r = parseVal(v);
+          if (r && !r.invalid) {
+            const k = r.eventSlug || r.event;
+            regCounts[k] = (regCounts[k] || 0) + 1;
+          }
+        }
+      } catch { /* counts stay 0; the list is the priority */ }
       // Unauthenticated callers see listed events only; a logged-in admin
       // (read or write token) sees hidden ones too, for the admin UI.
       const list = (role ? events : events.filter(e => e.visible))
-        .map(e => ({ ...e, poster: posterSlugs.has(e.slug) }));
+        .map(e => ({ ...e, poster: posterSlugs.has(e.slug), regCount: regCounts[e.slug] || regCounts[e.name] || 0 }));
       return res.status(200).json({ events: list });
     } catch (e) {
       console.error('events list failed, serving defaults', e);
@@ -441,10 +459,16 @@ export default async function handler(req, res) {
       let e;
       try { e = cleanEvent(req.body || {}, null); }
       catch (err) { return res.status(400).json({ error: err.message || 'Invalid event' }); }
+      // Duplicate name (#43): two events with the same name would
+      // collide in the registration form and the admin UI.
+      const nameKey = String(e.name || '').trim().toLowerCase();
+      if (events.some(function (ev) { return String(ev.name || '').trim().toLowerCase() === nameKey; })) {
+        return res.status(400).json({ error: 'An event named "' + e.name + '" already exists' });
+      }
       e.slug = slug;
       await redis.hset('celesta:events', { [slug]: JSON.stringify(e) });
       await appendLog({
-        actor: 'write', action: 'Event created',
+        actor: role, action: 'Event created',
         detail: e.name + ' (1st ₹' + e.prize1 + ' / 2nd ₹' + e.prize2 + ', Team ' + e.teamMin + '–' + e.teamMax + ')',
         target: { kind: 'event', id: slug, name: e.name },
         undo: { kind: 'event-delete', slug, name: e.name },
@@ -466,6 +490,30 @@ export default async function handler(req, res) {
       try { e = cleanEvent(req.body || {}, old); }
       catch (err) { return res.status(400).json({ error: err.message || 'Invalid event' }); }
       e.slug = old.slug; // slug never changes — links keep working after a rename
+      // Duplicate name on rename (#43): another event already has it.
+      const nameKey = String(e.name || '').trim().toLowerCase();
+      if (old.name !== e.name && events.some(function (ev) { return ev.slug !== old.slug && String(ev.name || '').trim().toLowerCase() === nameKey; })) {
+        return res.status(400).json({ error: 'An event named "' + e.name + '" already exists' });
+      }
+      // Shrinking team limits must not strand existing registrations
+      // (#34): refuse when a registered team's size falls outside the
+      // new limits, instead of leaving them in an event they no longer fit.
+      if (e.teamMin !== old.teamMin || e.teamMax !== old.teamMax) {
+        try {
+          const regVals = await redis.hvals('celesta:regs');
+          const stranded = (regVals || []).filter(function (v) {
+            const r = parseVal(v);
+            return r && !r.invalid && (r.eventSlug === old.slug || r.event === old.name) && (Number(r.team) < e.teamMin || Number(r.team) > e.teamMax);
+          });
+          if (stranded.length) {
+            return res.status(400).json({ error: stranded.length + ' registration(s) have a team size outside ' + e.teamMin + '–' + e.teamMax + '. Fix or remove them first.' });
+          }
+        } catch (e2) {
+          // A scan failure must not let a bad shrink through.
+          console.error('events PATCH team-limit check failed', e2);
+          return res.status(503).json({ error: 'Could not check existing registrations — try again' });
+        }
+      }
       await redis.hset('celesta:events', { [slug]: JSON.stringify(e) });
       const evBits = [];
       if (old.name !== e.name) evBits.push('name ' + old.name + ' → ' + e.name);
@@ -476,7 +524,7 @@ export default async function handler(req, res) {
       if (old.tagline !== e.tagline || old.about !== e.about || old.duration !== e.duration || old.when !== e.when || old.where !== e.where || JSON.stringify(old.how) !== JSON.stringify(e.how) || JSON.stringify(old.rules) !== JSON.stringify(e.rules) || JSON.stringify(old.reqs) !== JSON.stringify(e.reqs) || old.order !== e.order) evBits.push('details edited');
       if (evBits.length) {
         await appendLog({
-          actor: 'write', action: 'Event updated',
+          actor: role, action: 'Event updated',
           detail: e.name + ': ' + evBits.join(', '),
           target: { kind: 'event', id: slug, name: e.name },
           undo: { kind: 'event-update', slug, before: old },
@@ -522,13 +570,32 @@ export default async function handler(req, res) {
         return r && (r.eventSlug === slug || r.event === ev.name);
       }).length;
       if (n > 0) return res.status(409).json({ error: 'This event has ' + n + ' registration(s). Hide it instead of deleting.' });
+      // Re-check immediately before the delete (#44): a registration
+      // created between the first count and here must block the delete,
+      // or it becomes an orphan pointing at a deleted event.
+      const regVals2 = await redis.hvals('celesta:regs');
+      const n2 = (regVals2 || []).filter(v => {
+        const r = parseVal(v);
+        return r && (r.eventSlug === slug || r.event === ev.name);
+      }).length;
+      if (n2 > 0) return res.status(409).json({ error: 'This event has ' + n2 + ' registration(s). Hide it instead of deleting.' });
+      // Save the custom poster before dropping it (#26): the undo
+      // payload carries the key, and applyUndo restores the poster from it.
+      let posterKey = null;
+      try {
+        const poster = await redis.hget('celesta:posters', slug);
+        if (poster) {
+          posterKey = 'del-' + slug;
+          await redis.set('celesta:poster-prev:' + posterKey, poster);
+        }
+      } catch { /* poster restore is best-effort; the event delete proceeds */ }
       await redis.hdel('celesta:events', slug);
       await redis.hdel('celesta:posters', slug); // drop its custom poster too
       await appendLog({
-        actor: 'write', action: 'Event deleted',
+        actor: role, action: 'Event deleted',
         detail: ev.name + ' (custom poster removed too)',
         target: { kind: 'event', id: slug, name: ev.name },
-        undo: { kind: 'event-add', event: ev },
+        undo: { kind: 'event-add', event: ev, posterKey: posterKey },
       }, req);
       return res.status(200).json({ ok: true });
     } catch (e) {

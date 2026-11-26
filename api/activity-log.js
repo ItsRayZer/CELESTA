@@ -131,6 +131,13 @@ export async function appendLog(entry, req) {
     }
     await redis.lpush(KEY, JSON.stringify(rec));
     await redis.ltrim(KEY, 0, MAX_ENTRIES - 1);
+    // Undo payloads must survive the 500-entry trim (#12): the display
+    // list is capped, but the undo copy lives in its own key with no
+    // TTL, so a deleted record is never unrecoverable just because 500
+    // newer admin actions happened. One small key per undoable entry.
+    if (rec.undo) {
+      try { await redis.set('celesta:undo:' + rec.id, JSON.stringify(rec)); } catch { /* the list copy is the primary */ }
+    }
     return rec;
   } catch { return null; }
 }
@@ -295,7 +302,17 @@ async function applyUndo(u) {
       const exists = await redis.hget('celesta:events', u.event.slug);
       if (exists) return { ok: false, error: 'Event already exists' };
       await redis.hset('celesta:events', { [u.event.slug]: JSON.stringify(u.event) });
-      return { ok: true, message: 'Event restored — its poster was not restored' };
+      // Restore the custom poster too (#26): the delete saved it under
+      // celesta:poster-prev:<posterKey> (same pattern as poster-restore).
+      let posterRestored = false;
+      if (u.posterKey) {
+        try {
+          const prev = await redis.get('celesta:poster-prev:' + u.posterKey);
+          if (prev) { await redis.hset('celesta:posters', { [u.event.slug]: prev }); posterRestored = true; }
+          await redis.del('celesta:poster-prev:' + u.posterKey);
+        } catch { /* event restored; poster stays the default */ }
+      }
+      return { ok: true, message: posterRestored ? 'Event and poster restored' : 'Event restored' };
     }
     if (u.kind === 'coord-delete') {
       await redis.hdel('celesta:coordinators', u.id);
@@ -375,7 +392,8 @@ async function applyUndo(u) {
 
 export default async function handler(req, res) {
   const token = (req.headers.authorization || '').replace('Bearer ', '');
-  if (!canWrite(verify(token))) return res.status(403).json({ error: 'Full-access admin only' });
+  const role = verify(token);
+  if (!canWrite(role)) return res.status(403).json({ error: 'Full-access admin only' });
 
   if (req.method === 'GET') {
     try {
@@ -392,15 +410,27 @@ export default async function handler(req, res) {
     if (!id) return res.status(400).json({ error: 'Missing id' });
     try {
       const entries = await recentEntries(MAX_ENTRIES);
-      const orig = entries.find(e => e.id === id);
+      let orig = entries.find(e => e.id === id);
+      if (!orig) {
+        // The entry may have been trimmed from the 500-entry display
+        // list (#12): the undo payload is stored separately and survives.
+        try { orig = parseVal(await redis.get('celesta:undo:' + id)); } catch { orig = null; }
+      }
       if (!orig || !orig.undo) return res.status(400).json({ error: 'Nothing to undo for this entry' });
-      if (entries.some(e => e.type === 'undo' && e.undoes === id)) {
+      // Double-undo guard (#12): the marker survives the 500 trim too,
+      // so an undo cannot be replayed after its entry aged out.
+      let alreadyUndone = entries.some(e => e.type === 'undo' && e.undoes === id);
+      if (!alreadyUndone) {
+        try { alreadyUndone = !!(await redis.get('celesta:undone:' + id)); } catch { /* list check above is the fallback */ }
+      }
+      if (alreadyUndone) {
         return res.status(409).json({ error: 'Already undone' });
       }
       const r = await applyUndo(orig.undo);
       if (!r.ok) return res.status(400).json({ error: r.error });
+      try { await redis.set('celesta:undone:' + id, '1'); } catch { /* the undo entry in the list is the other marker */ }
       await appendLog({
-        type: 'undo', actor: 'write',
+        type: 'undo', actor: role,
         action: 'Undid: ' + orig.action, detail: orig.detail,
         target: orig.target, undoes: id,
       }, req);

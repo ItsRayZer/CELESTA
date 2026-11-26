@@ -323,6 +323,7 @@ nav button.on { background: #fff; color: #000; }
 
       <section id="v-funds" class="hide space-y-3 max-w-xl mx-auto w-full">
         <div id="funds-summary" class="space-y-3"></div>
+        <div id="funds-detail" class="space-y-3"></div>
       </section>
 
       <section id="v-collect" class="hide card p-5 max-w-xl mx-auto w-full">
@@ -573,15 +574,16 @@ nav button.on { background: #fff; color: #000; }
     return '<svg xmlns="http://www.w3.org/2000/svg" width="'+size+'" height="'+size+'" viewBox="0 0 '+size+' '+size+'"><rect width="'+size+'" height="'+size+'" rx="16" fill="#fff"/>'+dotQRshapes(text,0,0,size)+'</svg>';
   }
 
-  // Every fees call has a 15 s timeout (V3-M4): a hung mark-paid used to
-  // leave Cash/GPay disabled forever with no error. On abort the fetch
-  // rejects with an AbortError; callers handle it (mark-paid warns not
-  // to auto-retry, since the payment may have landed server-side).
+  // Every fees call has an 8 s timeout (V3-M4, reduced from 15 s in #49):
+  // the Vercel function cap is 10 s, so a 15 s timeout could never fire
+  // before the function itself died. On abort the fetch rejects with an
+  // AbortError; callers handle it (mark-paid warns not to auto-retry,
+  // since the payment may have landed server-side).
   function api(path, opts){
     opts=opts||{};
     opts.headers=Object.assign({'Authorization':'Bearer '+token}, opts.headers||{});
     var ctl=new AbortController();
-    var to=setTimeout(function(){ctl.abort();},15000);
+    var to=setTimeout(function(){ctl.abort();},8000);
     opts.signal=ctl.signal;
     return fetch(path, opts).then(function(r){clearTimeout(to);return r.json().then(function(d){return {status:r.status, data:d};});},function(e){clearTimeout(to);throw e;});
   }
@@ -605,8 +607,12 @@ nav button.on { background: #fff; color: #000; }
     var pw=$('pw').value.trim();
     if(!pw){$('loginErr').textContent='Enter the admin password';return;}
     $('loginBtn').textContent='Unlocking…';
-    fetch('/api/admin-login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})})
-      .then(function(r){return r.json().then(function(d){return {status:r.status,data:d};});})
+    // 8 s timeout (#56): the login fetch used to hang forever on a dead
+    // connection, leaving the button stuck on "Unlocking…".
+    var ctl=new AbortController();
+    var to=setTimeout(function(){ctl.abort();},8000);
+    fetch('/api/admin-login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw}),signal:ctl.signal})
+      .then(function(r){clearTimeout(to);return r.json().then(function(d){return {status:r.status,data:d};});})
       .then(function(x){
         if(x.data.ok){token=x.data.token;role=x.data.role||'';localStorage.setItem(TOKEN_KEY,token);localStorage.setItem(ROLE_KEY,role);$('pw').value='';$('loginErr').textContent='';showApp();refreshAll();}
         // 429 is a lockout, not a wrong password (V3-m16): surface the
@@ -614,7 +620,7 @@ nav button.on { background: #fff; color: #000; }
         else if(x.status===429){$('loginErr').textContent=(x.data&&x.data.error)||'Too many attempts. Try again later.';}
         else{$('loginErr').textContent='Wrong password';}
       })
-      .catch(function(){$('loginErr').textContent='Connection failed';})
+      .catch(function(){clearTimeout(to);$('loginErr').textContent='Connection failed';})
       .finally(function(){$('loginBtn').textContent='Unlock Fees';});
   }
   $('loginBtn').onclick=doLogin;
@@ -638,8 +644,11 @@ nav button.on { background: #fff; color: #000; }
       api('/api/fees?action=history&event='+encodeURIComponent(slug))
     ]).then(function(rs){
       if(rs[0].status===401){token='';localStorage.removeItem(TOKEN_KEY);showLogin();return false;}
-      if(rs[0].data&&rs[0].data.ok)regs=rs[0].data.regs||[];
-      if(rs[1].data&&rs[1].data.ok)history=rs[1].data.entries||[];
+      // Only paint when BOTH fetches succeeded (#50): painting on a
+      // half-failed load would present stale regs/history as fresh.
+      if(!(rs[0].data&&rs[0].data.ok)||!(rs[1].data&&rs[1].data.ok))return false;
+      regs=rs[0].data.regs||[];
+      history=rs[1].data.entries||[];
       paintEvent();
       return true;
     }).catch(function(){return false;});
@@ -653,12 +662,22 @@ nav button.on { background: #fff; color: #000; }
       b.classList.remove('hide');
     } else b.classList.add('hide');
   }
+  var refreshInFlight=false; // #51: overlapping refreshes could restore older data
+  var eventOpenedThisRefresh=false; // #51: maybeEventFromPath already fired loadEventData
   function refreshAll(){
+    if(refreshInFlight)return;
+    refreshInFlight=true;
+    eventOpenedThisRefresh=false;
     loadOverview().then(function(ok){
       if(ok){lastSyncAt=Date.now();setStale(false);}
       else setStale(true);
-      if(curEvent)loadEventData().then(function(ok2){if(ok2){lastSyncAt=Date.now();setStale(false);}else if(!ok)setStale(true);});
-    });
+      // Only refresh the event roster when the overview succeeded (#52):
+      // after a 401 the token is gone, so the event fetches would 401 too.
+      // Skip the extra load when maybeEventFromPath just opened an event
+      // (#51): openEvent already fired loadEventData for it.
+      if(ok&&curEvent&&!eventOpenedThisRefresh)loadEventData().then(function(ok2){if(ok2){lastSyncAt=Date.now();setStale(false);}else setStale(true);refreshInFlight=false;});
+      else refreshInFlight=false;
+    }).catch(function(){refreshInFlight=false;});
   }
   setInterval(function(){if(!document.hidden&&token)refreshAll();},60000);
   document.addEventListener('visibilitychange',function(){if(!document.hidden&&token)refreshAll();});
@@ -705,8 +724,11 @@ nav button.on { background: #fff; color: #000; }
     $('collect-detail').classList.add('hide');
     $('selected-student-card').classList.add('hide');
     renderHome();
-    loadEventData();
     window.scrollTo({top:0});
+    // Return the roster load so cross-event callers can select a student
+    // only AFTER the data arrives (#6, #31) instead of guessing with a
+    // 300 ms timeout. Callers that ignore the return value are unaffected.
+    return loadEventData();
   }
   // Per-event shareable link: /fees/<slug> opens that event directly, so
   // a coordinator gets only their event. Runs once after the overview
@@ -715,13 +737,17 @@ nav button.on { background: #fff; color: #000; }
   var eventPathDone=false;
   function maybeEventFromPath(){
     if(eventPathDone)return;
-    var m=/^\/fees\/([a-z0-9-]+)\/?$/.exec(location.pathname||'');
+    // Case-insensitive (#20): /fees/QUIZ works, and the short alias
+    // /fees/reels maps to reels-competition.
+    var m=/^\/fees\/([a-z0-9-]+)\/?$/i.exec(location.pathname||'');
     if(!m)return;
     if(!overview||!overview.events)return; // not loaded yet; the next refreshAll will retry
-    var slug=m[1];
+    var slug=m[1].toLowerCase();
+    if(slug==='reels')slug='reels-competition';
     var ev=overview.events.find(function(e){return e.slug===slug;});
     if(!ev)return; // unknown slug: stay on the home page
     eventPathDone=true;
+    eventOpenedThisRefresh=true; // #51: openEvent fires loadEventData already
     openEvent(slug);
   }
   function backHome(){
@@ -935,9 +961,11 @@ nav button.on { background: #fff; color: #000; }
   function removeReceipt(id){
     if(removeInFlight)return;
     if(role!=='write'&&role!=='lead'){toast('Write access required',1);return;}
+    // Set the guard BEFORE the password modal opens (#21): a second tap
+    // while the modal is up used to open a second modal and double-remove.
+    removeInFlight=true;
     askWritePw().then(function(ok){
-      if(!ok)return;
-      removeInFlight=true;
+      if(!ok){removeInFlight=false;return;}
       api('/api/fees?action=mark-unpaid',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:id})}).then(function(res){
         if(res.data&&res.data.ok){toast('Receipt removed — student is unpaid now');refreshAll();}
         else{toast((res.data&&res.data.error)||'Could not remove receipt',1);}
@@ -960,22 +988,52 @@ nav button.on { background: #fff; color: #000; }
           var nq=normPhoneClient(digits);
           phoneHit=!!(ph&&nq&&ph.indexOf(nq)!==-1);
         }
-        if(!(h.name||'').toLowerCase().includes(q)&&String(h.chest||'').toLowerCase()!==q&&String(h.id||'').toLowerCase().includes(q)&&!phoneHit)return false;
+        // Match if ANY field hits (#17): name, chest (substring, not
+        // exact), registration id, or phone. The old expression also
+        // excluded entries whose id matched, which was backwards.
+        var nameHit=(h.name||'').toLowerCase().includes(q);
+        var chestHit=String(h.chest||'').toLowerCase().includes(q);
+        var idHit=String(h.id||'').toLowerCase().includes(q);
+        if(!nameHit&&!chestHit&&!idHit&&!phoneHit)return false;
       }
       return true;
     });
-    var paidEntries=entries.filter(function(h){return !h.removed;});
+    // Totals are computed from ALL non-removed entries (#19), not the
+    // filtered list, so the Cash/GPay filter never changes the totals.
+    var paidEntries=history.filter(function(h){return !h.removed;});
     var total=paidEntries.reduce(function(s,h){return s+Number(h.amount||0);},0);
     var cash=paidEntries.filter(function(h){return h.method==='cash';}).reduce(function(s,h){return s+Number(h.amount||0);},0);
     var gpay=paidEntries.filter(function(h){return h.method==='gpay';}).reduce(function(s,h){return s+Number(h.amount||0);},0);
     var paidN=regs.filter(function(r){return r.paid;}).length;
     var unN=regs.length-paidN;
     $('ledger-summary').innerHTML=
-      '<div class="stat col-span-2"><div class="text-[10px] font-mono uppercase tracking-widest" style="color:var(--mut)">total received</div><div class="text-2xl font-black font-mono" style="color:var(--green)">+'+inr(total)+'</div></div>'
-      +'<div class="stat"><div class="text-[10px] font-mono uppercase" style="color:var(--mut)">cash</div><div class="font-black font-mono" style="color:var(--lime)">+'+inr(cash)+'</div></div>'
-      +'<div class="stat"><div class="text-[10px] font-mono uppercase" style="color:var(--mut)">gpay</div><div class="font-black font-mono" style="color:var(--cyan)">+'+inr(gpay)+'</div></div>'
-      +'<div class="stat"><div class="text-[10px] font-mono uppercase" style="color:var(--mut)">paid students</div><div class="font-black font-mono" style="color:var(--green)">'+paidN+'</div></div>'
-      +'<div class="stat"><div class="text-[10px] font-mono uppercase" style="color:var(--mut)">unpaid students</div><div class="font-black font-mono" style="color:var(--yellow)">'+unN+'</div></div>';
+      '<div class="stat col-span-2" data-hist="all" role="button" tabindex="0" style="cursor:pointer"><div class="text-[10px] font-mono uppercase tracking-widest" style="color:var(--mut)">total received · tap for all</div><div class="text-2xl font-black font-mono" style="color:var(--green)">+'+inr(total)+'</div></div>'
+      +'<div class="stat" data-hist="cash" role="button" tabindex="0" style="cursor:pointer"><div class="text-[10px] font-mono uppercase" style="color:var(--mut)">cash · tap</div><div class="font-black font-mono" style="color:var(--lime)">+'+inr(cash)+'</div></div>'
+      +'<div class="stat" data-hist="gpay" role="button" tabindex="0" style="cursor:pointer"><div class="text-[10px] font-mono uppercase" style="color:var(--mut)">gpay · tap</div><div class="font-black font-mono" style="color:var(--cyan)">+'+inr(gpay)+'</div></div>'
+      +'<div class="stat" data-hist="paid" role="button" tabindex="0" style="cursor:pointer"><div class="text-[10px] font-mono uppercase" style="color:var(--mut)">paid students · tap</div><div class="font-black font-mono" style="color:var(--green)">'+paidN+'</div></div>'
+      +'<div class="stat" data-hist="unpaid" role="button" tabindex="0" style="cursor:pointer"><div class="text-[10px] font-mono uppercase" style="color:var(--mut)">unpaid students · tap</div><div class="font-black font-mono" style="color:var(--yellow)">'+unN+'</div></div>';
+    // Tappable totals: each stat shows exactly the entries/students that
+    // make up that total. Totals are computed from non-removed entries
+    // only (#19), so the filtered list always matches the number shown.
+    Array.prototype.forEach.call(document.querySelectorAll('#ledger-summary [data-hist]'),function(t){
+      var go=function(){
+        var k=t.getAttribute('data-hist');
+        if(k==='all'||k==='cash'||k==='gpay'){
+          ledgerFilter=k==='all'?'ALL':(k==='cash'?'CASH':'GPAY');
+          var sel=$('ledger-filter'); if(sel)sel.value=ledgerFilter;
+          renderHistory();
+          var box=$('ledger-list'); if(box)box.scrollIntoView({behavior:'smooth',block:'start'});
+        }else{
+          rosterFilter=k==='paid'?'PAID':'UNPAID';
+          var rs=$('roster-filter'); if(rs)rs.value=rosterFilter;
+          setTab('students');
+          renderStudents();
+          var grid=$('roster-grid'); if(grid)grid.scrollIntoView({behavior:'smooth',block:'start'});
+        }
+      };
+      t.onclick=go;
+      t.onkeydown=function(ev){if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();go();}};
+    });
     var box=$('ledger-list'); if(!box)return;
     box.className='space-y-2.5 pt-1 w-full';
     box.innerHTML=entries.length?entries.map(function(h){
@@ -991,7 +1049,7 @@ nav button.on { background: #fff; color: #000; }
           +'<div class="flex items-center gap-1.5 flex-wrap"><span class="font-bold text-sm truncate max-w-full text-white stu-name">'+esc(h.name)+'</span>'
           +(h.chest?'<span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/10 text-white/60 shrink-0">CHEST '+esc(h.chest)+'</span>':'')
           +'<span class="text-[9px] font-mono font-bold px-2 py-0.5 rounded-full border shrink-0 text-rose-300 bg-rose-500/10 border-rose-500/20">REMOVED · NOT PAID</span>'
-          +'</div><div class="tl-time mt-0.5">'+esc(fmtWhen(h.at))+'</div></div>'
+          +'</div><div class="tl-time mt-0.5">Removed '+esc(fmtWhen(h.removedAt||h.at))+'</div></div>'
           +'<div class="text-right shrink-0"><div class="font-black font-mono text-base leading-tight line-through" style="color:var(--mut)">+'+inr(h.amount)+'</div></div></div>'
           +'<div class="flex flex-wrap gap-1.5 pt-1.5 border-t border-white/5">'
           +'<button type="button" class="btn b-ghost !py-1 !px-2.5 text-[11px] flex-1 min-w-[80px]" data-ticket="'+esc(h.id)+'">View Ticket</button>'
@@ -1039,20 +1097,88 @@ nav button.on { background: #fff; color: #000; }
     if(!e){el.innerHTML='<div class="fx-card"><div class="fx-empty">Event not found.</div></div>';return;}
     var totalNeeded=(e.feeAmount||0)*e.registered;
     var collectPct=totalNeeded>0?Math.min(100,Math.round(e.collected/totalNeeded*100)):0;
+    // Four tiles are tappable (data-funds): tapping one opens the detail
+    // list of the students behind that number. Total Needed is a target,
+    // not money in hand, so it stays non-tappable.
     el.innerHTML='<div class="fx">'
-      +'<div class="fx-card"><div class="fx-cap">Total Collected</div>'
+      +'<div class="fx-card" data-funds="collected" role="button" tabindex="0" style="cursor:pointer"><div class="fx-cap">Total Collected · tap for details</div>'
       +'<div class="fx-big" style="color:var(--green)">'+inr(e.collected)+'</div>'
       +'<div class="fx-bar"><i style="width:'+collectPct+'%"></i></div>'
       +'<div class="fx-sub">'+collectPct+'% of target &middot; '+e.paid+' of '+e.registered+' students paid</div>'
-      +'<div class="fx-grid fx-sep"><div><div class="fx-cap">Left to Collect</div>'
+      +'<div class="fx-grid fx-sep"><div data-funds="remaining" role="button" tabindex="0" style="cursor:pointer"><div class="fx-cap">Left to Collect · tap for details</div>'
       +'<div class="fx-num" style="color:var(--yellow)">'+inr(e.remaining)+'</div>'
       +'<div class="fx-sub">'+e.pending+' student'+(e.pending===1?'':'s')+' pending</div></div>'
       +'<div><div class="fx-cap">Total Needed</div><div class="fx-num">'+inr(totalNeeded)+'</div>'
       +'<div class="fx-sub">'+inr(e.feeAmount)+' &times; '+e.registered+' students</div></div></div></div>'
       +'<div class="fx-grid" style="gap:12px">'
-      +'<div class="fx-card"><div class="fx-cap">Cash in Hand</div><div class="fx-num" style="color:var(--lime)">'+inr(e.cash||0)+'</div><div class="fx-sub">Collected in cash</div></div>'
-      +'<div class="fx-card"><div class="fx-cap">In GPay</div><div class="fx-num" style="color:var(--cyan)">'+inr(e.gpay||0)+'</div><div class="fx-sub">Received by GPay</div></div>'
+      +'<div class="fx-card" data-funds="cash" role="button" tabindex="0" style="cursor:pointer"><div class="fx-cap">Cash in Hand · tap for details</div><div class="fx-num" style="color:var(--lime)">'+inr(e.cash||0)+'</div><div class="fx-sub">Collected in cash</div></div>'
+      +'<div class="fx-card" data-funds="gpay" role="button" tabindex="0" style="cursor:pointer"><div class="fx-cap">In GPay · tap for details</div><div class="fx-num" style="color:var(--cyan)">'+inr(e.gpay||0)+'</div><div class="fx-sub">Received by GPay</div></div>'
       +'</div></div>';
+    Array.prototype.forEach.call(el.querySelectorAll('[data-funds]'),function(t){
+      // stopPropagation: the Left to Collect tile is nested inside the
+      // Total Collected card, so a tap on it must not also fire the
+      // outer tile's handler.
+      var go=function(ev){if(ev)ev.stopPropagation();renderFundsDetail(t.getAttribute('data-funds'));};
+      t.onclick=go;
+      t.onkeydown=function(ev){if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();go();}};
+    });
+    // Keep the open detail in sync with the latest data.
+    if(fundsDetailKind)renderFundsDetail(fundsDetailKind);
+  }
+  // Funds detail: the students behind one tile, from the already-loaded
+  // regs for the current event. The header count and sum are computed
+  // FROM THE DETAIL LIST ITSELF, and must equal the tile numbers exactly
+  // (finding #1 fixed the overview to exclude removed receipts, so the
+  // reg-based detail and the overview agree).
+  var fundsDetailKind=null;
+  function fundsDetailList(kind){
+    if(kind==='collected')return regs.filter(function(r){return r.paid;});
+    if(kind==='remaining')return regs.filter(function(r){return !r.paid;});
+    if(kind==='cash')return regs.filter(function(r){return r.paid&&r.paidMethod==='cash';});
+    if(kind==='gpay')return regs.filter(function(r){return r.paid&&r.paidMethod==='gpay';});
+    return [];
+  }
+  function fundsDetailAmount(r){
+    // Same formula as the overview: a paid row uses its stored amount
+    // (falling back to the live fee), an unpaid row owes the live fee.
+    if(r.paid)return (r.amount===undefined||r.amount===null)?(r.feeAmount||0):Number(r.amount||0);
+    return r.feeAmount||0;
+  }
+  function renderFundsDetail(kind){
+    var box=$('funds-detail'); if(!box)return;
+    if(!kind){box.innerHTML='';fundsDetailKind=null;return;}
+    fundsDetailKind=kind;
+    var list=fundsDetailList(kind);
+    var sum=list.reduce(function(s,r){return s+fundsDetailAmount(r);},0);
+    var titles={collected:'Total Collected',remaining:'Left to Collect',cash:'Cash in Hand',gpay:'In GPay'};
+    var rows=list.map(function(r){
+      var amt=fundsDetailAmount(r);
+      var method=r.paid?(r.paidMethod==='cash'?'Cash':(r.paidMethod==='gpay'?'GPay':'—')):'Unpaid';
+      var btn=r.paid
+        ?'<button type="button" class="btn b-ghost !py-1 !px-2.5 text-[11px] shrink-0" data-receipt="'+esc(r.id)+'">View Receipt</button>'
+        :'<button type="button" class="btn b-lime !py-1 !px-2.5 text-[11px] shrink-0" data-collect="'+esc(r.id)+'">Collect</button>';
+      return '<div class="card p-3.5 flex items-center justify-between gap-3 border border-white/10 overflow-hidden w-full">'
+        +'<div class="min-w-0 flex-1">'
+        +'<div class="flex items-center gap-2 min-w-0"><span class="font-mono text-xs opacity-60 shrink-0">'+esc(r.chest||'—')+'</span><span class="font-bold text-sm truncate stu-name">'+esc(r.teamName||r.name)+'</span></div>'
+        +(r.phone?'<div class="text-xs font-mono truncate mt-0.5" style="color:var(--mut)">'+esc(r.phone)+'</div>':'')
+        +'<div class="text-xs mt-0.5" style="color:var(--mut)">'+esc(method)+'</div>'
+        +'</div>'
+        +'<div class="text-right shrink-0"><div class="font-black font-mono text-base leading-tight" style="color:'+(r.paid?'var(--green)':'var(--yellow)')+'">'+inr(amt)+'</div></div>'
+        +btn
+        +'</div>';
+    }).join('')||'<div class="text-center py-8 text-sm" style="color:var(--mut)">No students in this group.</div>';
+    box.innerHTML='<div class="card p-3.5 border border-white/10">'
+      +'<div class="flex items-center justify-between gap-2"><div class="min-w-0"><div class="text-[10px] font-mono uppercase tracking-widest" style="color:var(--mut)">'+esc(titles[kind]||kind)+'</div>'
+      +'<div class="text-xl font-black font-mono">'+inr(sum)+' · '+list.length+' student'+(list.length===1?'':'s')+'</div></div>'
+      +'<button type="button" class="btn b-ghost !py-1 !px-2.5 text-xs shrink-0" id="btn-funds-back">← Back</button></div></div>'
+      +rows;
+    var back=$('btn-funds-back'); if(back)back.onclick=function(){renderFundsDetail(null);};
+    Array.prototype.forEach.call(box.querySelectorAll('[data-collect]'),function(b){
+      b.onclick=function(){selectStudent(b.getAttribute('data-collect'));setTab('collect');};
+    });
+    Array.prototype.forEach.call(box.querySelectorAll('[data-receipt]'),function(b){
+      b.onclick=function(){var r=findReg(b.getAttribute('data-receipt'));if(r)openReceipt(r);};
+    });
   }
 
   // ---------- collect ----------
@@ -1076,7 +1202,13 @@ nav button.on { background: #fff; color: #000; }
   function renderCollectList(){
     var q=($('student-search-input')?$('student-search-input').value:'').toLowerCase().trim();
     var digits=q.replace(/\D/g,'');
-    if(digits.length!==10)lookupExtra=[]; // only a full number keeps cross-event matches
+    var nq=digits;
+    if(nq.length===12&&nq.indexOf('91')===0)nq=nq.slice(2);
+    else if(nq.length===11&&nq.charAt(0)==='0')nq=nq.slice(1);
+    // Keep cross-event matches while the query is still a phone-like
+    // partial (#5): wiping them unless exactly 10 digits were typed
+    // discarded the lookup results the moment a partial number matched.
+    if(nq.length<4||!/^[6-9]/.test(nq))lookupExtra=[];
     var list=regs.filter(function(r){return matchReg(r,q)||(digits&&String(r.phone||'').includes(digits));});
     lookupExtra.forEach(function(x){
       if(!list.some(function(r){return r.id===x.id;})&&(matchReg(x,q)||(digits&&String(x.phone||'').includes(digits))))list.push(x);
@@ -1091,7 +1223,16 @@ nav button.on { background: #fff; color: #000; }
       b.onclick=function(){
         var id=b.getAttribute('data-sel');
         var x=collectShown.find(function(y){return y.id===id;});
-        if(x&&x.eventSlug&&x.eventSlug!==curEvent){openEvent(x.eventSlug);setTimeout(function(){selectStudent(id);},300);return;}
+        // Cross-event tap (#6): wait for the new event's roster to load
+        // before selecting, instead of guessing with a 300 ms timeout
+        // that silently fails on slow venue Wi-Fi.
+        if(x&&x.eventSlug&&x.eventSlug!==curEvent){
+          openEvent(x.eventSlug).then(function(ok){
+            if(!ok){toast('Could not load that event — try again',1);return;}
+            selectStudent(id);
+          }).catch(function(){toast('Could not load that event — try again',1);});
+          return;
+        }
         selectStudent(id);
       };
     });
@@ -1117,12 +1258,16 @@ nav button.on { background: #fff; color: #000; }
     $('collect-team').textContent='Team of '+(r.team||1)+(r.members&&r.members.length?' · '+[r.name].concat(memNames(r.members)).join(', '):'');
     $('collect-fee').textContent=(r.fee||inr(r.feeAmount))+(r.paid?' (paid)':'');
     $('collect-status').textContent=r.paid?('Paid · '+(r.paidMethod==='cash'?'Cash':'GPay')):'Unpaid';
-    var canWrite=(role==='write'||role==='lead');
-    $('btn-pay-cash').disabled=!canWrite||r.paid;
-    $('btn-pay-gpay').disabled=!canWrite||r.paid;
-    $('btn-mark-unpaid').classList.toggle('hide',!r.paid||!canWrite);
-    $('collect-msg').textContent=canWrite?'':"Read-only access — the write password is needed to collect fees.";
-    $('collect-msg').className='msg'+(canWrite?'':' err');
+    // Role split (#2): the limited 'fees' role CAN collect (mark-paid)
+    // but CANNOT reverse a payment. The pay buttons use canCollect; the
+    // mark-unpaid button stays write/lead only, matching the server.
+    var canCollect=(role==='fees'||role==='write'||role==='lead');
+    var canW=(role==='write'||role==='lead');
+    $('btn-pay-cash').disabled=!canCollect||r.paid;
+    $('btn-pay-gpay').disabled=!canCollect||r.paid;
+    $('btn-mark-unpaid').classList.toggle('hide',!r.paid||!canW);
+    $('collect-msg').textContent=canCollect?'':"Read-only access — the fees password is needed to collect fees.";
+    $('collect-msg').className='msg'+(canCollect?'':' err');
   }
   var phoneLookupTimer=null, lastPhoneLookup='';
   function lookupByPhone(ph){
@@ -1163,7 +1308,12 @@ nav button.on { background: #fff; color: #000; }
   function lookupById(code){
     if(code===lastIdLookup)return;
     lastIdLookup=code;
-    fetch('/api/ticket?id='+encodeURIComponent(code)).then(function(r){
+    // 8 s timeout (#56): the code lookup used to hang forever on a dead
+    // connection, and the retry was blocked because lastIdLookup was set.
+    var ctl=new AbortController();
+    var to=setTimeout(function(){ctl.abort();},8000);
+    fetch('/api/ticket?id='+encodeURIComponent(code),{signal:ctl.signal}).then(function(r){
+      clearTimeout(to);
       var st=r.status;
       return r.json().then(function(d){
         if(d&&d.ok&&d.ticket){openScannedCollect(d.ticket);return;}
@@ -1171,7 +1321,7 @@ nav button.on { background: #fff; color: #000; }
         if(st===429){toast('Too many lookups — wait a moment and try again',1);return;}
         toast('No registration found for this code',1);
       });
-    }).catch(function(){lastIdLookup='';toast('Lookup failed',1);});
+    }).catch(function(){clearTimeout(to);lastIdLookup='';toast('Lookup failed — try again',1);});
   }
   function maybeIdLookup(now){
     var raw=($('student-search-input')?$('student-search-input').value:'').trim();
@@ -1191,7 +1341,8 @@ nav button.on { background: #fff; color: #000; }
   var pendingPayMethod=null;
   function confirmPay(method){
     if(!selectedId)return;
-    if(role!=='write'&&role!=='lead'){toast('Write access required',1);return;}
+    // The limited 'fees' role CAN collect (mark-paid) — see selectStudent.
+    if(role!=='fees'&&role!=='write'&&role!=='lead'){toast('Write access required',1);return;}
     var r=findReg(selectedId);
     if(!r)return;
     pendingPayMethod=method;
@@ -1236,7 +1387,7 @@ nav button.on { background: #fff; color: #000; }
         $('btn-pay-cash').disabled=true;$('btn-pay-gpay').disabled=true;
         refreshAll();
       }else{toast((res.data&&res.data.error)||'Could not mark paid',1);}
-    }).catch(function(e){done();if(e&&e.name==='AbortError'){toast('Timed out — check the ledger before retrying, the payment may have gone through',1);$('collect-msg').textContent='Timed out. Check the ledger before retrying — the payment may have gone through.';$('collect-msg').className='msg err';refreshAll();}else{toast('Connection failed',1);}});
+    }).catch(function(e){done();if(e&&e.name==='AbortError'){toast('Timed out — check the ledger before retrying, the payment may have gone through',1);$('collect-msg').textContent='Timed out. Check the ledger before retrying — the payment may have gone through.';$('collect-msg').className='msg err';refreshAll();}else{toast('Connection failed',1);refreshAll();}}); // #49: a failed connection may still have landed the payment — refresh to show the truth
   }
   $('btn-pay-cash').onclick=function(){confirmPay('cash');};
   $('btn-pay-gpay').onclick=function(){confirmPay('gpay');};
@@ -1368,14 +1519,15 @@ nav button.on { background: #fff; color: #000; }
     var m=/[?&]collect=([^&]+)/.exec(location.search||'');
     if(!m)return;
     if(!overview)return; // not loaded yet; the next refreshAll will retry
-    deepLinkDone=true;
     var code=decodeURIComponent(m[1]);
     fetch('/api/ticket?id='+encodeURIComponent(code)).then(function(r){return r.json().then(function(d){return {status:r.status,data:d};});}).then(function(x){
       // Clear ?collect= only on success (V3-m13): clearing it first meant
       // a failed lookup lost the link. On a 429 the param stays, so a
-      // refresh retries it.
+      // refresh retries it. deepLinkDone is set only on success (#7):
+      // setting it before the fetch meant a failed lookup could never retry.
       if(x.status===429){toast('Too many lookups — wait a moment, then refresh to retry',1);return;}
       if(x.data&&x.data.ok&&x.data.ticket){
+        deepLinkDone=true;
         try{history.replaceState(null,'',location.pathname);}catch(e){}
         openScannedCollect(x.data.ticket);
       }
@@ -1393,11 +1545,13 @@ nav button.on { background: #fff; color: #000; }
       if(ev)slug=ev.slug;
     }
     if(slug&&slug!==curEvent){
-      openEvent(slug);
-      loadEventData().then(function(){
+      // Chain on openEvent's roster load (#31): if the event data fails
+      // to load, say so instead of silently doing nothing.
+      openEvent(slug).then(function(ok){
+        if(!ok){toast('Could not load that event — try again',1);return;}
         if(!findReg(r.id))lookupExtra.push(r);
         selectStudent(r.id); setTab('collect');
-      });
+      }).catch(function(){toast('Could not load that event — try again',1);});
       return;
     }
     if(!slug&&!curEvent){
@@ -1447,7 +1601,9 @@ nav button.on { background: #fff; color: #000; }
       if(!reg.eventSlug){showScanPaid(reg);return;}
       api('/api/fees?action=students&event='+encodeURIComponent(reg.eventSlug)).then(function(rs){
         var full=(rs.data&&rs.data.regs||[]).find(function(x){return x.id===reg.id;});
-        if(full){reg.paidMethod=full.paidMethod||'';reg.paidAt=full.paidAt||'';reg.feeAmount=full.feeAmount||reg.feeAmount;reg.amount=full.feeAmount||reg.amount;}
+        // Show the amount actually PAID (#16), not the current fee: a
+        // custom/admin-set amount differs from the live fee.
+        if(full){reg.paidMethod=full.paidMethod||'';reg.paidAt=full.paidAt||'';reg.feeAmount=full.feeAmount||reg.feeAmount;reg.amount=full.amount||reg.amount;}
         showScanPaid(reg);
       }).catch(function(){showScanPaid(reg);});
     }).catch(function(){
@@ -1659,18 +1815,22 @@ nav button.on { background: #fff; color: #000; }
   };
 
   // Copy the shareable per-event link (/fees/<slug>) for this event, so
-  // it can be sent to that event's coordinator.
+  // it can be sent to that event's coordinator. Toast only on a
+  // CONFIRMED copy (#18): a failed copy used to toast "Link copied"
+  // and the coordinator got nothing.
   $('btn-copy-link').onclick=function(){
     if(!curEvent)return;
     var link=location.origin+'/fees/'+encodeURIComponent(curEvent);
-    var done=function(){toast('Link copied');};
-    if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(link).then(done,function(){fallbackCopy(link);done();});}
-    else{fallbackCopy(link);done();}
+    var done=function(ok){toast(ok?'Link copied':'Could not copy — long-press the address bar to copy it',ok?0:1);};
+    if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(link).then(function(){done(true);},function(){done(fallbackCopy(link));});}
+    else{done(fallbackCopy(link));}
   };
   function fallbackCopy(text){
     var ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();
-    try{document.execCommand('copy');}catch(e){}
+    var ok=false;
+    try{ok=!!document.execCommand('copy');}catch(e){ok=false;}
     document.body.removeChild(ta);
+    return ok;
   }
 
   // ---------- FAB ----------

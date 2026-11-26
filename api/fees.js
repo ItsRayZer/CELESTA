@@ -7,7 +7,7 @@
 // the public /api/ticket?phone= endpoint was removed for that reason.
 import { Redis } from '@upstash/redis';
 import crypto from 'node:crypto';
-import { verify, canWrite, parseVal, normPhone } from './admin-login.js';
+import { verify, canWrite, canCollect, parseVal, normPhone } from './admin-login.js';
 import { loadEvents } from './events.js';
 
 const redis = new Redis({
@@ -56,7 +56,8 @@ async function pushHistory(entry) {
 }
 
 // One registration, as the fees page needs it. fee is the live event fee
-// string; feeAmount is its number, used for funds math.
+// string; feeAmount is its number, used for funds math. `invalid` is
+// included so the fees page and ticket can refuse voided records (#3).
 function pubReg(r, feeStr) {
   return {
     id: r.id,
@@ -72,6 +73,7 @@ function pubReg(r, feeStr) {
     fee: feeStr || '',
     feeAmount: parseFee(feeStr),
     paid: !!r.paid,
+    invalid: !!r.invalid,
     amount: Number(r.amount || 0),
     paidMethod: r.paidMethod || '',
     paidAt: r.paidAt || '',
@@ -120,19 +122,25 @@ export default async function handler(req, res) {
       try {
         const regs = await loadAllRegs();
         const history = await readHistory(HISTORY_CAP);
+        // Removed receipts must NOT count in any money split (#1): the
+        // removed audit entry keeps the original amount/method, so without
+        // this filter Funds would show removed money as still in hand.
         const methodSum = { cash: 0, gpay: 0 };
         history.forEach(function (h) {
+          if (h.removed) return;
           if (h.method === 'cash') methodSum.cash += Number(h.amount || 0);
           else if (h.method === 'gpay') methodSum.gpay += Number(h.amount || 0);
         });
         const evList = events.map(function (ev) {
-          const list = regs.filter(function (r) { return r.eventSlug === ev.slug || r.event === ev.name; });
+          // Invalid (void) registrations are excluded from every fees
+          // total and list (#3): they are not collectable.
+          const list = regs.filter(function (r) { return !r.invalid && (r.eventSlug === ev.slug || r.event === ev.name); });
           const paidList = list.filter(function (r) { return r.paid; });
           // Only fall back to the live fee when amount is missing/null/
           // undefined. An explicit amount of 0 is 0, not the full fee.
           const collected = paidList.reduce(function (s, r) { return s + (r.amount === undefined || r.amount === null ? parseFee(feeMap[ev.slug]) : Number(r.amount || 0)); }, 0);
           const remaining = list.filter(function (r) { return !r.paid; }).reduce(function (s) { return s + parseFee(feeMap[ev.slug]); }, 0);
-          const evHist = history.filter(function (h) { return h.eventSlug === ev.slug; });
+          const evHist = history.filter(function (h) { return !h.removed && h.eventSlug === ev.slug; });
           return {
             slug: ev.slug, name: ev.name, fee: feeMap[ev.slug], feeAmount: parseFee(feeMap[ev.slug]),
             registered: list.length, paid: paidList.length, pending: list.length - paidList.length,
@@ -158,11 +166,14 @@ export default async function handler(req, res) {
       if (!EVENT_ORDER.includes(slug)) return res.status(400).json({ error: 'Unknown event' });
       try {
         const regs = await loadAllRegs();
+        const ev = events.find(function (e) { return e.slug === slug; }) || { slug, name: slug, fee: feeMap[slug] || '' };
+        // Invalid (void) registrations are not listed or collectable (#3).
+        // Slug-or-name match (#57): a legacy record with a name but no
+        // slug is still shown instead of being counted-but-uncollectable.
         const list = regs
-          .filter(function (r) { return r.eventSlug === slug; })
+          .filter(function (r) { return !r.invalid && (r.eventSlug === slug || r.event === ev.name); })
           .map(function (r) { return pubReg(r, feeMap[slug]); })
           .sort(byChest);
-        const ev = events.find(function (e) { return e.slug === slug; }) || { slug, name: slug, fee: feeMap[slug] || '' };
         return res.status(200).json({ ok: true, event: ev, regs: list });
       } catch (e) {
         console.error('fees students failed', e);
@@ -199,7 +210,7 @@ export default async function handler(req, res) {
       try {
         const regs = await loadAllRegs();
         const list = regs
-          .filter(function (r) { return normPhone(r.phone).includes(digits); })
+          .filter(function (r) { return !r.invalid && normPhone(r.phone).includes(digits); })
           .map(function (r) { return pubReg(r, feeMap[r.eventSlug] || ''); })
           .sort(byChest)
           .slice(0, 20);
@@ -213,12 +224,18 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Unknown action' });
   }
 
-  // ---------- POST (write role only) ----------
+  // ---------- POST ----------
   if (req.method === 'POST') {
-    if (!canWrite(role)) return res.status(403).json({ error: 'Write access required' });
     const body = req.body || {};
     const id = String(body.id || '').trim();
     if (!id) return res.status(400).json({ error: 'Missing id' });
+    // Role split (#2): mark-paid is the counter's job, so the limited
+    // 'fees' role may do it. mark-unpaid reverses a payment, so it is
+    // admin-only (write/lead) — a fees token gets 403 here, and the
+    // Remove receipt re-auth (verifyWrite) is enforced server-side too.
+    if (action === 'mark-paid' && !canCollect(role)) return res.status(403).json({ error: 'Write access required' });
+    if (action === 'mark-unpaid' && !canWrite(role)) return res.status(403).json({ error: 'Write access required' });
+    if (action !== 'mark-paid' && action !== 'mark-unpaid') return res.status(400).json({ error: 'Unknown action' });
 
     if (action === 'mark-paid') {
       const method = String(body.method || '').trim();
@@ -251,6 +268,21 @@ export default async function handler(req, res) {
         // the lock attempt and now.
         const rec = parseVal(await redis.hget('celesta:regs', id));
         if (!rec) return res.status(404).json({ error: 'Not found' });
+        // Invalid (void) registrations cannot be paid (#3).
+        if (rec.invalid) return res.status(400).json({ error: 'This registration is invalid and cannot be paid' });
+        // Resolve the event slug from the event name for legacy records
+        // that have no slug (#57). Without a slug there is no fee and no
+        // chest code, so refuse instead of assigning a 00xxx chest at ₹0.
+        let slug = rec.eventSlug || '';
+        if (!slug && rec.event) {
+          try {
+            const evs = await loadEvents();
+            const ev = (evs || []).find(function (e) { return e && e.name === rec.event; });
+            if (ev) slug = ev.slug;
+          } catch { /* slug stays empty; refused below */ }
+        }
+        if (!slug) return res.status(400).json({ error: 'Cannot determine the event for this registration' });
+        rec.eventSlug = slug;
         // Idempotent: already paid → return unchanged, no double-count,
         // no second history entry, and never overwrite paidAt/paidMethod.
         // A paid record without a chest only gets a chest assigned; its
@@ -278,18 +310,31 @@ export default async function handler(req, res) {
         try {
           (await loadEvents()).forEach(function (e) { if (e && e.slug) feeMap[e.slug] = e.fee || ''; });
         } catch { /* fee display falls back to the record */ }
-        const amount = parseFee(feeMap[rec.eventSlug]) || Number(rec.amount || 0);
+        // Amount (#22): an admin-set stored amount (non-zero) wins over
+        // the live fee, so a discounted/adjusted amount is not silently
+        // overwritten. A normal unpaid record stores 0, so it pays the
+        // live fee. If neither resolves, refuse (#57) — never a ₹0 payment.
+        const amount = Number(rec.amount || 0) || parseFee(feeMap[rec.eventSlug]);
+        if (!amount) return res.status(400).json({ error: 'Fee cannot be determined for this registration' });
         rec.paid = true;
         rec.amount = amount;
         rec.paidMethod = method;
         rec.paidAt = new Date().toISOString();
         await redis.hset('celesta:regs', { [id]: JSON.stringify(rec) });
         // Fresh payment only — under the lock, and after the re-read
-        // above, this runs at most once per record.
-        await pushHistory({
-          id: rec.id, chest: rec.chest || '', event: rec.event, eventSlug: rec.eventSlug,
-          name: rec.name, phone: rec.phone || '', amount, method, at: rec.paidAt, by: 'admin',
-        });
+        // above, this runs at most once per record. If the history write
+        // fails AFTER the payment was saved (#8), do NOT 500: the payment
+        // is real. Return 200 with historyPending so the counter knows
+        // the ledger entry is missing instead of being told it failed.
+        try {
+          await pushHistory({
+            id: rec.id, chest: rec.chest || '', event: rec.event, eventSlug: rec.eventSlug,
+            name: rec.name, phone: rec.phone || '', amount, method, at: rec.paidAt, by: 'admin',
+          });
+        } catch (e) {
+          console.error('fees mark-paid history failed (payment saved)', e);
+          return res.status(200).json({ ok: true, reg: pubReg(rec, feeMap[rec.eventSlug] || ''), historyPending: true });
+        }
         return res.status(200).json({ ok: true, reg: pubReg(rec, feeMap[rec.eventSlug] || '') });
       } catch (e) {
         console.error('fees mark-paid failed', e);
@@ -348,28 +393,38 @@ export default async function handler(req, res) {
         // Keep the chest: it was assigned at registration and belongs to
         // the student, not to the payment.
         await redis.hset('celesta:regs', { [id]: JSON.stringify(rec) });
-        // Remove ALL matching history entries, if present. A past race
-        // could have pushed duplicates (which may differ in `at`, so match
-        // by id and remove every distinct stored string, count 0 = all).
+        // Remove only LIVE payment entries (#9): a second removal must
+        // not delete the first removal's audit entry (p.removed), or the
+        // audit trail is destroyed by using the feature twice.
         try {
           const raw = await redis.lrange(HISTORY_KEY, 0, HISTORY_CAP - 1);
           const targets = [...new Set((raw || []).filter(function (v) {
             const p = parseVal(v);
-            return p && p.id === id;
+            return p && p.id === id && !p.removed;
           }))];
           for (const target of targets) await redis.lrem(HISTORY_KEY, 0, target);
         } catch (e) {
+          // History removal failure is fatal (#8): the record is already
+          // unpaid, so roll it back to paid and report the failure —
+          // otherwise the history still counts the payment while the
+          // record is unpaid, and a retry would see "already unpaid".
           console.error('fees history removal failed', e);
+          try {
+            rec.paid = true; rec.amount = oldAmount; rec.paidMethod = oldMethod; rec.paidAt = oldAt;
+            await redis.hset('celesta:regs', { [id]: JSON.stringify(rec) });
+          } catch (e2) { console.error('fees mark-unpaid rollback failed', e2); }
+          return res.status(500).json({ error: 'Storage unavailable — payment NOT reversed, try again' });
         }
         // Leave a visible removal record in history so the receipt shows
         // as removed / not paid instead of vanishing without a trace.
         // Amount is kept for audit; the History tab excludes removed
         // entries from its totals. The ticket reverts to unpaid because
-        // the registration itself is now unpaid.
+        // the registration itself is now unpaid. Method (#15): keep the
+        // real method, or blank — never fabricate 'cash'.
         try {
           await pushHistory({
             id: rec.id, chest: rec.chest || '', event: rec.event, eventSlug: rec.eventSlug,
-            name: rec.name, phone: rec.phone || '', amount: oldAmount, method: oldMethod || 'cash', at: oldAt || new Date().toISOString(),
+            name: rec.name, phone: rec.phone || '', amount: oldAmount, method: oldMethod || '', at: oldAt || new Date().toISOString(),
             removed: true, removedAt: new Date().toISOString(), by: 'admin',
           });
         } catch (e) {

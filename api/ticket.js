@@ -56,7 +56,11 @@ function toTicket(rec, fee) {
     phone: rec.phone,
     fee,
     feeAmount: parseFee(fee),
-    paid: !!rec.paid,
+    // Invalid (void) registrations are never a paid ticket (#3): force
+    // paid off and flag invalid, so the ticket page renders VOID instead
+    // of a valid receipt for a cancelled registration.
+    invalid: !!rec.invalid,
+    paid: !!rec.paid && !rec.invalid,
     // Payment receipt fields (only meaningful when paid). Same ticket the
     // owner already sees via the unguessable id, so no new exposure.
     amount: rec.amount || 0,

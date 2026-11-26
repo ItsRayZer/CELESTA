@@ -50,17 +50,42 @@ const DUPLICATE_ERROR = 'Already registered for this event';
 // fails, so callers can fail closed instead of guessing.
 // (A marker key alone is NOT proof: a function killed between the marker
 // SET NX and the HSET leaves an orphan marker with no record behind it.)
+// Invalid (void) registrations do not block a re-registration (#4): their
+// phone/email are free, so a student whose record was voided can register
+// again instead of being stranded.
 async function findDuplicate(ev, phoneNorm, emailNorm) {
   const all = await redis.hgetall('celesta:regs');
   if (!all) return null;
   for (const v of Object.values(all)) {
     let r = null;
     try { r = typeof v === 'object' ? v : JSON.parse(v); } catch { r = null; }
-    if (!r || (r.eventSlug !== ev.slug && r.event !== ev.name)) continue;
+    if (!r || r.invalid || (r.eventSlug !== ev.slug && r.event !== ev.name)) continue;
     if (normPhone(r.phone) === phoneNorm) return 'phone';
     if (emailNorm && r.email && String(r.email).trim().toLowerCase() === emailNorm.toLowerCase()) return 'email';
   }
   return null;
+}
+
+// Name-based duplicate FLAG (#29), never a block: a registration whose
+// normalised leader name + school matches an existing (valid) registration
+// for the same event is flagged for the admin to review, but the student
+// is never refused on a name match alone. Two different students can
+// share a name; only phone/email block.
+async function findNameFlag(ev, nameNorm, schoolNorm) {
+  if (!nameNorm) return false;
+  try {
+    const all = await redis.hgetall('celesta:regs');
+    if (!all) return false;
+    for (const v of Object.values(all)) {
+      let r = null;
+      try { r = typeof v === 'object' ? v : JSON.parse(v); } catch { r = null; }
+      if (!r || r.invalid || (r.eventSlug !== ev.slug && r.event !== ev.name)) continue;
+      const rn = String(r.name || '').trim().toLowerCase();
+      const rs = String(r.school || '').trim().toLowerCase();
+      if (rn === nameNorm && (!schoolNorm || !rs || rs === schoolNorm)) return true;
+    }
+  } catch { return false; }
+  return false;
 }
 
 // Team name uniqueness: a team name is taken if any (valid) registration
@@ -291,6 +316,10 @@ export default async function handler(req, res) {
   if (emailNorm && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailNorm)) reasons.push('email looks off');
   if (Array.isArray(members) && members.some(m => junkText(m.name))) reasons.push('member name looks off');
   if (teamName && junkText(teamName)) reasons.push('team name looks off');
+  // Possible duplicate NAME (#29): flag only, never a block. Two
+  // different students can share a name; only phone/email refuse a
+  // registration. The flag lets the admin review it after the fact.
+  if (await findNameFlag(ev, String(name).trim().toLowerCase(), schoolLow)) reasons.push('possible duplicate name');
   // Timing: a submit in under 2 seconds is too fast for a human. A missing
   // timestamp means the request didn't come from the form at all.
   // (A negative elapsed is just clock skew between phone and server.)

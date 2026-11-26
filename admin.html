@@ -434,7 +434,7 @@ let EDIT_EV=null;
 async function ensureEvents(force){
   if(EVENTS_DB.length&&!force)return EVENTS_DB;
   try{
-    const r=await fetch('/api/events',{headers:{Authorization:'Bearer '+TOKEN},cache:'no-store'});
+    const r=await fetchTimeout('/api/events',{headers:{Authorization:'Bearer '+TOKEN},cache:'no-store'});
     const d=await r.json();
     EVENTS_DB=(d.events||[]).sort((a,b)=>(a.order||99)-(b.order||99));
   }catch(e){EVENTS_DB=[];}
@@ -443,6 +443,15 @@ async function ensureEvents(force){
   return EVENTS_DB;
 }
 function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2600);}
+// fetch with an 8 s timeout (#56): the main loads used to hang forever
+// on a dead connection, leaving the admin staring at skeleton rows.
+function fetchTimeout(url,opts){
+  opts=opts||{};
+  var ctl=('AbortController' in window)?new AbortController():null;
+  var to=ctl?setTimeout(function(){try{ctl.abort();}catch(e){}},8000):null;
+  if(ctl)opts.signal=ctl.signal;
+  return fetch(url,opts).then(function(r){if(to)clearTimeout(to);return r;},function(e){if(to)clearTimeout(to);throw e;});
+}
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 // Member names, whether stored as plain strings (old form / admin edits)
 // or as objects {name, phone, email} (new form).
@@ -676,8 +685,9 @@ async function showDash(){
   load();
   // Auto-refresh every 5 minutes (was 2): each refresh costs ~4-6 Redis
   // commands, and on fest day 2-3 admins polling every 2 min would burn
-  // thousands of the 10,000/day free-tier budget on its own. 5 min is
-  // plenty fresh for registrations; manual Refresh is always there.
+  // thousands of the 500,000/month free-tier budget on its own (the old
+  // 10,000/day cap was retired in March 2025). 5 min is plenty fresh
+  // for registrations; manual Refresh is always there.
   setInterval(()=>{if(!$('dash').classList.contains('hidden')&&!document.hidden&&navigator.onLine)load();},300000);
 }
 
@@ -701,7 +711,7 @@ async function load(reset=true){
     if(!REGS.length)$('rows').innerHTML='<tr class="skel"><td colspan="6"><div class="bar"></div></td></tr><tr class="skel"><td colspan="6"><div class="bar"></div></td></tr><tr class="skel"><td colspan="6"><div class="bar"></div></td></tr>';
   }
   try{
-    const r=await fetch('/api/registrations?limit='+want+'&offset='+REG_OFFSET,{headers:{Authorization:'Bearer '+TOKEN},cache:'no-store'});
+    const r=await fetchTimeout('/api/registrations?limit='+want+'&offset='+REG_OFFSET,{headers:{Authorization:'Bearer '+TOKEN},cache:'no-store'});
     if(r.status===401){localStorage.removeItem('celesta_admin_tok');localStorage.removeItem('celesta_admin_role');location.reload();return;}
     const d=await r.json();
     const fresh=(d.regs||[]).filter(x=>!SEEN.has(x.id));
@@ -755,7 +765,7 @@ function render(){
     if(fp==='paid'&&!x.paid)return false;
     if(fp==='unpaid'&&x.paid)return false;
     if(fr&&riskLevel(x)!==fr)return false;
-    if(q&&!(x.name+' '+x.school+' '+x.phone+' '+(x.teamName||'')).toLowerCase().includes(q))return false;
+    if(q&&!(x.name+' '+x.school+' '+x.phone+' '+(x.teamName||'')+' '+(x.chest||'')+' '+(x.email||'')+' '+memNames(x.members).join(' ')).toLowerCase().includes(q))return false;
     return true;
   });
   // stats come from the server so they stay right on any page
@@ -868,7 +878,7 @@ async function togglePay(id,wasPaid){
   $('sPaid').textContent=REG_PAID_N;$('sAmt').textContent=fmt(REG_PAID_AMT);$('sPend').textContent=REG_TOTAL-REG_PAID_N;
   const undo=()=>{if(x){x.paid=oldPaid;x.amount=oldAmt;}if(!wasPaid){REG_PAID_N--;REG_PAID_AMT-=amount;}else{REG_PAID_N++;REG_PAID_AMT+=oldAmt;}render();};
   try{
-    const r=await fetch('/api/registrations',{method:'PATCH',headers:authHeaders(true),body:JSON.stringify({id,paid:!wasPaid,amount,paidMethod:!wasPaid?paidMethod:undefined})});
+    const r=await fetchTimeout('/api/registrations',{method:'PATCH',headers:authHeaders(true),body:JSON.stringify({id,paid:!wasPaid,amount,paidMethod:!wasPaid?paidMethod:undefined})});
     if(sessExpired(r))return;
     if(r.ok){
       // Reconcile with the server's saved record: a refresh that fired
@@ -910,7 +920,7 @@ function askAdminPw(label){
       // Never hang forever on a slow connection: abort after 15s so the
       // modal always answers (error + retry) instead of looking stuck.
       const ctl=new AbortController();
-      const to=setTimeout(()=>ctl.abort(),15000);
+      const to=setTimeout(()=>ctl.abort(),8000);
       try{
         const r=await fetch('/api/admin-login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw,verifyWrite:true}),signal:ctl.signal});
         const d=await r.json().catch(()=>({}));
@@ -950,7 +960,7 @@ function askLeadPw(label){
       $('modalPwConfirm').disabled=true;
       $('modalPwConfirm').textContent='Checking…';
       const ctl=new AbortController();
-      const to=setTimeout(()=>ctl.abort(),15000);
+      const to=setTimeout(()=>ctl.abort(),8000);
       try{
         const r=await fetch('/api/admin-login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw,verifyLead:true}),signal:ctl.signal});
         const d=await r.json().catch(()=>({}));
@@ -976,11 +986,11 @@ async function delReg(id){
   const x=REGS.find(r=>r.id===id);
   if(!x)return;
   if(delBusy.has(id))return;
-  if(!(await askLeadPw('Delete the registration of '+x.name+' ('+x.event+')? This cannot be undone.')))return;
+  if(!(await askLeadPw('Delete the registration of '+x.name+' ('+x.event+')? You can undo this from the Activity Log.')))return;
   delBusy.add(id);
   try{
     const ctl=('AbortController' in window)?new AbortController():null;
-    const to=ctl?setTimeout(function(){try{ctl.abort();}catch(e){}},15000):null;
+    const to=ctl?setTimeout(function(){try{ctl.abort();}catch(e){}},8000):null;
     const r=await fetch('/api/registrations',{method:'DELETE',headers:authHeaders(true),body:JSON.stringify({id}),signal:ctl?ctl.signal:undefined});
     if(sessExpired(r))return;
     if(to)clearTimeout(to);
@@ -988,6 +998,10 @@ async function delReg(id){
     if(!r.ok){toast(d.error||'Failed');return;}
     const i=REGS.findIndex(y=>y.id===id);
     if(i>=0)REGS.splice(i,1);
+    // Totals (#23): a deleted record must leave the stats too, or the
+    // header counts stay stale until the next refresh.
+    REG_TOTAL=Math.max(0,REG_TOTAL-1);
+    if(x.paid){REG_PAID_N=Math.max(0,REG_PAID_N-1);REG_PAID_AMT=Math.max(0,REG_PAID_AMT-(Number(x.amount||0)));}
     render();
     toast('Registration deleted');
   }catch(e){toast(e&&e.name==='AbortError'?'Delete timed out — check the list before retrying':'Failed');}
@@ -1004,7 +1018,7 @@ async function toggleInvalid(id,wasInvalid){
     if(!(await askAdminPw('Mark registration of '+x.name+' ('+x.event+') as valid again?')))return;
   }
   try{
-    const r=await fetch('/api/registrations',{method:'PATCH',headers:authHeaders(true),body:JSON.stringify({id,invalid:makeInvalid})});
+    const r=await fetchTimeout('/api/registrations',{method:'PATCH',headers:authHeaders(true),body:JSON.stringify({id,invalid:makeInvalid})});
     if(sessExpired(r))return;
     if(r.ok){const d=await r.json();if(d.reg){const i=REGS.findIndex(y=>y.id===id);if(i>=0)REGS[i]=d.reg;}render();toast(makeInvalid?'Marked invalid':'Marked valid');}
     else toast('Failed');
@@ -1028,7 +1042,7 @@ $('modalSave').onclick=async()=>{
     email:$('eEmail').value,team:parseInt($('eTeam').value,10)||1,teamName:$('eTeamName').value,
     members:$('eMembers').value.split(',').map(s=>s.trim()).filter(Boolean)};
   try{
-    const r=await fetch('/api/registrations',{method:'PATCH',headers:authHeaders(true),body:JSON.stringify(body)});
+    const r=await fetchTimeout('/api/registrations',{method:'PATCH',headers:authHeaders(true),body:JSON.stringify(body)});
     if(sessExpired(r))return;
     if(r.ok){toast('Saved');$('modal').classList.remove('show');EDIT_ID=null;load();}
     else toast('Failed');
@@ -1282,7 +1296,7 @@ function renderEventsAdmin(){
 
 async function saveEvent(patch){
   try{
-    const r=await fetch('/api/events',{method:'PATCH',headers:authHeaders(true),body:JSON.stringify(patch)});
+    const r=await fetchTimeout('/api/events',{method:'PATCH',headers:authHeaders(true),body:JSON.stringify(patch)});
     if(sessExpired(r))return;
     const d=await r.json().catch(()=>({}));
     if(!r.ok){toast(d.error||'Failed');return false;}
@@ -1346,7 +1360,7 @@ $('evAddBtn').onclick=async()=>{
     duration:$('evDur').value.trim(),order:parseInt($('evOrd').value,10)||99,
     about:'',how:[],rules:[],reqs:[],visible:true,regOpen:true};
   try{
-    const r=await fetch('/api/events',{method:'POST',headers:authHeaders(true),body:JSON.stringify(body)});
+    const r=await fetchTimeout('/api/events',{method:'POST',headers:authHeaders(true),body:JSON.stringify(body)});
     const d=await r.json().catch(()=>({}));
     if(!r.ok){toast(d.error||'Failed');return;}
     await ensureEvents(true);
@@ -1362,11 +1376,11 @@ async function delEvent(slug){
   const n=evRegCount(e.slug,e.name);
   if(n>0){toast('This event has '+n+' registration(s). Hide it instead of deleting.');return;}
   if(delBusy.has('ev:'+slug))return;
-  if(!(await askLeadPw('Delete the event "'+e.name+'"? This cannot be undone.')))return;
+  if(!(await askLeadPw('Delete the event "'+e.name+'"? You can undo this from the Activity Log.')))return;
   delBusy.add('ev:'+slug);
   try{
     const ctl=('AbortController' in window)?new AbortController():null;
-    const to=ctl?setTimeout(function(){try{ctl.abort();}catch(e){}},15000):null;
+    const to=ctl?setTimeout(function(){try{ctl.abort();}catch(e){}},8000):null;
     const r=await fetch('/api/events?slug='+slug,{method:'DELETE',headers:authHeaders(false),signal:ctl?ctl.signal:undefined});
     if(sessExpired(r))return;
     if(to)clearTimeout(to);
@@ -1389,6 +1403,10 @@ $('csvBtn').onclick=async()=>{
     let offset=0,total=1;
     while(all.length<total){
       const r=await fetch('/api/registrations?limit=200&offset='+offset,{headers:{Authorization:'Bearer '+TOKEN},cache:'no-store'});
+      // Abort on a failed page (#30): a 401 used to silently download an
+      // empty file with a success toast.
+      if(sessExpired(r)){toast('Session expired — log in again',1);return;}
+      if(!r.ok){toast('CSV failed — could not load registrations',1);return;}
       const d=await r.json();
       total=d.total||0;
       (d.regs||[]).forEach(x=>all.push(x));
@@ -1415,6 +1433,10 @@ $('backupBtn').onclick=async()=>{
     let offset=0,total=1;
     while(all.length<total){
       const r=await fetch('/api/registrations?limit=200&offset='+offset,{headers:{Authorization:'Bearer '+TOKEN},cache:'no-store'});
+      // Abort on a failed page (#30): a 401 used to silently download an
+      // empty file with a success toast.
+      if(sessExpired(r)){toast('Session expired — log in again',1);return;}
+      if(!r.ok){toast('Backup failed — could not load registrations',1);return;}
       const d=await r.json();
       total=d.total||0;
       (d.regs||[]).forEach(x=>all.push(x));

@@ -22,14 +22,16 @@ async function pushHistory(entry) {
   try { await redis.ltrim(HISTORY_KEY, 0, HISTORY_CAP - 1); } catch { /* cap is a nicety */ }
 }
 
-// Remove EVERY history entry for one registration (count 0 = all).
+// Remove only the LIVE payment history for one registration (#9).
+// A removal's audit entry (removed:true) is never a target, so a
+// second removal cannot destroy the first removal's audit trail.
 // Duplicates from a past race may differ in `at`, so match by id and
 // remove each distinct stored string.
 async function removeHistoryFor(id) {
   const raw = await redis.lrange(HISTORY_KEY, 0, HISTORY_CAP - 1);
   const targets = [...new Set((raw || []).filter(function (v) {
     const p = parseVal(v);
-    return p && p.id === id;
+    return p && p.id === id && !p.removed;
   }))];
   for (const target of targets) await redis.lrem(HISTORY_KEY, 0, target);
 }
@@ -50,7 +52,11 @@ export default async function handler(req, res) {
       let regs = [];
       if (ids.length) {
         const vals = await redis.hmget('celesta:regs', ...ids);
-        regs = Object.values(vals || {}).map(v => parseVal(v)).filter(Boolean);
+        // Row order (#35): build the rows in the ids array's order,
+        // never relying on hmget object key order. A stored value that
+        // is null or unparseable is skipped; a row without an id is
+        // never kept.
+        regs = ids.map(function (id) { return parseVal(vals ? vals[id] : null); }).filter(function (r) { return r && r.id; });
       }
       // Totals: when this page already holds every registration (the normal
       // case — limit 200 covers the whole fest), total them from the rows we
@@ -135,6 +141,12 @@ export default async function handler(req, res) {
         const events = await loadEvents();
         ev = events.find(e => e.slug === rec.eventSlug || e.name === rec.event) || null;
       } catch { ev = null; }
+      // Fail closed (#33): if the event record could not be loaded and
+      // the team size is being changed, refuse rather than validating
+      // against a made-up 1–20 range.
+      if (!ev && req.body.team !== undefined) {
+        return res.status(503).json({ error: 'Could not load event rules — try again' });
+      }
       const teamMin = ev ? ev.teamMin : 1, teamMax = ev ? ev.teamMax : 20;
       if (req.body.team !== undefined && (!Number.isInteger(req.body.team) || req.body.team < teamMin || req.body.team > teamMax)) {
         return res.status(400).json({ error: 'Team size must be ' + teamMin + '–' + teamMax + ' for ' + (ev ? ev.name : rec.event) });
@@ -153,7 +165,10 @@ export default async function handler(req, res) {
           if (all) for (const [k, v] of Object.entries(all)) {
             if (k === id) continue;
             const r = parseVal(v);
-            if (!r || (r.eventSlug !== rec.eventSlug && r.event !== rec.event)) continue;
+            // Invalid (void) registrations do not block an edit (#4):
+            // their phone/email are free, so a re-registered student is
+            // never stranded by a voided record.
+            if (!r || r.invalid || (r.eventSlug !== rec.eventSlug && r.event !== rec.event)) continue;
             if (newPhone && normPhone(r.phone) === newPhone) {
               return res.status(409).json({ error: 'Already registered for this event' });
             }
@@ -205,12 +220,22 @@ export default async function handler(req, res) {
           rec = fresh;
         }
       }
+      // The undo snapshot must cover the payment fields too (#10), or an
+      // undo of a paid flip cannot restore paidMethod/paidAt.
       const before = {};
-      for (const k of ['paid', 'amount', 'invalid', 'name', 'school', 'phone', 'email', 'teamName', 'team', 'members']) before[k] = rec[k];
+      for (const k of ['paid', 'amount', 'invalid', 'name', 'school', 'phone', 'email', 'teamName', 'team', 'members', 'paidMethod', 'paidAt']) before[k] = rec[k];
       if (typeof paid === 'boolean') rec.paid = paid;
       if (typeof invalid === 'boolean') rec.invalid = invalid;
       if (flipMethod) rec.paidMethod = flipMethod;
       if (typeof amount === 'number') rec.amount = amount;
+      // Paid flip (#10): stamp paidAt when a record becomes paid, and
+      // clear the payment fields when it becomes unpaid, so a payment is
+      // never half-recorded and an un-flip never leaves a stale method,
+      // amount or paidAt behind.
+      if (typeof paid === 'boolean') {
+        if (paid && !before.paid) rec.paidAt = new Date().toISOString();
+        if (!paid && before.paid) { rec.amount = 0; rec.paidMethod = ''; rec.paidAt = ''; }
+      }
       // full edit: name, school, phone, email, team size, team name, members
       for (const k of ['name', 'school', 'phone', 'email', 'teamName']) {
         if (typeof req.body[k] === 'string') rec[k] = req.body[k].trim();
@@ -259,7 +284,13 @@ export default async function handler(req, res) {
             await releasePaylock();
             return res.status(409).json({ error: 'This phone/email is already registered for ' + rec.event });
           }
-        } catch { /* markers are a backstop; continue to save */ }
+        } catch (e) {
+          // Fail closed (#33): a marker-store failure must not let an
+          // edit create a duplicate phone/email. The record is not saved.
+          console.error('registrations marker claim failed', e);
+          await releasePaylock();
+          return res.status(503).json({ error: 'Please try again' });
+        }
       }
       await redis.hset('celesta:regs', { [id]: JSON.stringify(rec) });
       // Drop the old markers only AFTER the save succeeded: a failed save
@@ -284,7 +315,18 @@ export default async function handler(req, res) {
             at: rec.paidAt || new Date().toISOString(), by: 'admin',
           });
         } else if (wasPaid && !isPaid) {
+          // Un-pay (#11): remove the live payment entry AND leave a
+          // REMOVED audit row, so the History tab shows it as removed
+          // instead of the payment vanishing without a trace. The audit
+          // row keeps the original amount/method, and the record's
+          // cleared fields are already saved above.
           await removeHistoryFor(id);
+          await pushHistory({
+            id: rec.id, chest: rec.chest || '', event: rec.event, eventSlug: rec.eventSlug,
+            name: rec.name, phone: rec.phone || '', amount: Number(before.amount || 0),
+            method: before.paidMethod || '', at: before.paidAt || new Date().toISOString(),
+            removed: true, removedAt: new Date().toISOString(), by: 'admin',
+          });
         } else if (wasPaid && isPaid && typeof amount === 'number' && amount !== before.amount) {
           // Amount changed on a still-paid record: rewrite its history
           // entry with the new amount, keeping the original method/at.
@@ -323,7 +365,7 @@ export default async function handler(req, res) {
       }
       if (bits.length) {
         await appendLog({
-          actor: 'write', action: 'Registration updated',
+          actor: role, action: 'Registration updated',
           detail: rec.event + ' — ' + rec.name + ': ' + bits.join(', '),
           target: { kind: 'registration', id, name: rec.name },
           undo: { kind: 'reg-update', id, before: changed },
@@ -344,39 +386,51 @@ export default async function handler(req, res) {
     if (role !== 'lead') return res.status(403).json({ error: 'Tech Lead access required' });
     const { id } = req.body || {};
     if (!id) return res.status(400).json({ error: 'Missing id' });
+    // Paylock (#13): a concurrent PATCH/mark-paid on the same record
+    // must not resurrect it after this delete. Take the lock, re-check
+    // existence under it, then delete.
+    const lockKey = 'celesta:paylock:' + id;
+    const lockVal = crypto.randomUUID();
+    let locked = false;
     try {
+      const got = await redis.set(lockKey, lockVal, { nx: true, ex: 10 });
+      locked = !!got;
+      if (!locked) return res.status(409).json({ error: 'already being processed, try again' });
       const rec = parseVal(await redis.hget('celesta:regs', id));
+      // 404 when the id does not exist (#13): silently succeeding would
+      // let the admin believe a record was deleted when nothing was.
+      if (!rec) return res.status(404).json({ error: 'Registration not found' });
       await redis.hdel('celesta:regs', id);
       await redis.zrem('celesta:reglist', id);
-      if (rec) {
-        try {
-          const mk = regMarkerKeys(rec.eventSlug || rec.event, normPhone(rec.phone), rec.email);
-          if (mk.phone) await redis.del(mk.phone);
-          if (mk.email) await redis.del(mk.email);
-        } catch { /* markers expire on their own; the record is already gone */ }
-      }
+      try {
+        const mk = regMarkerKeys(rec.eventSlug || rec.event, normPhone(rec.phone), rec.email);
+        if (mk.phone) await redis.del(mk.phone);
+        if (mk.email) await redis.del(mk.email);
+      } catch { /* markers expire on their own; the record is already gone */ }
       // A deleted paid registration must not leave its money in history.
-      if (rec && rec.paid) {
+      if (rec.paid) {
         try { await removeHistoryFor(id); }
         catch (e) { console.error('registrations history removal failed', e); }
       }
-      if (rec) {
-        // Undo keeps the FULL record (phone, email, member contacts
-        // included) so a mistaken delete can be fully restored. The
-        // delete removes it from the live list; the copy lives only in
-        // the secure admin undo log (see privacy.html §5).
-        await appendLog({
-          type: 'delete',
-          actor: 'lead', action: 'Registration deleted',
-          detail: rec.event + ' — ' + rec.name + ' (Team ' + (rec.team || '?') + ')',
-          target: { kind: 'registration', id, name: rec.name },
-          undo: { kind: 'reg-deleted', id, record: rec },
-        }, req);
-      }
+      // Undo keeps the FULL record (phone, email, member contacts
+      // included) so a mistaken delete can be fully restored. The
+      // delete removes it from the live list; the copy lives only in
+      // the secure admin undo log (see privacy.html §5).
+      await appendLog({
+        type: 'delete',
+        actor: 'lead', action: 'Registration deleted',
+        detail: rec.event + ' — ' + rec.name + ' (Team ' + (rec.team || '?') + ')',
+        target: { kind: 'registration', id, name: rec.name },
+        undo: { kind: 'reg-deleted', id, record: rec },
+      }, req);
       return res.status(200).json({ ok: true });
     } catch (e) {
       console.error('registrations DELETE failed', e);
       return res.status(500).json({ error: 'Storage unavailable' });
+    } finally {
+      if (locked) {
+        try { await redis.eval("if redis.call('get',KEYS[1])==ARGV[1] then return redis.call('del',KEYS[1]) end", [lockKey], [lockVal]); } catch { /* lock expires on its own */ }
+      }
     }
   }
 
@@ -392,8 +446,36 @@ export default async function handler(req, res) {
     // existing per-event sequence (never renumbers anyone who already
     // has a chest, never reuses a number, never deletes anything).
     const CHEST_CODES = { 'prompting': '01', 'quiz': '02', 'treasure-hunt': '03', 'reels-competition': '04' };
+    // Cross-tab lock (#28): two admins backfilling at once must not
+    // hand out duplicate chest numbers from the same INCR sequence.
+    const lockKey = 'celesta:backfill-lock';
+    const lockVal = crypto.randomUUID();
+    let locked = false;
     try {
+      const got = await redis.set(lockKey, lockVal, { nx: true, ex: 60 });
+      locked = !!got;
+      if (!locked) return res.status(409).json({ error: 'A chest backfill is already running' });
       const all = await redis.hgetall('celesta:regs');
+      // Counter guard (#28): if a counter was ever reset or lags behind
+      // the highest chest already handed out, fast-forward it first, so
+      // the INCR below never reissues a number that already exists.
+      const maxSeq = {};
+      if (all) for (const v of Object.values(all)) {
+        const r = parseVal(v);
+        if (r && r.chest) {
+          const m = String(r.chest).match(/^(\d{2})(\d{3})$/);
+          if (m) {
+            const slug = Object.keys(CHEST_CODES).find(function (s) { return CHEST_CODES[s] === m[1]; });
+            if (slug) maxSeq[slug] = Math.max(maxSeq[slug] || 0, parseInt(m[2], 10));
+          }
+        }
+      }
+      for (const slug of Object.keys(maxSeq)) {
+        try {
+          const cur = Number(await redis.get('celesta:chestseq:' + slug) || 0);
+          if (maxSeq[slug] > cur) await redis.set('celesta:chestseq:' + slug, maxSeq[slug]);
+        } catch (e) { console.error('registrations backfill counter guard failed', e); }
+      }
       const missing = [];
       if (all) for (const [k, v] of Object.entries(all)) {
         const r = parseVal(v);
@@ -417,7 +499,7 @@ export default async function handler(req, res) {
       }
       if (!dryRun && assigned.length) {
         await appendLog({
-          actor: 'write', action: 'Chest numbers backfilled',
+          actor: role, action: 'Chest numbers backfilled',
           detail: assigned.length + ' registration(s) given a chest number: ' + assigned.map(function (a) { return a.name + ' ' + a.chest; }).join(', '),
           target: { kind: 'registration', id: assigned[0].id, name: assigned[0].name },
         }, req);
@@ -426,6 +508,10 @@ export default async function handler(req, res) {
     } catch (e) {
       console.error('registrations backfill-chest failed', e);
       return res.status(500).json({ error: 'Storage unavailable' });
+    } finally {
+      if (locked) {
+        try { await redis.eval("if redis.call('get',KEYS[1])==ARGV[1] then return redis.call('del',KEYS[1]) end", [lockKey], [lockVal]); } catch { /* lock expires on its own */ }
+      }
     }
   }
 

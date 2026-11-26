@@ -30,7 +30,14 @@
 .ev-meta{margin:20px 0 2px;text-align:left}
 .ev-meta-date{font-size:15px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:#fff}
 .ev-meta-venue{font-size:13px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#d6cbf0;margin-top:7px}
-.ev-meta-venue b{color:#ff7a1a;font-weight:800}</style>
+.ev-meta-venue b{color:#ff7a1a;font-weight:800}
+/* Dynamic event captions (#39): name, team size, fee, registration count. */
+.ev-cap{padding:12px 14px 14px;text-align:left}
+.ev-cap-name{font-size:16px;font-weight:800;letter-spacing:.04em;color:#fff}
+.ev-cap-meta{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#d6cbf0;margin-top:4px}
+.ev-cap-count{font-size:12px;font-weight:700;color:#8be9a0;margin-top:3px}
+.ev-cap-closed{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#fda4af;margin-top:6px}
+.ev-empty{padding:32px 16px;text-align:center;font-size:15px;font-weight:600;color:#d6cbf0}</style>
 </head>
 <body class="premium-page">
 
@@ -109,15 +116,49 @@
   var WORDS={1:'ONE',2:'TWO',3:'THREE',4:'FOUR',5:'FIVE',6:'SIX',7:'SEVEN',8:'EIGHT',9:'NINE',10:'TEN'};
   var wordsLow={1:'One',2:'Two',3:'Three',4:'Four',5:'Five',6:'Six',7:'Seven',8:'Eight',9:'Nine',10:'Ten'};
   var ARROW='<svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M3 11 11 3M5 3h6v6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-  fetch('/api/events').then(function(r){return r.json();}).catch(function(){return {events:[]};}).then(function(d){
-    var list=(d.events||[]).filter(function(e){return e.visible;});
-    if(!list.length)return; // keep the static fallback
+  // 8 s timeout (#40): the events fetch used to hang forever on a dead
+  // connection, leaving the static fallback (which may show hidden events).
+  var ctl=new AbortController();
+  var to=setTimeout(function(){ctl.abort();},8000);
+  fetch('/api/events',{signal:ctl.signal}).then(function(r){clearTimeout(to);if(!r.ok)throw new Error('http '+r.status);return r.json();}).catch(function(){clearTimeout(to);return {events:[],_fetchFailed:true};}).then(function(d){
+    // Skip malformed events (#45): an event without a slug or name would
+    // render a link to /registration/undefined.
+    var list=(d.events||[]).filter(function(e){return e.visible&&e.slug&&e.name;});
+    if(!list.length){
+      if(d._fetchFailed)return; // fetch failed: keep the static fallback
+      // Valid empty list (#38): say so, instead of re-showing hidden events.
+      var grid0=document.getElementById('ev-grid');
+      if(grid0)grid0.innerHTML='<div class="ev-empty">No events listed right now.</div>';
+      var pbT0=document.getElementById('pb-total');
+      if(pbT0)pbT0.textContent=fmt(0);
+      var pbR0=document.getElementById('pb-rows');
+      if(pbR0)pbR0.innerHTML='<div class="pboard-row pboard-sum"><b>Total</b><span></span><span></span><em>'+fmt(0)+'</em></div>';
+      var cw0=document.getElementById('ev-count-word');
+      if(cw0)cw0.textContent='NO';
+      var sub0=document.getElementById('ev-sub');
+      if(sub0)sub0.innerHTML='No events listed right now.';
+      return;
+    }
 
     var grid=document.getElementById('ev-grid');
     if(grid){
       grid.innerHTML=list.map(function(e,i){
-        return '<a class="ax-card" style="--i:'+i+'" href="/registration/'+esc(e.slug)+'">'
-          +'<div class="ax-img"><img src="'+(e.poster?'/api/poster?event='+esc(e.slug):'/assets/poster-'+esc(e.slug)+'.webp')+'" alt="'+esc(e.name)+' poster" loading="lazy" decoding="async"></div></a>';
+        // regOpen (#36): default OPEN when regOpen is unset/missing.
+        // A closed event is not a link — it shows a closed badge.
+        var open=e.regOpen!==false;
+        // Poster fallback (#45): a failed custom poster falls back to
+        // the built-in asset instead of a broken image.
+        var imgSrc=e.poster?'/api/poster?event='+esc(e.slug):'/assets/poster-'+esc(e.slug)+'.webp';
+        var imgErr=e.poster?' onerror="this.onerror=null;this.src=\'/assets/poster-'+esc(e.slug)+'.webp\'"':'';
+        var img='<div class="ax-img"><img src="'+imgSrc+'" alt="'+esc(e.name)+' poster" loading="lazy" decoding="async"'+imgErr+'></div>';
+        // Caption (#39): name, team size, fee, registration count (#37).
+        var cap='<div class="ev-cap"><div class="ev-cap-name">'+esc(e.name)+'</div>'
+          +'<div class="ev-cap-meta">'+esc(teamLabel(e))+' · '+esc(e.fee||'')+'</div>'
+          +(typeof e.regCount==='number'?'<div class="ev-cap-count">'+e.regCount+' registered</div>':'')
+          +(open?'':'<div class="ev-cap-closed">Registrations closed</div>')
+          +'</div>';
+        if(open)return '<a class="ax-card" style="--i:'+i+'" href="/registration/'+esc(e.slug)+'">'+img+cap+'</a>';
+        return '<div class="ax-card" style="--i:'+i+'">'+img+cap+'</div>';
       }).join('');
     }
     var total=list.reduce(function(s,e){return s+(e.prize1||0)+(e.prize2||0);},0);
@@ -128,6 +169,14 @@
       pbR.innerHTML=list.map(function(e){
         return '<div class="pboard-row"><b>'+esc(e.name)+'</b><span>1st '+fmt(e.prize1)+'</span><span>2nd '+(e.prize2?fmt(e.prize2):'\u2014')+'</span><em>'+fmt((e.prize1||0)+(e.prize2||0))+'</em></div>';
       }).join('')+'<div class="pboard-row pboard-sum"><b>Total</b><span></span><span></span><em>'+fmt(total)+'</em></div>';
+    }
+    // Winner-takes-all note, derived from the data (#41): any event with
+    // no 2nd prize is winner-takes-all; otherwise the note says so.
+    var note=document.querySelector('.pboard-note');
+    if(note){
+      var wta=list.filter(function(e){return !e.prize2;}).map(function(e){return e.name;});
+      if(wta.length)note.textContent=wta.join(' and ')+' '+(wta.length>1?'are':'is')+' winner-takes-all · other events split 1st + 2nd, as announced by Team SPARK.';
+      else note.textContent='Prizes split 1st + 2nd, as announced by Team SPARK.';
     }
     var track=document.getElementById('ev-marquee-track');
     if(track){

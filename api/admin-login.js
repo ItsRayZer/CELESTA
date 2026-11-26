@@ -29,7 +29,7 @@ export function verify(token) {
   const parts = token.split('.');
   if (parts.length !== 3) return null;
   const [role, exp, sig] = parts;
-  if (!['read', 'write', 'lead'].includes(role)) return null;
+  if (!['read', 'write', 'lead', 'fees'].includes(role)) return null;
   if (!/^\d+$/.test(exp)) return null; // non-numeric expiry must not pass
   if (Date.now() > parseInt(exp, 10)) return null;
   const expected = createHmac('sha256', SECRET).update(role + '.' + exp).digest('hex').slice(0, 32);
@@ -38,7 +38,12 @@ export function verify(token) {
 }
 
 // Tech Lead can do everything write can, plus delete. Read cannot write.
+// The fees role is a distinct, limited role: it can read and mark payments
+// (collect), but it is NOT a write token — it cannot mark-unpaid, PATCH
+// registrations/events, or reach any admin API. Server routes enforce this;
+// the client UI mirrors it.
 export function canWrite(role) { return role === 'write' || role === 'lead'; }
+export function canCollect(role) { return role === 'fees' || role === 'write' || role === 'lead'; }
 
 // Parse a value read from Redis. The Upstash client auto-parses JSON strings
 // into objects, so a stored record may come back as an object already —
@@ -101,6 +106,21 @@ export default async function handler(req, res) {
   const readHash = createHash('sha256').update(readPw).digest();
   const feesHash = feesPw ? createHash('sha256').update(feesPw).digest() : null;
   const leadHash = leadPw ? createHash('sha256').update(leadPw).digest() : null;
+  // Config footgun guard (#27): if the Tech Lead password equals another
+  // password, the lead can never get a lead token (write is checked
+  // first). Warn loudly in the logs so it is caught before fest day.
+  // The login still proceeds (write-first order); the warning is the fix.
+  if (leadHash && (timingSafeEqual(leadHash, writeHash) || (feesHash && timingSafeEqual(leadHash, feesHash)) || timingSafeEqual(leadHash, readHash))) {
+    console.error('admin-login config: TECH_LEAD_PW equals another admin password — the Tech Lead can never get a lead token. Use distinct passwords.');
+  }
+  if (feesHash && timingSafeEqual(feesHash, writeHash)) {
+    console.error('admin-login config: FEES_PW equals ADMIN_WRITE_PW — the fees counter would have full admin access. Use distinct passwords.');
+  }
+  // Blank/missing passwords must not burn the shared lockout budget (#54):
+  // reject them with 400 before any counting.
+  if (typeof password !== 'string' || !password.trim()) {
+    return res.status(400).json({ error: 'Enter a password' });
+  }
   // (a) Dual-flag requests are rejected outright: the server must not
   // trust a client-supplied flag combination.
   if (verifyLead && verifyWrite) {
@@ -142,14 +162,15 @@ export default async function handler(req, res) {
       await appendLog({ type: 'login', actor: 'lead', action: 'Tech Lead logged in' }, req);
       return res.status(200).json({ ok: true, role: 'lead', token: sign('lead') });
     }
-    // Fees counter password: same full access as the admin write password,
-    // so the counters can mark payments in /fees. The admin login still
-    // works for /fees too. Only share this password with trusted counters.
-    // Never accepted in verifyWrite mode (re-auth for sensitive actions).
+    // Fees counter password: a DISTINCT, limited 'fees' role — it can
+    // read and mark payments in /fees, but it is NOT a write token. It
+    // cannot mark-unpaid, PATCH registrations/events, or reach any admin
+    // API (the server enforces this; see canCollect/canWrite). Never
+    // accepted in verifyWrite mode (re-auth for sensitive actions).
     if (feesHash && pwHash && timingSafeEqual(pwHash, feesHash)) {
       try { await redis.del(failKey); } catch { /* ignore */ }
-      await appendLog({ type: 'login', actor: 'write', action: 'Fees counter logged in' }, req);
-      return res.status(200).json({ ok: true, role: 'write', token: sign('write') });
+      await appendLog({ type: 'login', actor: 'fees', action: 'Fees counter logged in' }, req);
+      return res.status(200).json({ ok: true, role: 'fees', token: sign('fees') });
     }
     if (pwHash && timingSafeEqual(pwHash, readHash)) {
       try { await redis.del(failKey); } catch { /* ignore */ }
