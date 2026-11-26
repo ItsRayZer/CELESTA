@@ -243,7 +243,17 @@ export const DEFAULT_EVENTS = [
 const PHONE_BAN_RULE = 'Mobile phones are strictly prohibited during the competition.';
 function ensurePhoneBan(e) {
   if (e.slug !== 'treasure-hunt' || !Array.isArray(e.rules)) return false;
-  if (e.rules.some(function (r) { return String(r).toLowerCase().includes('mobile phones are strictly prohibited'); })) return false;
+  // A rule that ALLOWS a phone contradicts the ban and must go first,
+  // or the served ruleset tells students both "phones banned" and "one
+  // phone allowed" (the round-3 m32 regression: stale rulesV 4 set +
+  // appended ban left the old "one mobile phone" rule in place).
+  const before = e.rules.length;
+  e.rules = e.rules.filter(function (r) {
+    const t = String(r).toLowerCase();
+    return !(t.includes('mobile phone') && (t.includes('only one') || t.includes('allowed') || t.includes('navigation')));
+  });
+  const removed = e.rules.length !== before;
+  if (e.rules.some(function (r) { return String(r).toLowerCase().includes('mobile phones are strictly prohibited'); })) return removed;
   e.rules = e.rules.slice();
   e.rules.splice(6, 0, PHONE_BAN_RULE);
   return true;
@@ -303,19 +313,21 @@ export async function loadEvents(options) {
   DEFAULT_EVENTS.forEach(d => { defBySlug[d.slug] = d; });
   for (const e of list) {
     const d = defBySlug[e.slug];
-    // R3-m32: an admin's own custom rules are NEVER replaced. The
-    // migration only upgrades a ruleset that is still the stale default
-    // (rulesV below the official set AND not flagged custom AND not
-    // differing from the official rules — a differing ruleset is an
-    // admin customisation, including one saved before the rulesCustom
-    // flag existed). A custom ruleset keeps its own wording — only the
-    // Treasure Hunt phone ban is enforced on top of it (appended if
-    // missing). The Nov 20 one-time upgrade already ran live (all four
-    // live events serve rulesV == default), so no stale set is left to
-    // lose by treating differing rules as custom.
-    const looksCustom = e.rulesCustom || (d && Array.isArray(e.rules) && JSON.stringify(e.rules) !== JSON.stringify(d.rules || []));
+    // R3-m32 (fixed): an admin's own custom rules are NEVER replaced.
+    // A ruleset is STALE, not custom, when its rulesV is BELOW the
+    // official set — the old rulesV 4 set differs from the default
+    // rulesV 5 set precisely because it is old, not because an admin
+    // customised it (the round-3 "differing = custom" check wrongly
+    // treated that stale set as custom, so it was never upgraded and
+    // the appended phone ban contradicted its old "one phone allowed"
+    // rule). Custom means: rulesCustom flag set, OR rulesV at/above
+    // the default with differing content (an admin edited the
+    // current-version rules). A custom ruleset keeps its own wording —
+    // only the Treasure Hunt phone ban is enforced on top of it.
+    const isStale = !!(d && (e.rulesV || 0) < (d.rulesV || 0));
+    const looksCustom = e.rulesCustom || (!isStale && d && Array.isArray(e.rules) && JSON.stringify(e.rules) !== JSON.stringify(d.rules || []));
     if (looksCustom) { if (ensurePhoneBan(e)) dirty = true; continue; }
-    if (d && (e.rulesV || 0) < (d.rulesV || 0)) {
+    if (isStale) {
       e.rules = (d.rules || []).slice();
       e.rulesV = d.rulesV; dirty = true;
     }
@@ -469,13 +481,16 @@ export default async function handler(req, res) {
       DEFAULT_EVENTS.forEach(d => { defBySlug[d.slug] = d; });
       for (const e of events) {
         const d = defBySlug[e.slug];
-        // R3-m32: an admin's own custom rules are never masked by this
-        // override — only a stale (non-custom, non-differing) ruleset
-        // takes the official RULES (same looksCustom rule as the
-        // migration above, so a pre-flag customisation is safe too).
-        // The Treasure Hunt phone ban is enforced on top of any served
-        // ruleset, custom or not.
-        const looksCustom = e.rulesCustom || (d && Array.isArray(e.rules) && JSON.stringify(e.rules) !== JSON.stringify(d.rules || []));
+        // R3-m32 (fixed): an admin's own custom rules are never masked
+        // by this override. A ruleset is STALE, not custom, when its
+        // rulesV is BELOW the official set — the old rulesV 4 set
+        // differs from the default rulesV 5 set because it is old, not
+        // because an admin customised it. Custom means: rulesCustom
+        // flag set, OR rulesV at/above the default with differing
+        // content. The Treasure Hunt phone ban is enforced on top of
+        // any served ruleset, custom or not.
+        const isStale = !!(d && (e.rulesV || 0) < (d.rulesV || 0));
+        const looksCustom = e.rulesCustom || (!isStale && d && Array.isArray(e.rules) && JSON.stringify(e.rules) !== JSON.stringify(d.rules || []));
         if (looksCustom) { ensurePhoneBan(e); continue; }
         if (d && (e.rulesV || 0) < (d.rulesV || 0)) {
           e.rules = (d.rules || []).slice();
