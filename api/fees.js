@@ -205,7 +205,20 @@ export default async function handler(req, res) {
           t.collected += e.collected; t.remaining += e.remaining;
           return t;
         }, { registered: 0, paid: 0, pending: 0, collected: 0, remaining: 0 });
-        return res.status(200).json({ ok: true, role, events: evList, totals, cash: methodSum.cash, gpay: methodSum.gpay });
+        // Outdoor Games tokens (kind:'token'): ledger-only sales with no
+        // registration. They are money in hand, so they count in the
+        // overall Total Collected. The cash/gpay splits above (methodSum)
+        // already sum every non-removed history entry, tokens included.
+        // Per-event tiles stay reg-based — tokens belong to no event.
+        const tokenEntries = history.filter(function (h) { return !h.removed && h.kind === 'token'; });
+        const tokens = {
+          count: tokenEntries.length,
+          total: tokenEntries.reduce(function (s, h) { return s + Number(h.amount || 0); }, 0),
+          cash: tokenEntries.filter(function (h) { return h.method === 'cash'; }).reduce(function (s, h) { return s + Number(h.amount || 0); }, 0),
+          gpay: tokenEntries.filter(function (h) { return h.method === 'gpay'; }).reduce(function (s, h) { return s + Number(h.amount || 0); }, 0),
+        };
+        totals.collected += tokens.total;
+        return res.status(200).json({ ok: true, role, events: evList, totals, cash: methodSum.cash, gpay: methodSum.gpay, tokens });
       } catch (e) {
         console.error('fees overview failed', e);
         return res.status(500).json({ error: 'Storage unavailable' });
@@ -237,8 +250,13 @@ export default async function handler(req, res) {
       try {
         let entries = await readHistory(HISTORY_CAP);
         if (slug) {
-          if (!EVENT_ORDER.includes(slug)) return res.status(400).json({ error: 'Unknown event' });
-          entries = entries.filter(function (h) { return h.eventSlug === slug; });
+          if (slug !== 'outdoor-games' && !EVENT_ORDER.includes(slug)) return res.status(400).json({ error: 'Unknown event' });
+          // Token sales are a separate Outdoor Games ledger: they show
+          // only under outdoor-games, never mixed into the four events'
+          // history. 'outdoor-games' is a valid history slug for tokens.
+          entries = slug === 'outdoor-games'
+            ? entries.filter(function (h) { return h.kind === 'token'; })
+            : entries.filter(function (h) { return h.eventSlug === slug; });
         }
         return res.status(200).json({ ok: true, entries });
       } catch (e) {
@@ -280,6 +298,39 @@ export default async function handler(req, res) {
   // ---------- POST ----------
   if (req.method === 'POST') {
     const body = req.body || {};
+    // Outdoor Games token sale: a ledger-only entry, no registration,
+    // no name/phone/chest. Handled before the id requirement below —
+    // a token has no id to require. The counter's 'fees' role may
+    // record it (canCollect), like mark-paid. One ₹30 token covers
+    // both throw ball games. It creates no registration, chest, or
+    // ticket — only this history entry.
+    if (action === 'token-sale') {
+      if (!canCollect(role)) return res.status(403).json({ error: 'Write access required' });
+      const method = String(body.method || '').trim();
+      if (method !== 'cash' && method !== 'gpay') {
+        return res.status(400).json({ error: 'Method must be cash or gpay' });
+      }
+      const entry = {
+        id: 'tok_' + crypto.randomUUID(),
+        kind: 'token',
+        name: 'Outdoor Games Token',
+        event: 'Outdoor Games',
+        eventSlug: 'outdoor-games',
+        chest: '',
+        phone: '',
+        amount: 30,
+        method,
+        at: new Date().toISOString(),
+        by: 'admin',
+      };
+      try {
+        await pushHistory(entry);
+      } catch (e) {
+        console.error('fees token-sale failed', e);
+        return res.status(500).json({ error: 'Storage unavailable' });
+      }
+      return res.status(200).json({ ok: true, entry });
+    }
     const id = String(body.id || '').trim();
     if (!id) return res.status(400).json({ error: 'Missing id' });
     // Role split (#2): mark-paid is the counter's job, so the limited

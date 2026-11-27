@@ -219,6 +219,29 @@ nav button.on { background: #fff; color: #000; }
         </div>
       </section>
 
+      <!-- OUTDOOR GAMES TOKEN — a separate ledger, not one of the four
+           events. One ₹30 token covers both throw ball games. No name,
+           phone, or registration is needed — the counter just records
+           Cash or GPay. Its own count/total lives here, apart from the
+           four events' money. -->
+      <section id="token-block" class="rounded-[28px] p-4 border border-white/10 overflow-hidden" style="background:rgba(255,255,255,.04);margin-top:14px">
+        <div class="flex justify-between items-start gap-3">
+          <div>
+            <div class="text-xs font-semibold" style="color:var(--mut)">Outdoor Games · Token Sale</div>
+            <h2 class="text-xl font-black uppercase leading-none tracking-tight mt-1">Outdoor Games Token</h2>
+            <p class="text-xs mt-1" style="color:var(--mut)">One ₹30 token covers both throw ball games. No name needed.</p>
+          </div>
+          <span class="font-black text-2xl shrink-0">₹30</span>
+        </div>
+        <div id="token-stats" class="text-sm font-bold mt-3" style="color:var(--mut)">No tokens sold yet.</div>
+        <div class="flex gap-2 mt-3">
+          <button type="button" id="btn-token-cash" class="paybtn cash">Cash ₹30</button>
+          <button type="button" id="btn-token-gpay" class="paybtn gpay">GPay ₹30</button>
+        </div>
+        <p id="token-msg" class="msg"></p>
+        <div id="token-list" class="mt-2 space-y-1.5"></div>
+      </section>
+
       <div class="plan-kicker" style="margin:18px 0 10px">Choose an event</div>
       <div id="event-list" class="plan-list"><div class="plan-empty">Loading events…</div></div>
       <div class="text-center text-[10px] font-mono pt-8" style="color:var(--mut)">FEES · SPARK 2K26 · Admin only · live sync every 60s</div>
@@ -694,7 +717,7 @@ nav button.on { background: #fff; color: #000; }
     refreshInFlight=true;
     eventOpenedThisRefresh=false;
     loadOverview().then(function(ok){
-      if(ok){lastSyncAt=Date.now();setStale(false);}
+      if(ok){lastSyncAt=Date.now();setStale(false);loadTokenHistory();}
       else setStale(true);
       // Only refresh the event roster when the overview succeeded (#52):
       // after a 401 the token is gone, so the event fetches would 401 too.
@@ -738,7 +761,73 @@ nav button.on { background: #fff; color: #000; }
     // header event selector
     var sel=$('plan-select');
     sel.innerHTML=evs.map(function(e){return '<option value="'+esc(e.slug)+'"'+(curEvent===e.slug?' selected':'')+'>'+esc(e.name)+'</option>';}).join('');
+    renderTokenBlock();
   }
+
+  // ---------- outdoor games tokens (separate ledger) ----------
+  // Tokens are NOT one of the four events: no students, no registration,
+  // no chest. Their count/total lives in overview.tokens and their sales
+  // list comes from history&event=outdoor-games. The block sits on the
+  // home page so a counter reaches it without entering an event.
+  var tokenHistory=[];
+  function renderTokenBlock(){
+    var tk=(overview&&overview.tokens)||{count:0,total:0,cash:0,gpay:0};
+    var st=$('token-stats');
+    if(st)st.textContent=tk.count>0?(tk.count+' token'+(tk.count===1?'':'s')+' · '+inr(tk.total)+' · '+inr(tk.cash)+' cash · '+inr(tk.gpay)+' GPay'):'No tokens sold yet.';
+    var canTok=(role==='fees'||role==='write'||role==='lead');
+    var tcb=$('btn-token-cash'), tgb=$('btn-token-gpay');
+    if(tcb)tcb.disabled=!canTok;
+    if(tgb)tgb.disabled=!canTok;
+    var list=$('token-list');
+    if(list){
+      list.innerHTML=tokenHistory.length?tokenHistory.slice(0,20).map(function(h){
+        var isCash=h.method==='cash';
+        return '<div class="flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-sm" style="background:rgba(255,255,255,.04);border:1px solid var(--line)">'
+          +'<span style="color:var(--mut)">'+esc(fmtWhen(h.at))+'</span>'
+          +'<span class="font-mono font-bold text-[11px] px-2 py-0.5 rounded-full border '+(isCash?'text-lime-400 bg-lime-500/10 border-lime-500/20':'text-cyan-400 bg-cyan-500/10 border-cyan-500/20')+'">'+(isCash?'CASH':'GPAY')+'</span>'
+          +'<span class="font-black font-mono">+'+inr(h.amount)+'</span></div>';
+      }).join(''):'';
+    }
+  }
+  function loadTokenHistory(){
+    return api('/api/fees?action=history&event=outdoor-games').then(function(r){
+      if(r.data&&r.data.ok){tokenHistory=r.data.entries||[];renderTokenBlock();}
+    }).catch(function(){});
+  }
+  var tokenSaleInFlight=false;
+  function doTokenSale(method){
+    if(role!=='fees'&&role!=='write'&&role!=='lead'){toast('Write access required',1);return;}
+    if(tokenSaleInFlight)return;
+    tokenSaleInFlight=true;
+    var msg=$('token-msg');
+    if(msg){msg.textContent='Saving…';msg.className='msg';}
+    var bc=$('btn-token-cash'), bg=$('btn-token-gpay');
+    if(bc)bc.disabled=true; if(bg)bg.disabled=true;
+    function done(){
+      tokenSaleInFlight=false;
+      var canTok=(role==='fees'||role==='write'||role==='lead');
+      if(bc)bc.disabled=!canTok; if(bg)bg.disabled=!canTok;
+    }
+    api('/api/fees?action=token-sale',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({method:method})}).then(function(res){
+      done();
+      if(res.status===401){if(msg){msg.textContent='Session expired — log in again to retry.';msg.className='msg err';}return;}
+      if(res.status===403){toast('Write access required',1);if(msg){msg.textContent='Write access required.';msg.className='msg err';}return;}
+      if(res.data&&res.data.ok){
+        toast('Token recorded · '+(method==='cash'?'Cash':'GPay')+' ₹30');
+        if(msg){msg.textContent='Token recorded · '+(method==='cash'?'Cash':'GPay')+' ₹30';msg.className='msg ok';}
+        refreshAll();
+      }else{
+        toast((res.data&&res.data.error)||'Could not record the token sale',1);
+        if(msg){msg.textContent=(res.data&&res.data.error)||'Could not record the token sale';msg.className='msg err';}
+      }
+    }).catch(function(){
+      done();
+      toast('Connection failed — try again',1);
+      if(msg){msg.textContent='Connection failed — try again';msg.className='msg err';}
+    });
+  }
+  $('btn-token-cash').onclick=function(){doTokenSale('cash');};
+  $('btn-token-gpay').onclick=function(){doTokenSale('gpay');};
 
   // ---------- event open / back ----------
   function openEvent(slug){
@@ -1131,6 +1220,20 @@ nav button.on { background: #fff; color: #000; }
           +'<div class="flex flex-wrap gap-1.5 pt-1.5 border-t border-white/5">'
           +'<button type="button" class="btn b-ghost !py-1 !px-2.5 text-[11px] flex-1 min-w-[80px]" data-ticket="'+esc(h.id)+'">View Ticket</button>'
           +'</div></div>';
+      }
+      // Token sale (Outdoor Games): no student, chest, phone, or ticket.
+      // Render it as a clean ledger line — name, amount, method, time —
+      // with no View Receipt or Remove button (there is no registration
+      // behind it to open or reverse).
+      if(h.kind==='token'){
+        return '<div class="card p-3.5 space-y-2 border border-white/10 overflow-hidden w-full">'
+          +'<div class="flex items-start justify-between gap-2"><div class="min-w-0 flex-1">'
+          +'<div class="flex items-center gap-1.5 flex-wrap"><span class="font-bold text-sm truncate max-w-full text-white stu-name">'+esc(h.name||'Outdoor Games Token')+'</span>'
+          +'<span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/10 text-white/60 shrink-0">TOKEN</span>'
+          +'</div><div class="tl-time mt-0.5">'+esc(fmtWhen(h.at))+'</div></div>'
+          +'<div class="text-right shrink-0"><div class="font-black font-mono text-base leading-tight" style="color:var(--green)">+'+inr(h.amount)+'</div>'
+          +'<span class="inline-block text-[9px] font-mono font-bold px-2 py-0.5 rounded-full border mt-0.5 '+(isCash?'text-lime-400 bg-lime-500/10 border-lime-500/20':'text-cyan-400 bg-cyan-500/10 border-cyan-500/20')+'">'+(isCash?'CASH':'GPAY')+'</span></div></div>'
+          +'</div>';
       }
       return '<div class="card p-3.5 space-y-2 border border-white/10 overflow-hidden w-full">'
         +'<div class="flex items-start justify-between gap-2"><div class="min-w-0 flex-1">'
