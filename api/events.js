@@ -145,7 +145,8 @@ export const DEFAULT_EVENTS = [
     "order": 2,
     "visible": true,
     "regOpen": true,
-    "rulesV": 4
+    "rulesV": 4,
+    "maxSlots": 20
   },
   {
     "slug": "idea-presentation",
@@ -313,6 +314,15 @@ export async function loadEvents(options) {
   DEFAULT_EVENTS.forEach(d => { defBySlug[d.slug] = d; });
   for (const e of list) {
     const d = defBySlug[e.slug];
+    // Prompting slot limit (27 Nov 2026, fest day): the stored copy was
+    // seeded before maxSlots existed. Fill it from the default so the
+    // stored copy carries the limit on the next admin write. Only
+    // Prompting has a maxSlots in the defaults, so no other event is
+    // affected. This runs before the rules logic below, so a custom
+    // ruleset never blocks the fill.
+    if (d && typeof d.maxSlots === 'number' && typeof e.maxSlots !== 'number') {
+      e.maxSlots = d.maxSlots; dirty = true;
+    }
     // R3-m32 (fixed): an admin's own custom rules are NEVER replaced.
     // A ruleset is STALE, not custom, when its rulesV is BELOW the
     // official set — the old rulesV 4 set differs from the default
@@ -481,6 +491,14 @@ export default async function handler(req, res) {
       DEFAULT_EVENTS.forEach(d => { defBySlug[d.slug] = d; });
       for (const e of events) {
         const d = defBySlug[e.slug];
+        // Prompting slot limit (27 Nov 2026): fill maxSlots from the
+        // default when the stored event lacks it — read-time only, same
+        // pattern as the rules override (the public path never writes).
+        // Runs before the rules logic below so a custom ruleset never
+        // blocks the fill. The limit is independent of the rules.
+        if (d && typeof d.maxSlots === 'number' && typeof e.maxSlots !== 'number') {
+          e.maxSlots = d.maxSlots;
+        }
         // R3-m32 (fixed): an admin's own custom rules are never masked
         // by this override. A ruleset is STALE, not custom, when its
         // rulesV is BELOW the official set — the old rulesV 4 set
@@ -522,8 +540,17 @@ export default async function handler(req, res) {
       } catch { /* counts stay 0; the list is the priority */ }
       // Unauthenticated callers see listed events only; a logged-in admin
       // (read or write token) sees hidden ones too, for the admin UI.
+      // Prompting slot limit (27 Nov 2026): when an event carries a
+      // maxSlots, the response also carries slotsLeft (max minus the
+      // valid-registration count, floored at 0). Only Prompting has a
+      // maxSlots, so no other event gets a slotsLeft.
       const list = (role ? events : events.filter(e => e.visible))
-        .map(e => ({ ...e, poster: posterSlugs.has(e.slug), regCount: regCounts[e.slug] || regCounts[e.name] || 0 }));
+        .map(e => {
+          const regCount = regCounts[e.slug] || regCounts[e.name] || 0;
+          const out = { ...e, poster: posterSlugs.has(e.slug), regCount };
+          if (typeof e.maxSlots === 'number') out.slotsLeft = Math.max(0, e.maxSlots - regCount);
+          return out;
+        });
       return res.status(200).json({ events: list });
     } catch (e) {
       console.error('events list failed, serving defaults', e);

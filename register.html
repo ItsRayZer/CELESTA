@@ -22,7 +22,7 @@
 <link rel="stylesheet" href="/styles.css?v=66">
 <link rel="stylesheet" href="/theme-purple.css?v=10">
 <style>#pill{display:none!important}</style>
-<style>html{background:#060608}body{background:#060608}.hp{position:absolute!important;left:-9999px!important;top:auto;width:1px;height:1px;overflow:hidden}.reg-page .mem{padding:12px 16px 4px;border-top:1px solid var(--rg-line)}.reg-page .mem-head{font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--rg-mut);margin-bottom:4px}.reg-page .mem .field{padding:0}.reg-page .mem .field+.field{border-top:1px solid var(--rg-line)}</style>
+<style>html{background:#060608}body{background:#060608}.hp{position:absolute!important;left:-9999px!important;top:auto;width:1px;height:1px;overflow:hidden}.reg-page .mem{padding:12px 16px 4px;border-top:1px solid var(--rg-line)}.reg-page .mem-head{font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--rg-mut);margin-bottom:4px}.reg-page .mem .field{padding:0}.reg-page .mem .field+.field{border-top:1px solid var(--rg-line)}.reg-slots{font-size:14px;font-weight:700;color:#fbbf24;margin:2px 0 14px}</style>
 </head>
 <body class="reg-page">
 
@@ -243,7 +243,12 @@
           +'</div>';
       }
     }
-    var closed=!e.regOpen;
+    // Prompting slot limit (27 Nov 2026): when slotsLeft is 0 the
+    // event is full — treat it as closed. The student sees a clear
+    // "Registration closed" notice, not just a disabled button, and
+    // no submittable form is rendered behind it.
+    var slotsFull=(typeof e.slotsLeft==='number'&&e.slotsLeft<=0);
+    var closed=!e.regOpen||slotsFull;
     var teamMeta=(e.teamMin===1?'Solo or up to '+e.teamMax:'Teams of '+e.teamMin+'\u2013'+e.teamMax);
     app.innerHTML=
       '<div class="rg-bar"><a class="glass-back" href="/events" aria-label="Back to events"><svg width="11" height="18" viewBox="0 0 11 18" fill="none" aria-hidden="true"><path d="M9.5 1.5 2 9l7.5 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Events</span></a></div>'
@@ -258,8 +263,14 @@
       +'<header class="rg-head"><span class="rg-chip">'+num+' · Inter-School</span><h1>'+esc(e.name)+'</h1><p class="rg-tag">'+esc(e.tagline||'')+'</p>'
       +'<div class="rg-prizes"><span>1st '+fmt(e.prize1)+'</span>'+(e.prize2?'<span>2nd '+fmt(e.prize2)+'</span>':'<span>Winner takes all</span>')+'</div></header>'
       +(closed
-        ?'<div class="ok-msg show" role="status"><h3>Registrations closed</h3><p>Registrations for <strong>'+esc(e.name)+'</strong> are closed. Check the Events page for the other events.</p></div>'
+        ?'<div class="ok-msg show" role="status"><h3>Registrations closed</h3><p>'+(slotsFull
+          ?'All slots for <strong>'+esc(e.name)+'</strong> are full. Check the Events page for the other events.'
+          :'Registrations for <strong>'+esc(e.name)+'</strong> are closed. Check the Events page for the other events.')+'</p></div>'
         :'<form id="reg-form-dyn" class="rg-form" data-event="'+esc(e.name)+'" data-slug="'+esc(e.slug)+'" data-min="'+e.teamMin+'" data-max="'+e.teamMax+'" novalidate>'
+        // Prompting slot limit: show the slots left clearly at the
+        // top of the form while any remain. Only events with a
+        // maxSlots carry slotsLeft, so this shows on Prompting only.
+        +(typeof e.slotsLeft==='number'&&e.slotsLeft>0?'<p class="reg-slots">'+e.slotsLeft+' slots left</p>':'')
         +'<div class="rg-group">'
         +'<div class="field" id="f-name"><label for="in-name">Name</label><input id="in-name" type="text" autocomplete="name" placeholder="Team leader" maxlength="100"><div class="err">Enter your full name.</div></div>'
         +'<div class="field" id="f-school"><label for="in-school">School</label><input id="in-school" type="text" autocomplete="organization" placeholder="Your school" maxlength="150"><div class="err">Enter your school name.</div></div>'

@@ -15,7 +15,7 @@
 // a bad phone, a duplicate, or the rate limit reject a submit.
 import { Redis } from '@upstash/redis';
 import { randomBytes } from 'crypto';
-import { loadEvents } from './events.js';
+import { loadEvents, DEFAULT_EVENTS } from './events.js';
 import { normPhone, validPhone, regMarkerKeys, MARKER_TTL, chestCodeFor } from './admin-login.js';
 import { sendMail, buildConfirmationEmail, mailConfigured } from '../lib/email.js';
 export { normPhone, validPhone, regMarkerKeys, MARKER_TTL } from './admin-login.js';
@@ -575,6 +575,39 @@ export default async function handler(req, res) {
     if (!evLive) { await rollbackOwnMarkers(); return res.status(400).json({ error: 'Unknown event' }); }
     if (!evLive.visible) { await rollbackOwnMarkers(); return res.status(403).json({ error: 'This event is no longer listed' }); }
     if (!evLive.regOpen) { await rollbackOwnMarkers(); return res.status(403).json({ error: 'Registrations are closed for this event' }); }
+    // Slot limit (Prompting, 27 Nov 2026, fest day): when the event
+    // carries a maxSlots, count its valid registrations right now and
+    // refuse when full. The count runs immediately before the write,
+    // inside this same pre-write block, so the window between count
+    // and write is minimal. The stored event may lack maxSlots (it was
+    // seeded before the field existed), so fall back to the default.
+    // Residual race (noted, not hidden): two simultaneous submits at
+    // 19/20 can both count 19 and both write. A fully atomic gate
+    // would need a new Redis counter key; the count check is the safe
+    // fix for fest day, and the window is a few milliseconds.
+    const maxSlots = (typeof evLive.maxSlots === 'number')
+      ? evLive.maxSlots
+      : (DEFAULT_EVENTS.find(function (d) { return d.slug === evLive.slug; }) || {}).maxSlots;
+    if (typeof maxSlots === 'number') {
+      let slotCount = 0;
+      try {
+        const allRegs = await redis.hgetall('celesta:regs');
+        for (const v of Object.values(allRegs || {})) {
+          let r = null;
+          try { r = typeof v === 'object' ? v : JSON.parse(v); } catch { r = null; }
+          if (!r || r.invalid) continue;
+          if (r.eventSlug === ev.slug || r.event === ev.name) slotCount++;
+        }
+      } catch (e) {
+        console.error('register pre-write slot count failed', e);
+        await rollbackOwnMarkers();
+        return res.status(503).json({ error: 'Registration is temporarily unavailable. Please try again in a moment.' });
+      }
+      if (slotCount >= maxSlots) {
+        await rollbackOwnMarkers();
+        return res.status(403).json({ error: 'All slots for ' + ev.name + ' are full' });
+      }
+    }
   } catch (e) {
     // loadEvents(strict) throws only when storage itself failed.
     console.error('register pre-write event re-check failed', e);

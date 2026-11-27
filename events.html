@@ -36,6 +36,7 @@
 .ev-cap-name{font-size:16px;font-weight:800;letter-spacing:.04em;color:#fff}
 .ev-cap-meta{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#d6cbf0;margin-top:4px}
 .ev-cap-count{font-size:12px;font-weight:700;color:#8be9a0;margin-top:3px}
+.ev-cap-slots{font-size:12px;font-weight:700;color:#fbbf24;margin-top:3px}
 .ev-cap-closed{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#fda4af;margin-top:6px}
 .ev-empty{padding:32px 16px;text-align:center;font-size:15px;font-weight:600;color:#d6cbf0}</style>
 </head>
@@ -155,6 +156,14 @@
         var cap='<div class="ev-cap"><div class="ev-cap-name">'+esc(e.name)+'</div>'
           +'<div class="ev-cap-meta">'+esc(teamLabel(e))+' · '+esc(e.fee||'')+'</div>'
           +(typeof e.regCount==='number'?'<div class="ev-cap-count">'+e.regCount+' registered</div>':'')
+          // Prompting slot limit (27 Nov 2026): only events with a
+          // maxSlots carry slotsLeft, so this line shows on Prompting
+          // only. "N slots left" while open, "Slots full" at 0.
+          +(typeof e.slotsLeft==='number'
+            ?(e.slotsLeft>0
+              ?'<div class="ev-cap-slots">'+e.slotsLeft+' slots left</div>'
+              :'<div class="ev-cap-closed">Slots full</div>')
+            :'')
           +(open?'':'<div class="ev-cap-closed">Registrations closed</div>')
           +'</div>';
         if(open)return '<a class="ax-card" style="--i:'+i+'" href="/registration/'+esc(e.slug)+'">'+img+cap+'</a>';
